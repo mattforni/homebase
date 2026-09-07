@@ -30,6 +30,12 @@ Category IDs: resolve by name at runtime so a renamed category never breaks the 
 ynab categories list | jq -r '.[].categories[] | "\(.name) => \(.id)"'
 ```
 
+Two mechanics that bite:
+
+- **Write `ynab` output to a file before running `jq` on it.** Piping a large `transactions list` or `payees list` straight into `jq` truncates and fails with `Unfinished JSON term at EOF`. Redirect to the scratchpad, then query the file.
+- **The shim refuses `--help` on write verbs** (it sees a mutating subcommand and stops). Read help from the underlying binary: `~/.bun/bin/ynab transactions batch-update --help`.
+- `categories update <id> --name --category-group-id` renames and moves a category with its history intact; `payees update <id> --name` renames a payee. Renaming a payee to an existing name does not merge them (see the plugin learned rules).
+
 ## Phase 1: Pull the Queue
 
 Unapproved is a native filter. Uncategorized is not, so filter it client side on a null `category_id`.
@@ -67,11 +73,14 @@ The tooling enforces this, not just this rule. `~/bin/ynab` is a shim that refus
 
 Treat the shim as the floor and this rule as the ceiling: the shim stops an accidental write, and this rule is what stops a write Forni has not seen and agreed to. Never set `YNAB_APPLY=1` to get past a refusal that has not been approved; the refusal is the system working.
 
-The dry run produces the full plan as a table and nothing else. One row per transaction: date, amount, payee, current category, proposed category, memo to be set, and which rule decided it (auto map, learned rule, confirmed, or asked). End with the counts and the exact number of transactions that would be written.
+**Never show the full plan as one table.** Forni cannot parse thirty rows at once (2026-09-07). The plan is presented in two layers:
 
-Then stop and ask. Do not write in the same turn the plan is first shown, even if Forni pre approved the run when invoking the skill; he asked for a dry run pass precisely so the plan can be read before anything moves. Going live requires a fresh, explicit yes to the plan he just read.
+1. **Walk the decisions one at a time.** Only the rows the rules did not settle (Always Confirm payees, new payees, trip memos, a category that looks wrong) go to him, each as its own AskUserQuestion: date, amount, payee, the proposed category, the one line reason, and the option to pick another category or say what it was. One question per turn, nothing else in the turn. Record each answer as a rule candidate for Phase 6.
+2. **Tally the whole plan by category.** After the walk, show the plan as counts and totals per category (auto decided rows folded in with the walked ones), the trips with their memos, the skips, and the exact number of transactions that would be written. That tally is what he says yes to.
 
-If he asks for changes, revise and show the plan again. The gate resets: a revised plan is a new plan and needs its own yes.
+Then stop and ask. Do not write in the same turn the tally is first shown, even if Forni pre approved the run when invoking the skill; he asked for a dry run pass precisely so the plan can be read before anything moves. Going live requires a fresh, explicit yes to the tally he just read.
+
+If he asks for changes, revise and show the tally again. The gate resets: a revised plan is a new plan and needs its own yes.
 
 ## Phase 4: Apply, Only After a Yes
 
@@ -110,12 +119,28 @@ Print: counts by action (auto, confirmed, asked, skipped, approved), any trips t
 
 ## Refreshing the Map (periodic)
 
-The Auto-Categorize and Always-Confirm lists are mined from history: group every categorized, non-transfer transaction by payee, take the dominant category, list payees with >=2 transactions (auto at >=80% dominance, confirm at 50 to 80%). Re-mine occasionally to absorb newly-recurring payees. The generator lives in the skill's history; re-run it to regenerate `reference/payee-map.md`.
+The Inflows, Auto Categorize, and Always Confirm lists are mined from history: group every categorized, non-transfer transaction by payee, take the dominant category, list payees with >=2 transactions (inflow or auto at >=80% dominance, confirm below that, whichever side of the ledger the payee leans). Re mine after any category tree change and whenever the map starts naming categories that no longer exist; last mined 2026-09-07 from the trailing year. The generator, run against a `transactions list` written to a file and the active category names from `categories list`:
+
+```bash
+ynab transactions list --since "$(date -v -1y +%Y-%m-%d)" > tx.json   # the trailing year, matching the map's window
+ynab categories list | jq '[.[] | select(.hidden==false and .deleted==false) | .categories[] | select(.hidden==false and .deleted==false) | .name]' > active.json
+jq -r --slurpfile ac active.json '($ac[0]) as $active
+  | [.[] | select(.deleted==false and .transfer_account_id==null and .category_name!=null and .category_name!="Uncategorized")
+        | select(.payee_name | test("Transfer|CRCARDPMT|AUTOPAY|External Transfer|P2P|RECURRING FROM CHK|Online Scheduled Payment|PAYMENT FROM CHK|Confirmation|Descriptive Withdrawal|Descriptive Deposit") | not)
+        | {payee: (.payee_name | gsub("&amp;";"&")), cat: .category_name}]
+  | group_by(.payee) | map({payee: .[0].payee, n: length, top: (group_by(.cat) | map({cat: .[0].cat, k: length}) | sort_by(-.k) | .[0])})
+  | map(select(.n >= 2)) | map(. + {share: (.top.k / .n)})
+  | {inflow: [.[] | select(.top.cat=="Inflow: Ready to Assign" and .share>=0.8) | "\(.payee) (\(.n))"],
+     auto: ([.[] | select(.top.cat!="Inflow: Ready to Assign" and .share>=0.8 and (.top.cat as $c | $active | index($c)))] | group_by(.top.cat) | map({cat: .[0].top.cat, total: (map(.n)|add), payees: (sort_by(-.n) | map("\(.payee) (\(.n))"))}) | sort_by(-.total)),
+     confirm: [.[] | select(.share<0.8) | "\(.payee) (\(.n), \(.top.cat) \((.share*100)|round)%)"]}' tx.json
+```
+
+Payees whose dominant category is hidden (Rent, Gear, Movement, the home purchase) drop out of the auto list on their own; the learned rules carry anything that still needs a home.
 
 ## Notes
 
 - **Payee sprawl**: each Venmo note spawns a new payee, so the budget carries 1,000+ payees. Collapsing them is a separate hygiene pass (rename/merge via the API, or YNAB's native Renaming Rules). Native Renaming Rules and per-payee auto-categorize are app-only and not in the API.
-- **Housing line**: `Matthew Bigelow` was Rent; after the June 2026 home purchase the recurring housing line is a mortgage.
+- **Housing line**: `Matthew Bigelow` was Rent through May 2026. Since the 3033 Blake purchase, `🏡 Housing` is the whole cost of the condo: the Onity mortgage, the Rail Yard Lofts HOA, and the Account Integrators eCheck fee that rides with it.
 
 ## Learned Rules
 
