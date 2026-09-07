@@ -119,7 +119,7 @@ Print: counts by action (auto, confirmed, asked, skipped, approved), any trips t
 
 ## Refreshing the Map (periodic)
 
-The Auto Categorize and Always Confirm lists are mined from history: group every categorized, non-transfer transaction by payee, take the dominant category, list payees with >=2 transactions (auto at >=80% dominance, confirm below that). Re mine after any category tree change and whenever the map starts naming categories that no longer exist; last mined 2026-09-07 from the trailing year. The generator, run against a `transactions list` written to a file and the active category names from `categories list`:
+The Inflows, Auto Categorize, and Always Confirm lists are mined from history: group every categorized, non-transfer transaction by payee, take the dominant category, list payees with >=2 transactions (inflow or auto at >=80% dominance, confirm below that, whichever side of the ledger the payee leans). Re mine after any category tree change and whenever the map starts naming categories that no longer exist; last mined 2026-09-07 from the trailing year. The generator, run against a `transactions list` written to a file and the active category names from `categories list`:
 
 ```bash
 ynab transactions list > tx.json
@@ -130,9 +130,9 @@ jq -r --slurpfile ac active.json '($ac[0]) as $active
         | {payee: (.payee_name | gsub("&amp;";"&")), cat: .category_name}]
   | group_by(.payee) | map({payee: .[0].payee, n: length, top: (group_by(.cat) | map({cat: .[0].cat, k: length}) | sort_by(-.k) | .[0])})
   | map(select(.n >= 2)) | map(. + {share: (.top.k / .n)})
-  | {inflow: [.[] | select(.top.cat=="Inflow: Ready to Assign") | "\(.payee) (\(.n))"],
+  | {inflow: [.[] | select(.top.cat=="Inflow: Ready to Assign" and .share>=0.8) | "\(.payee) (\(.n))"],
      auto: ([.[] | select(.top.cat!="Inflow: Ready to Assign" and .share>=0.8 and (.top.cat as $c | $active | index($c)))] | group_by(.top.cat) | map({cat: .[0].top.cat, total: (map(.n)|add), payees: (sort_by(-.n) | map("\(.payee) (\(.n))"))}) | sort_by(-.total)),
-     confirm: [.[] | select(.top.cat!="Inflow: Ready to Assign" and .share<0.8) | "\(.payee) (\(.n), \(.top.cat) \((.share*100)|round)%)"]}' tx.json
+     confirm: [.[] | select(.share<0.8) | "\(.payee) (\(.n), \(.top.cat) \((.share*100)|round)%)"]}' tx.json
 ```
 
 Payees whose dominant category is hidden (Rent, Gear, Movement, the home purchase) drop out of the auto list on their own; the learned rules carry anything that still needs a home.

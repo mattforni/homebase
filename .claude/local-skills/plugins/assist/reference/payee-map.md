@@ -54,6 +54,7 @@ Housing: `Matthew Bigelow` was Rent through May 2026 (the category is now hidden
 - **Guiry's** (2 txns, 50% 🎁 Gifts); confirm, buys across categories.
 - **Hello Darling** (3 txns, 67% ❤️ Romantic); confirm, buys across categories.
 - **Joe's Liquors** (3 txns, 67% ☕️ Cafés); confirm, buys across categories.
+- **Neo** (2 txns, 50% Inflow: Ready to Assign); confirm, buys across categories.
 - **Phillips 66** (5 txns, 60% 🚬 Nicotine); confirm, buys across categories.
 - **QuikTrip** (4 txns, 75% 🚙 Transportation); confirm, buys across categories.
 - **Rumors** (2 txns, 50% ☕️ Cafés); confirm, buys across categories.
@@ -62,4 +63,4 @@ Housing: `Matthew Bigelow` was Rent through May 2026 (the category is now hidden
 
 ## Inflows (route to Inflow: Ready to Assign, not spend)
 
-Bank of America (2), CDLE UI Benefits (4), Chase (5), Credit Dividend (12), Fidelity (8), First Tech Federal Credit Union (5), Neo (2), RYLLC Income (5), Standard transfer (4), Venmo (10), Zero Homes (9)
+Bank of America (2), CDLE UI Benefits (4), Chase (5), Credit Dividend (12), Fidelity (8), First Tech Federal Credit Union (5), RYLLC Income (5), Standard transfer (4), Venmo (10), Zero Homes (9)
