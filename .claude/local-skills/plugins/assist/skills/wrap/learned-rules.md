@@ -38,3 +38,7 @@ Skill-specific corrections that override SKILL.md. Populate as Forni corrects wr
   Atelic item must offer Linear, not Todoist. The miss happened because this
   file was not read before triage; the SKILL.md body's inline "Learned Rules"
   section is a stale placeholder, so always read this file itself.
+
+## Hand Off
+
+- **No `/rename` in the hand off, and `/compact` is never pasted as a command block; the wrap closes with the line "Compaction ready."** Forni, 2026-09-07: "The rename doesn't actually rename it in the place that I wanted it to so we don't need it anymore. For compact just say compaction ready or something like that. I know how to run compact." The session name survives only as the one pager's H1.

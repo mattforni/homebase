@@ -1,6 +1,6 @@
 ---
 name: wrap
-description: Session wrap. Don't lose the thread, clean everything up, don't leave loose ends in your head. Scans every git repo touched this session for uncommitted or unpushed state, surfaces external commitments (pending replies, calendar holds, contract deadlines) from the recent conversation, prompts for codification of durable learnings, logs each loose end the user triages to Todoist (today if pressing, next Sunday otherwise), summarizes the session, proposes the session name, and hands the user the /rename and /compact lines to paste. Run it yourself, unprompted, the moment the session reaches its terminal state (the work landed, tickets closed, no question open), with a one line heads up rather than an offer. Also use it whenever the user says "wrap", "wrap up", "wrap the session", "wrap this up", "wrapping up", "clean up before I exit", "signing off", "done for the day", or invokes /assist:wrap. Pairs with /assist:mise as the bookend. Mise opens the kitchen for service. Wrap closes it cleanly after.
+description: Session wrap. Don't lose the thread, clean everything up, don't leave loose ends in your head. Scans every git repo touched this session for uncommitted or unpushed state, surfaces external commitments (pending replies, calendar holds, contract deadlines) from the recent conversation, prompts for codification of durable learnings, logs each loose end the user triages to Todoist (today if pressing, next Sunday otherwise), summarizes the session, and closes with a compaction ready line. Run it yourself, unprompted, the moment the session reaches its terminal state (the work landed, tickets closed, no question open), with a one line heads up rather than an offer. Also use it whenever the user says "wrap", "wrap up", "wrap the session", "wrap this up", "wrapping up", "clean up before I exit", "signing off", "done for the day", or invokes /assist:wrap. Pairs with /assist:mise as the bookend. Mise opens the kitchen for service. Wrap closes it cleanly after.
 allowed-tools:
   - Bash
   - Read
@@ -153,7 +153,7 @@ Task title conventions from global memory:
 
 Use the project and section that best matches the loose-end's domain. Infer from context. Home buying tasks go under the home buying project; vocation tasks under 🛠️ Craft / 💼 Vocation; etc. Ask if the right project is genuinely ambiguous; otherwise infer and proceed.
 
-### Step 8: Session Summary and Name
+### Step 8: Session Summary
 
 One paragraph. Three beats:
 
@@ -163,7 +163,7 @@ One paragraph. Three beats:
 
 This is the breadcrumb for re-entry. The user's future self picks the thread back up from this paragraph, and `/compact` (Step 9) preserves it, so write it to stand alone.
 
-Then propose the session name. Sessions are kept and found again by name, so it is the other half of the breadcrumb: a short Title Case noun phrase, distinctive enough to pick out of a list of many, leading with the ticket key when one governed the session (`ATE-527: Recipe Components and Serving Weights`, `Week 36 Outreach Roster`, `Jeff Tax Package`). Never a generic label ("Session", "Cleanup"), never a summary sentence. If the session already carries a name that fits, keep it and say so.
+The one pager's H1 names the session: a short Title Case noun phrase, distinctive enough to pick out of a list of many, leading with the ticket key when one governed the session (`ATE-527: Recipe Components and Serving Weights`, `Week 36 Outreach Roster`, `Jeff Tax Package`). Never a generic label ("Session", "Cleanup"), never a summary sentence.
 
 ### Step 9: Hand Off
 
@@ -174,17 +174,11 @@ The session is ready to hand off only when every condition below holds:
 - **No PR the user authored this session is still open.** An open PR is not hand off state. Watch the PR through review (CodeRabbit, Gemini, human reviewers), chain to `/sdlc:iterate` when feedback lands, and to `/sdlc:complete` once merged.
 - **No ticket whose work merged this session is still open.** Closed in Step 2. A ticket left open behind a merged PR is the loose end the user keeps having to point out.
 
-When all conditions are met, end with the two built in commands Forni's ritual finishes on, in this order and ready to paste, **each in its own code block**. One block is one copy is one command; two lines in one block get pasted together and `/rename` swallows the second line into the name (it happened 2026-09-06, naming the session "... /compact").
+When all conditions are met, the last line of the wrap is exactly this, on its own:
 
-```text
-/rename <the Step 8 name>
-```
+Compaction ready.
 
-```text
-/compact
-```
-
-Rename first, so the session is findable; compact last, so the summary it writes includes wrap's own breadcrumb (GC's compact instructions say what survives). Both are built in commands that only a user message can fire: hooks are read only, skills cannot chain them, and the harness refuses the model a write to its own transcript, which is where the name lives (verified 2026-09-06). Wrap prepares; the user pastes.
+That line says the summary above is the breadcrumb `/compact` will carry (GC's compact instructions say what survives) and that nothing else is pending. Forni runs `/compact` himself. It is a built in command that only a user message can fire (hooks are read only, skills cannot chain them, verified 2026-09-06), so wrap never claims to have run it and never pastes it as a command block.
 
 When a PR is still open, end instead with the current state of the PR and the next action being taken on it (waiting for review, addressing feedback, merging, etc.). Do not hand off.
 
@@ -197,7 +191,7 @@ When a PR is still open, end instead with the current state of the PR and the ne
 - **Triage one item at a time.** Bulk decisions hide bad triage. AskUserQuestion forces real choice per item.
 - **Codify is opt-in, never mandatory.** Most sessions have no new durable rules. Prompt only when candidates exist; skip cleanly otherwise.
 - **Todoist offload.** Anything not handled in-session goes to Todoist. Working memory should not carry loose ends across sessions. The Sunday default channels non-urgent items into the existing Sunday planning ritual.
-- **Wrap runs itself; the hand off is pasted.** Claude can see the terminal state, so waiting to be told to wrap is a chore handed back. The two commands that end the ritual, `/rename` and `/compact`, cannot be fired by the model, so wrap ends by handing them over ready to paste rather than pretending to run them.
+- **Wrap runs itself; compaction is Forni's.** Claude can see the terminal state, so waiting to be told to wrap is a chore handed back. `/compact` cannot be fired by the model, so wrap ends by saying it is ready rather than pretending to run it or handing over a line to paste.
 - **Open PRs block exit.** A PR sitting open after exit risks losing context for review-comment handling, drifts further from main, and breaks the rhythm of finishing what you start. Wrap is responsible for shepherding the PR through review and merge, not just opening it.
 - **Closing the ticket is part of finishing, not a courtesy.** The tracker is how work is found again; a merged PR behind an open ticket makes the queue lie about what is left to do, and the ticket's closing comment is the only place the *why* survives once the branch is gone. Forni had been prompting for this at the end of sessions, which is the tell that it belonged in the routine rather than in his head. Added 2026-08-11.
 
@@ -258,13 +252,7 @@ What is left open and why, in a few sentences: the deferrals, the blockers. Then
 | -- | -- | -- |
 | Linear | [ATE-527](https://linear.app/atelic/issue/ATE-527) Let a recipe be an ingredient of another recipe | ✅ |
 
-```text
-/rename NEO Loan Lock
-```
-
-```text
-/compact
-```
+Compaction ready.
 ````
 
 The Outstanding and Close Out tables carry every tracker the session wrote to; a section whose content is genuinely empty still appears with "None", so the absence is a statement rather than an omission. The Data section is the one optional piece.
@@ -274,13 +262,12 @@ The Outstanding and Close Out tables carry every tracker the session wrote to; a
 - Do not scan systems beyond git/PRs and recent-session implications. Slack, every inbox folder, Todoist contents, calendar week ahead, none of those. Comprehensive scans create noise that obscures real loose ends.
 - Do not log to Todoist without the user's explicit triage for that item. No automatic bulk-dump to Sunday.
 - Do not wait to be asked to wrap once the terminal state is visible, and do not end a session by suggesting Forni run it.
-- Do not claim to have renamed or compacted. Hand the two lines over; the user pastes them.
+- Do not claim to have compacted, and do not paste `/compact` or `/rename` as a command block. Close with the compaction ready line; Forni runs compact himself.
 - Do not skip the summary even when there is "nothing to summarize." It is the re-entry breadcrumb.
 - Do not emit the wrap as a plain text block or a flat list. It is the one pager above, with links.
-- Do not put `/rename` and `/compact` in one code block.
 - Do not force codify. If the session did not produce a durable rule, say so and move on.
 - Do not maintain a fixed allowlist of repos. Repos to scan = repos touched in this session.
-- Do not hand off while a PR the user authored this session is still open. Watch it through review and merge before emitting the two lines.
+- Do not hand off while a PR the user authored this session is still open. Watch it through review and merge before the compaction ready line.
 - Do not wait to be asked to close a ticket whose work merged. It is part of the routine, not a favour. Equally, do not close one whose work is only partly done just because the session is ending; leave it open and say what remains.
 
 ## Learned Rules
