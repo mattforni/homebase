@@ -1,5 +1,8 @@
 # Handle Budget Learned Rules
 
-Corrections and calibration for how `assist:handle-budget` should reason about partitioning, tagging, and approving transactions. Overrides SKILL.md. Read on every invocation.
+Corrections and calibration for how `assist:handle-budget` should reason about partitioning, tagging, and approving transactions. Overrides SKILL.md. Read on every invocation. Payee to category corrections live in the plugin wide `learned-rules.md` under `## Spend Categorization`, not here.
 
-_(Empty. Populated as Forni corrects handle-budget's judgment over time.)_
+- **2026-09-07, the plan is walked, never tabled.** A 27 row plan table was "very hard to parse"; the one at a time walk of only the undecided rows, followed by a tally by category, "works really well." Now the method in SKILL.md Phase 3. Keep it that way even for a short queue.
+- **2026-09-07, a sit down restaurant asks who was there.** The same payee is `❤️ Romantic` on a date and `🍽️ Dining Out` otherwise (Little India was a date night). Propose Dining Out and ask; never auto decide a restaurant that has been Romantic before.
+- **2026-09-07, own bank transfer pairs stay on Inflow: Ready to Assign, both legs.** A Bank of America to First Tech move imports as two rows that net to zero; both are approved as inflow, never one as spend.
+- **2026-09-07, the monthly run is the treasurer agent's.** `~/.claude/agents/treasurer.md` runs this skill as its phase one and returns the slate; the main session does the walk. Inline runs of the skill still follow Phase 3 as written.

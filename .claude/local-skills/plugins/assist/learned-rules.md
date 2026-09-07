@@ -60,31 +60,41 @@ Rules for `assist:handle-budget`. The payee map is [reference/payee-map.md](refe
 
 Mechanics (hard-won, do not rediscover):
 
-- Write through the YNAB REST API directly (`curl` plus Keychain service `ynab-token`), never the `ynab` MCP. The MCP read output hides the transaction and category IDs needed to write.
+- Everything goes through the `ynab` CLI behind the `~/bin/ynab` dry run shim (since 2026-08-13; the REST recipes and the MCP are retired). The CLI's own gotchas (file before `jq`, help on write verbs) are in the skill's Access section.
 - Imported transactions land **unapproved**, and categorizing does NOT approve them. Approve as the final step (`approved: true`) or the changes never flow into budget views. This is the usual cause of "my changes aren't showing up."
 - YNAB clients use delta sync. After API writes, an open app or web session needs a hard refresh to display them.
 - Payee names carry HTML entities (`&amp;`). Decode before matching.
-- Budget IDs: Personal `a55b71e6-76e4-46d9-a5c6-336b36ddd14c`, RYLLC `e0d471f0-bf90-452c-8232-b1153b7411be`.
+- Budget IDs: Personal `a55b71e6-76e4-46d9-a5c6-336b36ddd14c`, Atelic `e0d471f0-bf90-452c-8232-b1153b7411be`.
 
 Conventions:
 
 - Trips are itemized into real categories with a memo `<emoji> <Trip Name>` (e.g. `🏔️ Crested Butte`, `⛷️ Vail`), NOT a YNAB flag. Quarantines vacation from the everyday baseline while keeping a per-trip total. Non-discretionary trip-time charges (vehicle repair) stay untagged.
 - Admin is not a generic catch-all. Estate and legal bills go to `📑 Admin / ⚖️ Legal`. Home-purchase costs (down payment, lender fees, inspection) go to `📑 Admin / 🏡 3033 Blake St Home Purchase`.
-- A couples outing or show with Jasmine can be `🍿 Entertainment` or `❤️ Dating`; ask. Forni chose Entertainment for The Empire Strips Back.
+- A date, a show, or a dinner with company can be `🍿 Entertainment`, `🍽️ Dining Out`, or `❤️ Romantic`; ask. Precedents: The Empire Strips Back was Entertainment (2026), Little India was Romantic (2026-09-06).
+- **`🏡 Housing` is the whole cost of the condo**: the Onity mortgage, the Rail Yard Lofts HOA, and the Account Integrators eCheck fee that rides with the HOA. Never split them across Utilities or Financial (Forni, 2026-09-07).
 
 Payee corrections (session 2026-06-29):
 
 - `7-Eleven` -> `🚬 Nicotine` (confirmed, buys nicotine there).
-- `Bunny and Clyde's` -> `☕️ Caffeine` (Salida coffee).
+- `Bunny and Clyde's` -> `☕️ Cafés` (Salida coffee).
 - `Body Jewelry`, `Easy Steez Vintage` -> `🧥 Clothing`.
 - `Gem Figueroa` (friend, Venmo) -> context dependent; was `🍿 Entertainment` (a movie).
-- `Badfish SUP` -> `🎒 Gear`. `Rhino Air`, `Discount Tire`, `Costco Gas` -> `🚙 Transportation`.
+- `Badfish SUP` -> `🌲 Outdoorsman` (was Gear before the tree merge). `Rhino Air`, `Discount Tire`, `Costco Gas` -> `🚙 Transportation`.
 - `Amazon` history is split (~52%); always confirm, never auto.
 
 Payee corrections (session 2026-07-18):
 
 - `Illegalpetes` (Toast POS variant of Illegal Pete's) -> `🍟 Fast Food`.
-- Santa Barbara trip (July 8 to 14): itemize each charge into its real category (coffee -> `☕️ Caffeine`, pool/swim like Cal Lutheran Pool -> `🧗 Movement`, restaurants -> `🍽️ Dining Out`, groceries -> `🛒 Groceries`, lodging -> `🌏 Adventure`) AND stamp the memo `💍 Santa Barbara` so it totals as a trip. Do NOT dump the whole cluster into `🌏 Adventure`; Forni corrected exactly this ("coffee shops are coffee, Cal Lutheran Pool is Athlete"). The memo, not the category, is what quarantines the trip. Nicotine buys (ARCO, 7-Eleven) inside a trip window stay in `🚬 Nicotine` untagged, to keep the growth-edge total honest.
+- Santa Barbara trip (July 8 to 14): itemize each charge into its real category (coffee -> `☕️ Cafés`, pool/swim like Cal Lutheran Pool -> `💪 Fitness`, restaurants -> `🍽️ Dining Out`, groceries -> `🛒 Groceries`, lodging -> `🌏 Adventure`) AND stamp the memo `💍 Santa Barbara` so it totals as a trip. Do NOT dump the whole cluster into `🌏 Adventure`; Forni corrected exactly this ("coffee shops are coffee, Cal Lutheran Pool is Athlete"). The memo, not the category, is what quarantines the trip. Nicotine buys (ARCO, 7-Eleven) inside a trip window stay in `🚬 Nicotine` untagged, to keep the growth-edge total honest.
+
+Payee corrections (session 2026-09-07, the first run after the tree restructure):
+
+- `☕️ Caffeine` was renamed `☕️ Cafés` and moved from Vices to Contemplation on 2026-09-07 (category id unchanged, history intact). `The French Press`, `Sapor Coffee & Concepts` -> `☕️ Cafés`.
+- `Rail Yard Lofts` (the HOA) and `Account Integrators` (the CINC eCheck fee) -> `🏡 Housing`.
+- `ACH Deposit 261003712` is the Fidelity HSA reimbursing the health premium: payee `Transfer: Fidelity HSA`, category `🏥 Healthcare`, memo `🏥 HSA premium reimbursement` so it is findable at tax time.
+- `Sierra Dental` (bank descriptor `Sierra River N Dent`, mysierradental.com) -> `🏥 Healthcare`, its own payee. It is NOT River North Dentistry; never merge the two.
+- `Ratio Beerworks` -> `🍽️ Dining Out`. `7-Eleven` stays `🚬 Nicotine`.
+- `Amazon` and `Arc Thrift` stay always confirm; on 2026-09-07 every one of them (water filters, a basket picker, thrift finds) was `🏡 Home Improvement`, the condo furnishing era.
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
