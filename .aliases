@@ -35,7 +35,6 @@ alias docker-stop='docker stop $(docker ps -a -q)'
 alias ed-ide-settings='vim "$HOME/Library/Application Support/Antigravity IDE/User/settings.json"'
 
 # Navigation Aliases
-alias atelic="cd ~/Eudaimonia/Craft/atelic"
 alias homebase="cd ~/Eudaimonia/Craft/Development/personal/homebase"
 alias eudy="cd ~/Eudaimonia"
 
