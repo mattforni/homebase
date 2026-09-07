@@ -80,7 +80,7 @@ Fetch the week's calendar events (Monday through Sunday). Do not overwrite or du
 
 Determine which Friday this is (4K or deep work) from the alternation, then lay out the week as one small table: day, session, purpose. Place yoga against the actual Movement schedule for the week (the skeleton is a default; studio schedules change). Verify the studio still holds the assumed slots when in doubt.
 
-**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here), which Friday it is, and the weight trend in one line. Write it into the week banner body (the banner itself is created by `assist:plan-week` during Set Intention; this skill only writes the training block into its body, and flags back if the banner is missing).
+**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here), which Friday it is, and the weight trend in one line. Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
 
 ### Phase 4: Special Week Handling
 

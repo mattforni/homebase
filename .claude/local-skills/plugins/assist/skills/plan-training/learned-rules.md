@@ -6,7 +6,7 @@ Training specific rules tied to current life shape. Read on every invocation. St
 
 - **The skeleton is held loosely.** Every session is a default, not a law. Lifts and yoga move freely; place yoga against the actual Movement schedule each week rather than assuming the skeleton.
 - **Swimming is retired (2026-08-18).** Congress Park closed ahead of Labor Day, pulling the September seam forward from W37 to W34. Laps did not move indoors; both held slots went to deep work. Do not propose swims, do not grade them, and do not offer to reopen the modality. High Noon consolidated onto Monday 12:00, so there is no Tuesday or Thursday recovery meeting to schedule around.
-- **4K Friday alternates, seeded 2026-08-28.** Every other Friday 06:00 to 08:00, Golden, with the Tootsies / Sexy Pace crew, conversational, with 🚙 drive flanks at 05:30 and 08:00. On a 4K week the Friday deep work window curtails to 08:30, and Morning Routine plus its transition come off that day. Track which Friday the week is in the week banner. The Friday lift lands at 15:30 either way.
+- **4K Friday alternates, seeded 2026-08-28.** Every other Friday 06:00 to 08:00, Golden, with the Tootsies / Sexy Pace crew, conversational, with 🚙 drive flanks at 05:30 and 08:00. On a 4K week the Friday deep work window curtails to 08:30, and Morning Routine plus its transition come off that day. The Friday lift lands at 15:30 either way.
 - **Yoga is four standing holds** (2026-08-19): Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Hatha 09:30, Sun Yin 16:15. Hatha and Yin are no longer opportunistic. Traveling still means skip without guilt; `n/a` in retros when away, never a miss. Week planning sits at 11:15, behind Hatha's return flank.
 - **Heel guardrail: intensity is the trigger, not volume.** The heel flares after hard efforts (the 6:27 DRC mile, 2026-08-04), not easy miles. Conversational is the default; at most one hard effort a week; skip hard efforts entirely the week after any flare; any heel signal drops the next hard or trail effort. PT is a named focus of the block, form is the fix.
 - **Scale trend is directional.** Sunday reads only for the log; single reads are noise. A 2 to 3 lb rebound through mid August is glycogen and water, not failure; the trend restarts from the first standard Sunday reads.
@@ -43,7 +43,7 @@ Training specific rules tied to current life shape. Read on every invocation. St
 
 ## Weekly Summary
 
-- **Every training pass ends with the one look weekly summary before anything else gets discussed**: sessions by modality, which Friday it is (4K or deep work), and the weight trend in one line, then the day by day table. Surfaced 2026-07-19; reshaped 2026-08-05 from mileage to modality. Write the same summary into the week banner body.
+- **Every training pass ends with the one look weekly summary before anything else gets discussed**: sessions by modality, which Friday it is (4K or deep work), and the weight trend in one line, then the day by day table. Surfaced 2026-07-19; reshaped 2026-08-05 from mileage to modality. It is presented, not written: the week banner stopped carrying it 2026-09-07 ("I don't look in the banner for the training block").
 
 ## Retro Weight (2026-08-24)
 

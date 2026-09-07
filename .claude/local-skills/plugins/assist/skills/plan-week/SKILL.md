@@ -68,9 +68,9 @@ The Monday planning session, 07:00 to 08:00, first thing in the deep work block.
 6. **Plan Tasks** — work slate first, then personal, then slot
 7. **Present Week** — the finished board
 
-### Agent Fan Out (After the Retro, Never Before)
+### Agent Fan Out (After the Intention, Never Before)
 
-Review Week runs solo: no background agents are dispatched until the retro dialogue closes. Boards landing mid felt sense question kept interrupting and flooding the session on 2026-08-09; the quiet comes first. The moment Review Week closes, dispatch the three background specialists in parallel:
+Review Week and Set Intention run solo: no agents are dispatched until both dialogues close and the banner is written. Boards landing mid felt sense question kept interrupting and flooding the session on 2026-08-09, and on 2026-09-07 three completion notices plus three holding lines landed between the intention question and its answer; the quiet comes first. The moment the banner is on the calendar, dispatch the three specialists in parallel **as one foreground wait** (`run_in_background: false`), so the next thing Forni sees is the first phase board and nothing arrives mid question:
 
 - **clerk** (`~/.claude/agents/clerk.md`): pulls the full inbox and returns the proposed disposition board consumed by Sweep Inbox.
 - **groomer** (`~/.claude/agents/groomer.md`): triages the Linear queue and returns the work decision slate consumed by Plan Tasks.
@@ -78,7 +78,7 @@ Review Week runs solo: no background agents are dispatched until the retro dialo
 
 **Every specialist runs on `sonnet`**, set in its agent file; the coach is dispatched at Plan Training the same way. A `model` override on an Agent call is chosen by failure asymmetry (`~/Eudaimonia/Admin/Tools/claude-code.md`), never to skip a read. The main session's model is the expensive one, and it spends itself on arbitration, not on pulls.
 
-**The planner assembles the unified brief.** When clerk's board and groomer's slate return, resume planner with both; it merges everything into one three tier brief (Decisions, Handled, FYI, per the Signal Contract below) that the rest of the session works from. Boards landing in the background never interrupt a dialogue in progress; fold each in at the phase that consumes it.
+**The planner assembles the unified brief.** When clerk's board and groomer's slate return, resume planner with both; it merges everything into one three tier brief (Decisions, Handled, FYI, per the Signal Contract below) that the rest of the session works from. Agent results never reach Forni as they arrive: no holding lines, no "still waiting" text; fold each result in at the phase that consumes it, and if something lands while a question is open, the turn closes with nothing new so the question stays the last text he sees.
 
 **Dispatch briefs that authorize external writes must quote Forni's authorizing words verbatim, never a paraphrase.** The agent executing a write needs the exact words that granted it; a relayed authorization in the dispatcher's own words tripped the security layer on 2026-08-09.
 
@@ -112,7 +112,7 @@ Look back at the week that closed yesterday, read as a **compass, not a verdict*
 
 **Fallback.** When the email is missing or reports that the run failed, make the two light pulls the runner would have made: Strava for the just closed ISO week (`mcp__claude_ai_Strava__list_activities` with `range_start` and `range_end`; metric in, imperial out, miles = m / 1609.344, feet = m * 3.28084) and the Gmail takeout tally (`GWS_FORCE_PROFILE=personal gws gmail`, matching the planner's pull, with `(Domino OR "Illegal Pete" OR DoorDash OR Grubhub OR "Uber Eats" OR Postmates) after:YYYY/MM/DD before:YYYY/MM/DD`; `before:` is exclusive, so it is the Monday after the week; then confirm each hit is an order). Present them tightly, then run the same dialogue.
 
-Read it all gently. The retro course corrects, it does not grade. Surface anything that should become a planning input (a task, a guardrail, a measure to watch) and carry it into the phases below. When the dialogue closes, dispatch the fan out (see Agent Fan Out above) and move to Set Intention. A deeper dialogue can invoke `assist:reflect` in `week` mode.
+Read it all gently. The retro course corrects, it does not grade. Surface anything that should become a planning input (a task, a guardrail, a measure to watch) and carry it into the phases below. When the dialogue closes, move to Set Intention; the fan out waits until the banner is written (see Agent Fan Out above). A deeper dialogue can invoke `assist:reflect` in `week` mode.
 
 ### Phase 2: Set Intention
 
@@ -125,15 +125,15 @@ The look forward, the mirror of Review Week. Holding the retro's carry forward a
 **Name the week's theme, and write it onto the calendar.** Set Intention produces a short theme for the week, a word or a brief phrase (for example "Presence", or "Point the Energy at the Forge"). The theme is the compass, not a task. Confirm the theme with Forni, then **create the week banner**: an all day event spanning Monday through Sunday, transparency `"free"`, carrying the 🧭 Theme label.
 
 - **Title** is the theme, led by an emoji chosen to match it (for example `🪷 Presence`). The theme owns the title; nothing else sits there.
-- **Body** opens with a one sentence theme framing. The training block (week label, sessions by modality, which Friday it is, strength targets, guardrails) is appended to the body by `assist:plan-training` when Plan Training runs; every training detail lives in the body, never the title.
+- **Body** is a one sentence theme framing and nothing else. The training block used to be appended here by `assist:plan-training`; retired 2026-09-07 (Forni: "I don't look in the banner for the training block"). Training lives on the calendar as its events.
 
-This skill owns the banner. `assist:plan-training` writes into its body but never creates or retitles it.
+This skill owns the banner; nothing else writes to it.
 
 ### Phase 3: Sweep Inbox
 
 Turn the inbox into tasks before the task list is loaded, so email follow ups ride the same prioritization and slotting pass as everything else instead of living only in Gmail.
 
-**Clerk was dispatched at the close of Review Week** (see Agent Fan Out); by this phase its board has usually landed inside the planner's brief. Clerk pulls EVERY thread in the inbox (not just unread and starred; read but never archived mail is most of the pile), applies the triage rules, and returns one fully specified proposed disposition per thread, marked ✓ (rule backed) or ? (judgment), with account safe Gmail links. Present per the Signal Contract: ? items and anything outbound are Decisions with proposed defaults; ✓ dispositions execute after the phase nod and report in the rollup grouped by disposition with the rule cited. The full board surfaces only on request. Clerk proposes, Forni corrects, and the corrected board is executed (clerk executes its own board on resume; see the agent file). Fall back to the manual parse below only after clerk has failed or returned nothing, never in parallel with it. Adopted 2026-08-02; widened to the full inbox with proposal dispositions the same day; folded into the post retro fan out 2026-08-09.
+**Clerk was dispatched at the close of Set Intention** (see Agent Fan Out); by this phase its board has landed inside the planner's brief. Clerk pulls EVERY thread in the inbox (not just unread and starred; read but never archived mail is most of the pile), applies the triage rules, and returns one fully specified proposed disposition per thread, marked ✓ (rule backed) or ? (judgment), with account safe Gmail links. Present per the Signal Contract: ? items and anything outbound are Decisions with proposed defaults; ✓ dispositions execute after the phase nod and report in the rollup grouped by disposition with the rule cited. The full board surfaces only on request. Clerk proposes, Forni corrects, and the corrected board is executed (clerk executes its own board on resume; see the agent file). Fall back to the manual parse below only after clerk has failed or returned nothing, never in parallel with it. Adopted 2026-08-02; widened to the full inbox with proposal dispositions the same day; folded into the post retro fan out 2026-08-09.
 
 1. Pull every thread in the inbox via `gws` (Bash), not just unread and starred; read but never archived mail is most of the pile. Yellow and red stars mean the next move is ours (see the star semantics in the assist plugin reference/email-rules.md).
 2. Classify each email by the action it implies:
@@ -172,13 +172,13 @@ Execute only the agreed changes before moving on. The calendar should be clean a
 
 ### Phase 5: Plan Training
 
-Invoke the `assist:plan-training` skill in `week` mode via the Skill tool. Its retro gate is satisfied by the emailed retro plus the blind spots Review Week collected; the coach agent (`~/.claude/agents/coach.md`, dispatched on `sonnet`) reads the week's shape from the block doc and the calendar pull. The skill detects existing recurring placeholders (Mon/Wed/Fri lifts, Tue Fun Run, Tue DRC, Thu SPRC, the four yoga holds), surfaces what's missing, lays out the week's shape and strength targets, writes the training block into the week banner body, and **places every training event for the week**, including the alternating one offs (4K Friday plus paired drive blocks on 4K weeks), following its own constraint logic. The week leaves this phase with training fully on the calendar, not just shaped. Return here once training scheduling is complete.
+Invoke the `assist:plan-training` skill in `week` mode via the Skill tool. Its retro gate is satisfied by the emailed retro plus the blind spots Review Week collected; the coach agent (`~/.claude/agents/coach.md`, dispatched on `sonnet`) reads the week's shape from the block doc and the calendar pull. The skill detects existing recurring placeholders (Mon/Wed/Fri lifts, Tue Fun Run, Tue DRC, Thu SPRC, the four yoga holds), surfaces what's missing, lays out the week's shape and strength targets, and **places every training event for the week**, including the alternating one offs (4K Friday plus paired drive blocks on 4K weeks), following its own constraint logic. The week leaves this phase with training fully on the calendar, not just shaped. Return here once training scheduling is complete.
 
 ### Phase 6: Plan Tasks
 
 Prioritize the full task slate, work first, then place the survivors.
 
-**The work slate leads.** The groomer's decision slate (dispatched at the close of Review Week, carried in the planner's brief) is the first pass: walk its Decisions, settle the cycle, and carry the placeable issues into slotting. When groomer failed or returned nothing, pull the active cycle inline (`env -u LINEAR_API_KEY linear --workspace atelic issue query --team ATE --cycle active --json`) as the fallback.
+**The work slate leads.** The groomer's decision slate (dispatched at the close of Set Intention, carried in the planner's brief) is the first pass: walk its Decisions, settle the cycle, and carry the placeable issues into slotting. When groomer failed or returned nothing, pull the active cycle inline (`env -u LINEAR_API_KEY linear --workspace atelic issue query --team ATE --cycle active --json`) as the fallback.
 
 **The cycle is the week, and triage has a definition.** The active cycle should hold exactly the work intended for the week being planned; anything unfittable or unowned goes back to Backlog before slotting starts. An issue counts as triaged only when it carries every field named in **`~/Eudaimonia/Admin/Tools/linear.md` (Scheduling, What Counts as Triaged), which is canonical and is not restated here**. Missing any one of them makes it a Decision, not a placeable item, whatever its state says. The drifts to watch live in `sdlc:groom-issues`.
 
@@ -290,13 +290,13 @@ The named label table (names, hexes, label IDs) and the transition / travel / ti
 - **Emoji prefix**: All personal events use an emoji prefix (e.g., "🏋️ Strength", "✍️ Writing")
 - **Labels, not colors**: every created event carries the `eventLabelId` matching its meaning (🍏 Constitution, 🧠 Contemplation, 🤗 Community, 🛠️ Craft, and the rest of the table)
 - **Deep work**: 🙈 Deep Work blocks live on `💻 Atelic` and carry the 🛠️ Craft label (the Heads Down label retired 2026-07-19; deep work is Craft, not its own category). Protected focus, no transitions needed (block stays at current location). The generic block is a capacity placeholder, deleted once named work claims its time (see Phase 6).
-- **Week banner**: the all day event spanning Monday through Sunday that carries the week's theme, created by Set Intention with the 🧭 Theme label, transparency `"free"`. Title is emoji + theme only; training detail lives in the body, written there by `assist:plan-training`.
+- **Week banner**: the all day event spanning Monday through Sunday that carries the week's theme, created by Set Intention with the 🧭 Theme label, transparency `"free"`. Title is emoji + theme only; the body is the one sentence framing. No training block (retired 2026-09-07).
 
 Include the location when the event is at a specific place.
 
 ## Training Plan Scheduling
 
-Training event creation lives in the `assist:plan-training` skill. See that skill for the recurring placeholder table, the 4K Friday alternation, strength programming, special weeks (template refresh, September seam, travel), and training adjacent constraints. Plan Training (Phase 5) invokes it during weekly planning. The week banner is the one exception: this skill creates it during Set Intention; plan-training only writes the training block into its body.
+Training event creation lives in the `assist:plan-training` skill. See that skill for the recurring placeholder table, the 4K Friday alternation, strength programming, special weeks (template refresh, September seam, travel), and training adjacent constraints. Plan Training (Phase 5) invokes it during weekly planning. The week banner belongs to this skill alone, created during Set Intention; plan-training never writes to it.
 
 ## Key Locations
 
