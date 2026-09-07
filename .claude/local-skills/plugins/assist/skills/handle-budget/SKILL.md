@@ -122,7 +122,7 @@ Print: counts by action (auto, confirmed, asked, skipped, approved), any trips t
 The Inflows, Auto Categorize, and Always Confirm lists are mined from history: group every categorized, non-transfer transaction by payee, take the dominant category, list payees with >=2 transactions (inflow or auto at >=80% dominance, confirm below that, whichever side of the ledger the payee leans). Re mine after any category tree change and whenever the map starts naming categories that no longer exist; last mined 2026-09-07 from the trailing year. The generator, run against a `transactions list` written to a file and the active category names from `categories list`:
 
 ```bash
-ynab transactions list > tx.json
+ynab transactions list --since "$(date -v -1y +%Y-%m-%d)" > tx.json   # the trailing year, matching the map's window
 ynab categories list | jq '[.[] | select(.hidden==false and .deleted==false) | .categories[] | select(.hidden==false and .deleted==false) | .name]' > active.json
 jq -r --slurpfile ac active.json '($ac[0]) as $active
   | [.[] | select(.deleted==false and .transfer_account_id==null and .category_name!=null and .category_name!="Uncategorized")
