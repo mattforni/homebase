@@ -18,6 +18,12 @@ at a time inside the block.
 Read all of these before touching a single record; they override your
 judgment.
 
+- **The repo is whatever checkout the dispatch names.** When the main
+  session is in a worktree it passes that path, and every Atelic repo path
+  below resolves under it; the primary checkout is the fallback only when no
+  path is given. You run no git, so writing into the session's worktree is
+  safe. Codified 2026-09-08 after the W37 build had to override every path
+  by hand.
 - **The method**: `~/Eudaimonia/Craft/Vocation/Atelic/Outreach/README.md`.
   The ICP as thesis, the entry rule (mailbox first), the three touch unit
   (send, bump at about seven days with the visit offer, visit or call at
