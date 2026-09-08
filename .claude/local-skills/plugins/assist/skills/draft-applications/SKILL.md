@@ -61,7 +61,7 @@ The note's shape (proven on the EnergyHub send, 2026-07-29; Forni called it fant
 
 Title Case subject (just the role and company, e.g. "Software Architect at EnergyHub"). Never sign a name; the Gmail signature handles it.
 
-**Two channels through W40 (set 2026-09-08).** The follow up also goes as a LinkedIn connection request note to the same person, the note trimmed to LinkedIn's limit, so the two channels can be compared on replies. A connection note is guaranteed to reach the person where a guessed address is not.
+**Two channels through W40 (set 2026-09-08).** The follow up also goes as a LinkedIn connection request note to the same person, the note trimmed to LinkedIn's limit and drafted only, sent on Forni's explicit approval of the exact note like the email, so the two channels can be compared on replies. A connection note is guaranteed to reach the person where a guessed address is not.
 
 **One warm touch a week** (a reconnect, a referral ask, or a recruiter check in) is a standing supporting activity: the pass drafts it and logs it as networking, never as an application.
 
