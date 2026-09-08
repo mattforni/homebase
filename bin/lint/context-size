@@ -24,7 +24,7 @@ fi
 # from 35,658 bytes to 11,355) with a little slack for a one line edit.
 CAPS=(
   "CLAUDE.md|12288"
-  ".claude/CLAUDE.md|20358"
+  ".claude/CLAUDE.md|20086"
 )
 
 want=("$@")
