@@ -17,22 +17,24 @@ Read before drafting; none of this is duplicated here:
 - **The plan**: `~/Eudaimonia/Craft/Vocation/Plans/FY27-H2.md`. The positioning frame (Mission Growth Engineering) and the weekly cadence the queue serves.
 - **Voice and email practices**: the life level voice core is `~/Eudaimonia/VOICE.md`, overlaid in register order by `~/Eudaimonia/Admin/Tools/email.md` and `~/Eudaimonia/Craft/Vocation/CLAUDE.md` (Vocation Email Practices, Negotiation Philosophy). Sign off per email.md ("Cheers and chat soon!", never a name; the Gmail signature handles it).
 - **The outreach template**: `~/Eudaimonia/Craft/Vocation/templates/07-job-posting-cold-outreach.md` for the follow-up email.
+- **The standing form answers**: the Standing Form Answers table in `~/Eudaimonia/Craft/Vocation/work-history.md` holds the eligibility screeners and voluntary self identification answers every ATS form asks. Fill from it, and ask only when a form's wording departs from the question as written there.
 
 ## The Motion (One Role at a Time)
 
 Work a single role to a finished package before touching the next; Forni processes serially.
 
-Bracket the drain with the session timer per Session Timers in `~/Eudaimonia/Admin/Tools/toggl.md`: project `💼 Vocation`, description `💼 Weekly Work Search`. Start before the first role; stop when the drain ends, whether the queue is empty or Forni stops early.
+Bracket the drain with the session timer per Session Timers in `~/Eudaimonia/Admin/Tools/toggl.md`: project `💼 Vocation`, description `🔎 Weekly Work Search` (the block, the Toggl project, and the Toggl doc were all renamed 2026-09-08). Start before the first role; stop when the drain ends, whether the queue is empty or Forni stops early.
 
 1. **Pull the next Queued row** (or the role Forni names).
 2. **Fetch the live posting.** Confirm it is still open and still passes the rubric's hard filters (mission, full remote, Staff+ IC). If the posting is gone or a hard filter fails, note it on the row, tell Forni, and move on.
 3. **Sanity check the fit score** the sweep assigned. Re-score from the rubric only on disagreement, and say why.
-4. **Draft the cover letter** (250 to 350 words, structure below).
-5. **Draft responses** to every application question the posting asks.
-6. **Find the hiring manager** (search order below).
-7. **Draft the follow-up email** from template 07 via the gws CLI as a Gmail draft with the label `🛠️ Craft/💼 Vocation` (the July 2026 taxonomy; the old Craft and RYLLC labels no longer exist). **Draft only, never send:** outbound email to any human requires Forni's explicit approval of the exact final artifact, every time.
-8. **Present the package** and stop. Forni reviews, submits in the portal, and says so.
-9. **On his confirmation only**, move the row to Applied with the date. A hiring manager becomes a HubSpot contact only when a real relationship forms.
+4. **Check for a warm path.** Open the company's LinkedIn people page in agent-browser attached to Forni's real Brave (the attach recipe lives in `assist:report-unemployment` and `~/Eudaimonia/Admin/Tools/agent-browser.md`), filtered to first and second degree connections, and ask Forni one question: does he know anyone there, or anyone who would? When a path exists, a referral ask replaces the cold follow up in step 8. The method was proven by hand on 2026-09-08; its first run inside the pass is W38.
+5. **Draft the cover letter** (250 to 350 words, structure below).
+6. **Draft responses** to every application question the posting asks.
+7. **Find the hiring manager** (search order below).
+8. **Draft the follow-up email** from template 07 via the gws CLI as a Gmail draft with the label `🛠️ Craft/💼 Vocation` (the July 2026 taxonomy; the old Craft and RYLLC labels no longer exist). **Draft only, never send:** outbound email to any human requires Forni's explicit approval of the exact final artifact, every time.
+9. **Present the package** and stop. Forni reviews, submits in the portal, and says so.
+10. **On his confirmation only**, move the row to Applied with the date. A hiring manager becomes a HubSpot contact only when a real relationship forms.
 
 ## Cover Letter
 
@@ -58,6 +60,10 @@ The note's shape (proven on the EnergyHub send, 2026-07-29; Forni called it fant
 4. **Close:** "Worth a chat? Here's my scheduling link to make it nice and easy. Either way, I appreciate your time."
 
 Title Case subject (just the role and company, e.g. "Software Architect at EnergyHub"). Never sign a name; the Gmail signature handles it.
+
+**Two channels through W40 (set 2026-09-08).** The follow up also goes as a LinkedIn connection request note to the same person, the note trimmed to LinkedIn's limit and drafted only, sent on Forni's explicit approval of the exact note like the email, so the two channels can be compared on replies. A connection note is guaranteed to reach the person where a guessed address is not.
+
+**One warm touch a week** (a reconnect, a referral ask, or a recruiter check in) is a standing supporting activity: the pass drafts it and logs it as networking, never as an application.
 
 ## Guardrails
 

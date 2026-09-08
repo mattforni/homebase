@@ -14,7 +14,7 @@ Skill-specific corrections that override SKILL.md. Populate as Forni corrects wr
 
 ## Work search sessions
 
-- **The work search has no Linear issue. Do not open one.** `~/Eudaimonia/Craft/Vocation/FY27-work-search.md` is the log of record, and the cadence lives on the calendar as the recurring 💼 Weekly Work Search block. When a session finishes the week's slate, the applications and supporting activities get rows in that file and nothing else is minted.
+- **The work search has no Linear issue. Do not open one.** `~/Eudaimonia/Craft/Vocation/FY27-work-search.md` is the log of record, and the cadence lives on the calendar as the recurring 🔎 Weekly Work Search block. When a session finishes the week's slate, the applications and supporting activities get rows in that file and nothing else is minted.
 
   **Why:** a recurring block held in a tracker is a ticket that can never close, which means it is not tracking work, it is holding a cadence, and a calendar already does that better. The record has to survive a tracker anyway, for a MyUI+ audit that will ask for dates, employers, positions, and methods.
 

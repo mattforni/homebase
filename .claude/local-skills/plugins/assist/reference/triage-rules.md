@@ -121,7 +121,7 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 - Mentorship -> `🛠️ Craft/💼 Vocation/👨‍🏫 Mentorship`
 - Software, dev tools, GitHub -> `🛠️ Craft/🧑‍💻 Development`
 - RYLLC, consulting -> `🛠️ Craft/💻 RYLLC`
-- Atelic -> `🛠️ Craft/💻 RYLLC/🎯 Atelic`
+- Atelic -> `🛠️ Craft/💼 Vocation/💻 Atelic`
 - Product Forge, Titus -> `🛠️ Craft/💻 TPF`
 - Travel, trips, flights, hotels -> `🛠️ Craft/🌏 Adventure`
 - Australia -> `🛠️ Craft/🌏 Adventure/🇦🇺 Australia`
