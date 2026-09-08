@@ -1,7 +1,7 @@
 {
   "name": "assist",
   "description": "Personal productivity skills: email triage, weekly planning, knowledge capture, BD outreach, job applications, meal planning, group trip planning, and YNAB spend categorization.",
-  "version": "11.5.5",
+  "version": "11.5.6",
   "author": {
     "name": "Matthew Fornaciari",
     "url": "https://github.com/mattforni"
