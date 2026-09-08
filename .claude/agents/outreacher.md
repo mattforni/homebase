@@ -135,6 +135,11 @@ script to the scratchpad and run that one file.
    flagged for Forni with both values. The warm network (lifecycle Other)
    belongs on neither list. You flag; you do not fix.
 
+   **Replies are one search, not a per record read.**
+   `/crm/v3/objects/emails/search` filtered to `hs_email_direction` equal to
+   `INCOMING_EMAIL` and `hs_timestamp` since the previous roster returns
+   every reply the extension logged, with sender and subject, in one call.
+
    **Pull the open counts in the same pass** (ATE-507, 2026-09-02). Every
    logged send carries `hs_email_open_count` and `hs_email_click_count` on its
    email engagement (`/crm/v3/objects/emails`, then
@@ -181,9 +186,14 @@ script to the scratchpad and run that one file.
    missed moves them to replies owed; a bounce on a send marks the address
    dead.
 5. **Sort the roster into the week's fixed order.**
-   - **Replies owed**: anyone who wrote back and is waiting on Forni. Draft
-     the reply in the thread's own register (voice.md), from the address the
-     thread knows.
+   - **Replies owed**: anyone who wrote back and is waiting on Forni. **The
+     section opens with a table of every hit from the incoming email search
+     and the mailbox sweep** (sender, date, subject, verbatim from the
+     source); "None" is allowed only when both are empty. Then draft the
+     reply in the thread's own register (voice.md), from the address the
+     thread knows. The 2026-09-08 roster declared none while Ryan Kohler's
+     09-04 reply sat in both places; a table would have shown it and a
+     sentence hid it.
    - **Tasks due**: any open HubSpot task whose due date falls in this week
      or earlier. Read the task body, which carries why the name was parked
      and what the next touch owes, then draft that touch. **An open task
