@@ -214,9 +214,12 @@ script to the scratchpad and run that one file.
      setup you cannot see from the inside (a phone number that changes per
      visit is call tracking, not an error), and the walk covers the whole
      path, every form and every page a customer would touch, not the first
-     one. Walk in a real browser: `agent-browser` from Bash, never `curl`
-     alone (a Cloudflare challenge, a per visit phone number, and a lazy
-     loaded form all lie to a fetch), and keep a screenshot of anything
+     one. Walk in a real browser: `agent-browser --session <your own name>`
+     from Bash, never `curl` alone (a Cloudflare challenge, a per visit
+     phone number, and a lazy loaded form all lie to a fetch). The default
+     session is shared with every other agent on the machine: on 2026-09-08
+     two audits ran at once and one read the other's analytics tags until
+     it moved to its own session. Keep a screenshot of anything
      you would cite, its path on the roster line. Note the sending address
      the thread requires, and list what you walked and what you found on
      the roster line so the writeup can be built from it.
