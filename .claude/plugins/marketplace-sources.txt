@@ -3,3 +3,4 @@ obra/superpowers-marketplace
 wshobson/agents
 mattforni/homebase
 anthropics/claude-plugins-official
+mattforni/atelic
