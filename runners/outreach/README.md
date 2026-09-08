@@ -16,7 +16,7 @@ writes the file and stops; it does not stage or commit, and Forni commits it.
 Until 2026-08-31 the roster was rewritten weekly into the description of a
 standing Linear issue, which destroyed the previous week every Monday.
 
-Prep only. The agent never emails anyone, never moves a Lead Status, and never posts to a client surface. Every send waits for Forni's explicit yes inside the Tuesday block, one at a time, through `/lead:handle-outbound`.
+Prep only. The agent never emails anyone, never moves a Lead Status, and never posts to a client surface. Every send waits for Forni's explicit yes inside the Tuesday block, one at a time, through `/atelic:handle-outbound`.
 
 ## Running It
 
