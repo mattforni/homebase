@@ -193,16 +193,6 @@
   "alwaysThinkingEnabled": true,
   "skipAutoPermissionPrompt": true,
   "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/wrap-reminder.sh"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Bash",

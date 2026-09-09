@@ -18,7 +18,7 @@ The skill exists because the user was running the same end-of-session sweep manu
 
 ## When to Run It
 
-Claude runs wrap, not Forni. The terminal state of a session is visible from inside it: the work landed, every ticket it touched is closed or commented, no PR authored this session is open, no question is waiting on him. At that point wrap is the next step, so take it, with a one line heads up ("Wrapping up now unless there is more") rather than an offer he has to accept. Ending a session with "run wrap when you are ready" hands him a chore the skill exists to remove (Forni, 2026-09-06). The phrase triggers still apply when he says the word first; the hook nudge on a signoff phrase means run it, not propose it.
+Claude runs wrap, not Forni. The terminal state of a session is visible from inside it: the work landed, every ticket it touched is closed or commented, no PR authored this session is open, no question is waiting on him. At that point wrap is the next step, so take it, with a one line heads up ("Wrapping up now unless there is more") rather than an offer he has to accept. Ending a session with "run wrap when you are ready" hands him a chore the skill exists to remove (Forni, 2026-09-06). The phrase triggers in this skill's description still apply when he says the word first, and they are the only trigger: the UserPromptSubmit hook that used to grep every prompt for a signoff phrase was retired 2026-09-09 after it fired on "exit code 1" inside a background task notice and again on the word "exit" mid conversation. A wrap that starts from a phrase is this skill's call, made on the whole message, never a regex's.
 
 ## Before Every Invocation
 
