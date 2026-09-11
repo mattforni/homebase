@@ -42,7 +42,8 @@ root="$(runner_repo_root)"
 # The image is built from a staged context (the runner, the shared library,
 # any agent it ships), so all three sources have to be clean for the artifact
 # to be reproducible.
-dirty="$(git -C "$root" status --porcelain -- "runners/$name" runners/lib .claude/agents 2>/dev/null || true)"
+dirty="$(git -C "$root" status --porcelain -- "runners/$name" runners/lib .claude/agents)" \
+    || die "could not read the working tree state of $root; the dirty gate cannot pass on a guess"
 if [[ -n "$dirty" && $allow_dirty -eq 0 ]]; then
     echo "runners/$name, runners/lib or .claude/agents has uncommitted changes:" >&2
     printf '%s\n' "$dirty" >&2
