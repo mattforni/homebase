@@ -120,7 +120,7 @@ rc=0
 build_failure_html() {
     jq -rn -L "$JQ_LIB" --arg title "Sweep" --arg eyebrow "Job sweep · $WEEK" \
         --arg reason "${fail_reason:-unknown failure}" --rawfile tail <(tail -n 40 "$LOG") \
-        'include "email"; failure_page($title; $eyebrow; $reason; $tail)' 2>/dev/null \
+        'include "email"; failure_page($title; $eyebrow; $reason; $tail)' \
     || printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
 }
 

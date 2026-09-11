@@ -31,7 +31,7 @@ def hair: "#F0EAE0";
 def mono: "font-family:'Courier New',monospace;";
 def sans: "font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;";
 
-def esc: tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;");
+def esc: tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;") | gsub("\""; "&quot;") | gsub("'"; "&#39;");
 
 def eyebrow_style: mono + "font-size:11px;letter-spacing:0.12em;text-transform:uppercase;";
 
