@@ -48,6 +48,8 @@ Three loops, each answering a different question. Use the cheapest one that can 
 | Draft | `bin/runner/run-local <name> --reuse` | one Claude call | changing what the email says: `prompt.md`, the JSON shape, the reads |
 | Full | `bin/runner/run-local <name>` | every pull plus one Claude call | changing the pulls themselves, or a last check before promoting |
 
+**A laptop run's cost is not production's.** `run-local` runs the very entrypoint, but `claude -p` on this machine loads what this machine loads: the user memory, every installed skill's description, and the model and effort in `~/.claude/settings.json`, about 35K context tokens on every turn before the prompt (a one word haiku call with settings disabled and a bare cwd carried 34,669 on 2026-09-11). The container starts from a bare `/home/runner` with none of it. The same W36 draft cost $2.17 here and $0.28 in Cloud Run (ATE-521), so read a local cost line as a shape check and the Cloud Logging cost line as the number. Each run keeps its full `claude -p` result in `out/claude-result.json`, and the cost line prints the per model token breakdown beside the total.
+
 **The cheapest loop needs an `out/` to read, and a fresh clone has none.** Do not
 reach for the Full loop to create one: it costs every pull and a model call, and
 it rotates the real Strava token. Rebuild the draft from the last email the

@@ -331,6 +331,9 @@ result="$(timeout 20m claude -p "$prompt" \
     --allowedTools "Read" \
     --output-format json 2>"$WORK/claude-stderr.txt")"
 rc=$?
+# The whole result is kept: the total alone cannot say where a run's money
+# went, and ATE-521 spent a week on a cost no run had recorded the shape of.
+printf '%s\n' "$result" > "$WORK/claude-result.json"
 if [[ $rc -ne 0 ]]; then
     fail_reason="claude exited $rc: $(head -c 400 "$WORK/claude-stderr.txt")"
     exit 1
@@ -353,7 +356,8 @@ if ! jq -e 'type == "object" and has("headline") and has("movement") and has("co
     fail_reason="claude did not return the retro shape: $(head -c 300 "$RETRO_JSON")"
     exit 1
 fi
-echo "claude: retro drafted (cost $(jq -r '.total_cost_usd // "?"' <<<"$result") USD)"
+usage="$(jq -r '"\(.num_turns // "?") turns; " + ((.modelUsage // {}) | to_entries | map("\(.key) in \(.value.inputTokens // 0) out \(.value.outputTokens // 0) cache read \(.value.cacheReadInputTokens // 0) write \(.value.cacheCreationInputTokens // 0)") | join("; "))' <<<"$result")"
+echo "claude: retro drafted (cost $(jq -r '.total_cost_usd // "?"' <<<"$result") USD; $usage)"
 
 # The Atelic tables are data, not draft: they go in after the model, so nothing
 # it writes can move a number.
