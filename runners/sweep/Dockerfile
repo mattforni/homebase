@@ -24,7 +24,8 @@ WORKDIR /home/runner
 COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
 COPY --chown=runner:runner prompt.md /home/runner/prompt.md
 COPY --chown=runner:runner render.jq /home/runner/render.jq
-COPY --chown=runner:runner lib/runner.sh /home/runner/lib/runner.sh
+# The shared library: runner.sh for the entrypoint, email.jq for the renderer.
+COPY --chown=runner:runner lib/ /home/runner/lib/
 # The brief: the same agent definition the laptop runs, found where Claude Code
 # looks for user level agents.
 COPY --chown=runner:runner agents/recruiter.md /home/runner/.claude/agents/recruiter.md

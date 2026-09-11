@@ -98,6 +98,8 @@ RUBRIC="Craft/Vocation/role-rubric.md"
 # The brief and the renderer sit beside this script in both places.
 PROMPT_FILE="${PROMPT_FILE:-$SELF_DIR/prompt.md}"
 RENDER="${RENDER:-$SELF_DIR/render.jq}"
+# The shared email design (email.jq) sits beside runner.sh, wherever that was found.
+JQ_LIB="$(dirname "$RUNNER_LIB")"
 
 echo "=== $(date -Iseconds) sweep start: $WEEK ($MONDAY to $SUNDAY) ==="
 
@@ -113,12 +115,13 @@ fail_reason=""
 result=""
 rc=0
 
-html_tail() { tail -n 40 "$LOG" | html_escape; }
-
-# A failure is mailed in the same cream as the board, so the inbox reads one
-# way: the reason on top, the last lines of the log beneath it.
+# A failure is mailed in the same design as the board, from the shared
+# library's failure page: the reason on top, the log's tail beneath it.
 build_failure_html() {
-    printf '%s' "<!doctype html><html><body style=\"margin:0;padding:28px 12px 48px;background:#F6F1E7;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#151515\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr><td align=\"center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"680\" style=\"width:680px;max-width:680px\"><tr><td style=\"padding:8px 8px 22px;font-size:20px;font-weight:600;letter-spacing:-0.045em\">atelic</td></tr><tr><td style=\"background:#FDFBF6;border:1px solid #E6DFD2;border-radius:14px;padding:26px\"><div style=\"font-family:'Courier New',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#8a8272\">Job sweep · $(printf '%s' "$WEEK" | html_escape)</div><div style=\"font-size:30px;font-weight:600;letter-spacing:-0.03em;line-height:1.1;margin-top:6px\">The sweep did not run.</div><p style=\"font-size:15px;line-height:1.6;color:#55503f\">$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)</p><pre style=\"font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;color:#55503f;border-top:1px solid #E6DFD2;padding-top:14px;margin:0\">$(html_tail)</pre></td></tr></table></td></tr></table></body></html>"
+    jq -rn -L "$JQ_LIB" --arg title "Sweep" --arg eyebrow "Job sweep · $WEEK" \
+        --arg reason "${fail_reason:-unknown failure}" --rawfile tail <(tail -n 40 "$LOG") \
+        'include "email"; failure_page($title; $eyebrow; $reason; $tail)' 2>/dev/null \
+    || printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
 }
 
 finish() {
@@ -313,7 +316,7 @@ meta="$(jq -r '[
     ((.modelUsage // {}) | keys | map(sub("-20[0-9]{6}$"; "")) | join(", "))
   ] | map(select(. != "")) | join(" · ")' <<<"$result")"
 
-if ! jq -r --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" -f "$RENDER" "$SWEEP_JSON" > "$REPORT_HTML" 2>"$WORK/render-stderr.txt" || [[ ! -s "$REPORT_HTML" ]]; then
+if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" -f "$RENDER" "$SWEEP_JSON" > "$REPORT_HTML" 2>"$WORK/render-stderr.txt" || [[ ! -s "$REPORT_HTML" ]]; then
     fail_reason="render failed: $(head -c 300 "$WORK/render-stderr.txt")"
     exit 1
 fi
