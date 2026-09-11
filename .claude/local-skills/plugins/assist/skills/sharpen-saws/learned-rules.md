@@ -76,3 +76,11 @@ When a scout or the sharpener dies on a server side error (a 529, a dropped conn
 **Why:** 2026-09-03. Two server 529s killed the sharpener mid scan. Resumed by id each time, it kept its reads and its board came back complete on the third resume, once the interrupted session returned; socrates, redispatched fresh after its own 529, spent the same tokens again and never returned. The board was still complete because the gap was named instead of chased.
 
 **How to apply:** A dead agent's id is in the failure notice; `SendMessage` to it first. If the resume also fails, one fresh dispatch, then stop. A board without a scout says so in that scout's paragraph and ranks on the evidence it has; the log's Scan notes carry the miss so the next Ground rebriefs the same question.
+
+## A Set Focus Can Retire the Aged Row, Never Carry It
+
+When the dispatch brief carries a focus that the count 2 row does not serve, the aging term still fires: the row ranks first on the board with its retirement reason written, and the session retires it in the log rather than carrying it a third time under the focus. Phase 1 (a focus narrows every pull) and Phase 3 (the aged row ranks first regardless) are not in conflict; the focus decides between taking the row and retiring it, never whether it appears.
+
+**Why:** 2026-09-11. The `SubagentStop` gate on lander reached count 2 against a "something new" focus. socrates read the two phases as colliding; the resolution was to board it first, with the reason it was never grounded in a failure, and retire it. The count reset honestly and the focus was honored.
+
+**How to apply:** The sharpener writes the retirement reason into row 1 when the focus and the aged row disagree, so the pick is a yes or no and never a carry.
