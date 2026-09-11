@@ -106,7 +106,7 @@ curl -sSLo /tmp/jq16 https://github.com/jqlang/jq/releases/download/jq-1.6/jq-os
 diff /tmp/jq16.html runners/retro/out/retro.html
 ```
 
-Named for the retro because it is the only runner that renders from JSON, and
+Named for the retro because it was the only runner that renders from JSON (the sweep joined it 2026-09-11), and
 the only one still on the old `retro.html` artifact name; a new renderer writes
 `$WORK/email.html` and its draft alongside.
 

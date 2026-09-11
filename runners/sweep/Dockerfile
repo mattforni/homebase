@@ -12,11 +12,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl jq tzdata git openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Claude Code, pinned so a rebuild is a deliberate upgrade, and marked, which
-# turns the agent's markdown report into the email body.
+# Claude Code, pinned so a rebuild is a deliberate upgrade.
 ARG CLAUDE_CODE_VERSION=2.1.247
-ARG MARKED_VERSION=18.0.12
-RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" "marked@${MARKED_VERSION}"
+RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
 # Non root, its own home so Claude Code has a writable config dir.
 RUN useradd --create-home --shell /bin/bash runner
@@ -24,6 +22,8 @@ USER runner
 WORKDIR /home/runner
 
 COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
+COPY --chown=runner:runner prompt.md /home/runner/prompt.md
+COPY --chown=runner:runner render.jq /home/runner/render.jq
 COPY --chown=runner:runner lib/runner.sh /home/runner/lib/runner.sh
 # The brief: the same agent definition the laptop runs, found where Claude Code
 # looks for user level agents.
