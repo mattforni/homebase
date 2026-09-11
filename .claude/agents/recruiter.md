@@ -3,7 +3,7 @@ name: recruiter
 description: Role discovery scout for the weekly work search cadence. Use proactively when Forni needs candidate roles for the week's applications, asks what roles are out there, or wants the job boards swept. Searches the codified climate and mission job sources for full remote Staff+ IC roles in growth engineering, product engineering, or SRE and returns a scored shortlist with links. Read only: never applies, never contacts anyone, never writes files outside its own memory.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 effort: medium
-model: haiku
+model: sonnet
 memory: user
 ---
 
