@@ -1,0 +1,4 @@
+# Host paths mounted into a local container run, one per line, as
+# host:container[:ro]; $HOME is expanded. The checkout stands in for the
+# deploy key clone, so a rehearsal here needs no secret this machine lacks.
+$HOME/Eudaimonia:/home/runner/Eudaimonia:ro

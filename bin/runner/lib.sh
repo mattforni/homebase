@@ -255,6 +255,40 @@ runner_execute() {
     "$dir/entrypoint.sh"
 }
 
+# Usage: runner_build_context <runner-dir>
+# Stages what a runner's image is built from and prints the directory. A Docker
+# context cannot reach above its own root, and neither can the tarball gcloud
+# builds submit uploads, yet a runner shares runners/lib/runner.sh and may ship
+# an agent definition from .claude/agents/. So the context is assembled: the
+# runner's own files (out/, .env.local and any prior staging left out),
+# lib/runner.sh, and agents/<name>.md for each name listed one per line in the
+# runner's `agents` file. Built fresh every time, under the runner's gitignored
+# .build/, so a stale copy of the library can never ship.
+runner_build_context() {
+    local dir="$1" root staged n
+    root="$(runner_repo_root)"
+    staged="$dir/.build"
+    rm -rf "$staged" && mkdir -p "$staged/lib" || return 1
+    # The `agents` and `mounts` manifests drive this side and never ship; and
+    # `agents` the file would collide with agents/ the directory below.
+    (cd "$dir" && tar --exclude=./out --exclude=./.build --exclude=./.env.local \
+        --exclude=./agents --exclude=./mounts -cf - .) \
+        | (cd "$staged" && tar -xf -) || return 1
+    cp "$root/runners/lib/runner.sh" "$staged/lib/runner.sh" || return 1
+    if [[ -r "$dir/agents" ]]; then
+        mkdir -p "$staged/agents" || return 1
+        while read -r n; do
+            [[ -n "$n" && "$n" != \#* ]] || continue
+            if [[ ! -r "$root/.claude/agents/$n.md" ]]; then
+                echo "no agent named '$n' in .claude/agents (listed in $dir/agents)" >&2
+                return 1
+            fi
+            cp "$root/.claude/agents/$n.md" "$staged/agents/$n.md" || return 1
+        done < "$dir/agents"
+    fi
+    printf '%s' "$staged"
+}
+
 # Usage: runner_execute_container <runner-dir> <send 0|1> <reuse 0|1> [week]
 # Runs a runner in its own image on this machine: the Dockerfile promote ships
 # is built here, and the container gets the same environment names a host run
@@ -296,10 +330,12 @@ runner_execute_container() {
     mkdir -p "$WORK"
     export WORK
 
+    local context
+    context="$(runner_build_context "$dir")" || die "could not stage the build context for $name"
     local build=(docker build -q -t "$image")
     [[ -z "${RUNNER_PLATFORM:-}" ]] || build+=(--platform "$RUNNER_PLATFORM")
-    echo "docker: building $image from $dir"
-    "${build[@]}" "$dir" >/dev/null || die "docker build failed for $name"
+    echo "docker: building $image from $context"
+    "${build[@]}" "$context" >/dev/null || die "docker build failed for $name"
 
     # Names, never values: `-e NAME` takes the value from this process's
     # environment, so a multi line secret (a deploy key, an OAuth JSON) crosses
@@ -313,8 +349,22 @@ runner_execute_container() {
     [[ -z "$week" ]] || args+=(-e "WEEK=$week")
     [[ -z "${RUNNER_PLATFORM:-}" ]] || args+=(--platform "$RUNNER_PLATFORM")
 
+    # A runner may name host paths to mount for a local run in its `mounts`
+    # file, one host:container[:ro] per line with $HOME expanded: a checkout
+    # standing in for a deploy key clone, an agent's memory directory. Only a
+    # local run sees these; the job gets its inputs the production way.
+    local mounts=(-v "$WORK:/home/runner/work") m
+    if [[ -r "$dir/mounts" ]]; then
+        while read -r m; do
+            [[ -n "$m" && "$m" != \#* ]] || continue
+            m="${m//\$HOME/$HOME}"
+            [[ -e "${m%%:*}" ]] || die "mount source ${m%%:*} (from $dir/mounts) does not exist"
+            mounts+=(-v "$m")
+        done < "$dir/mounts"
+    fi
+
     echo "docker: running $image with $WORK mounted at /home/runner/work"
-    docker run --rm "${args[@]}" -v "$WORK:/home/runner/work" "$image"
+    docker run --rm "${args[@]}" "${mounts[@]}" "$image"
 }
 
 # Usage: runner_email_artifact <work-dir>
