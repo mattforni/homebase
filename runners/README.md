@@ -106,13 +106,19 @@ curl -sSLo /tmp/jq16 https://github.com/jqlang/jq/releases/download/jq-1.6/jq-os
 diff /tmp/jq16.html runners/retro/out/retro.html
 ```
 
-Named for the retro because it is the only runner that renders from JSON, and
+Named for the retro because it was the only runner that renders from JSON (the sweep joined it 2026-09-11), and
 the only one still on the old `retro.html` artifact name; a new renderer writes
 `$WORK/email.html` and its draft alongside.
 
 The two steps stay separate because a pipeline reports only its last command's status, which would hand a compile error back wearing diff's exit code. A non zero exit from the render is the failure the cloud would have hit; a non zero exit from the diff means both versions parsed but disagree on the bytes. Clean on both is the answer you want. The binary is x86 and runs under Rosetta on Apple silicon.
 
 **A local run still rotates the real Strava token.** Strava invalidates a refresh token the moment it issues the next one, so a local run that pulls Strava has to write the new one back to the vault or the next cloud run cannot refresh at all. `entrypoint.sh` falls back to the operator's own gcloud credentials when there is no metadata server to ask. This is the one thing a local run changes in the outside world, and it is not optional.
+
+## The Email
+
+**Every runner that mails a page mails the same design, composed from `runners/lib/email.jq`.** The design is Forni's "W38 Sweep Email" (Claude Design, 2026-09-11), made canonical the same day: cream ground (`#F6F1E7`), cards of paper (`#FDFBF6`) on a hairline (`#E6DFD2`) with a 14px radius, the atelic wordmark and one orange rule (`#FC4A1A`) at the top left with the runner's title beside them, monospace uppercase eyebrows, sans for everything read, and the accent reserved for the one value that matters on a row and the link underline. Every style is inline and every layout a table, for Gmail; disclosures fold in Apple Mail and open flat in Gmail, which is the designed fallback.
+
+A runner's `render.jq` starts with `include "email";` and composes: `page` (the shell and the inbox preheader), `masthead` (the wordmark and the runner's title), `title_card` (eyebrow, one to three headline lines, a lede, and a `stats_row` of `stat` cells), `eyebrow` between cards, `card` around rows, `item` (the workhorse row: name, the accent value on the right, a subline of facts, a body, an optional `fold`, an optional link), `note` (a short text under a small eyebrow), `big_fold` inside a `fold_row` for the long tail, `list` with `lead_row`, `mono_table` for rows the reader copies, and `footer` for the run's one line of facts. `failure_page` mails a bad run in the same cream. The entrypoint passes `-L` pointing at the library (`runners/lib` in the repo, `/home/runner/lib` in an image, which is `$(dirname "$RUNNER_LIB")` either way). A new kind of row is a new def in the library, so the next runner gets it too; a runner never carries a palette or a frame of its own. The library is written for the image's jq 1.6 (`label` is a keyword there). `runners/sweep/render.jq` is the reference composition. Two runners predate the library and still render their own: the retro (Geist on cream through its own `render.jq`) and the outreach report (the bash builders in `runner.sh`). Porting each is its own pass, and until then a new runner copies neither.
 
 ## Adding a Runner
 

@@ -274,7 +274,9 @@ runner_build_context() {
     (cd "$dir" && tar --exclude=./out --exclude=./.build --exclude=./.env.local \
         --exclude=./agents --exclude=./mounts -cf - .) \
         | (cd "$staged" && tar -xf -) || return 1
-    cp "$root/runners/lib/runner.sh" "$staged/lib/runner.sh" || return 1
+    # The whole shared library: runner.sh for the entrypoint, email.jq for
+    # the renderer, and whatever joins them.
+    cp "$root/runners/lib/"* "$staged/lib/" || return 1
     if [[ -r "$dir/agents" ]]; then
         mkdir -p "$staged/agents" || return 1
         while read -r n; do
