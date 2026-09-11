@@ -327,7 +327,13 @@ fi
 
 # ---------- Claude ----------
 prompt="$(sed -e "s/{{WEEK}}/$WEEK/g" -e "s/{{MONDAY}}/$MONDAY/g" -e "s/{{SUNDAY}}/$SUNDAY/g" -e "s/{{TODAY}}/$(date +%F)/g" -e "s#{{WORK}}#$WORK#g" -e "s#{{EUDY}}#$EUDY#g" "$PROMPT_FILE")"
+# The model is named rather than defaulted. A bare config resolves to the
+# current Sonnet on this token, which is what every production run has used
+# and what the 0.28 USD per run (ATE-521) was measured on; a laptop's own
+# config resolved the same call to Opus at high effort and cost 2.17 USD.
+# Naming it here makes the two places agree by construction.
 result="$(timeout 20m claude -p "$prompt" \
+    --model sonnet \
     --allowedTools "Read" \
     --output-format json 2>"$WORK/claude-stderr.txt")"
 rc=$?

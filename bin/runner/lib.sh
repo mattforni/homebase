@@ -165,20 +165,33 @@ runner_local_credentials() {
     fi
 }
 
-# Usage: runner_execute <runner-dir> <send 0|1> <reuse 0|1> [week]
-# Runs a runner's own entrypoint on this machine, which is the single path both
-# `run-local` and `run-scheduled` take. Having one of these rather than two is
-# the point: the difference between iterating by hand and firing under launchd
-# should be which flags are passed and where the output goes, never which code
-# runs.
+# The variables a local run hands a runner, whichever way it runs it: what the
+# deployed job's .env.local names, plus what runner_local_credentials fills in
+# from this machine. The container path passes exactly these names through to
+# docker run, so a secret that is not on this list never reaches the container
+# and one that is never has to be written to a file or a command line.
+#
+# Usage: runner_env_names <runner-dir>
+runner_env_names() {
+    local envfile="$1/.env.local"
+    {
+        [[ -r "$envfile" ]] && sed -n "s/^export \\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p" "$envfile"
+        printf '%s\n' CLAUDE_CODE_OAUTH_TOKEN RESEND_API_KEY REPORT_RECIPIENT REPORT_SENDER TZ
+    } | awk 'NF && !seen[$0]++'
+}
+
+# Usage: runner_local_env <runner-dir>
+# Puts a runner's environment together from this machine, in the same shape
+# Cloud Run would inject it. Shared by the host and container paths so the two
+# differ in where the entrypoint runs and never in what it is handed.
 #
 # Environment precedence, weakest last: anything already exported wins, then
 # the runner's .env.local if it has been fetched from a deployed job, then this
 # machine's Keychain. A runner with no Cloud Run job yet has no .env.local at
 # all, and that is a supported state rather than an error, because a runner
 # lives locally before it is ever promoted.
-runner_execute() {
-    local dir="$1" send="$2" reuse="$3" week="${4:-}"
+runner_local_env() {
+    local dir="$1"
     local envfile="$dir/.env.local"
 
     local local_path
@@ -213,6 +226,24 @@ runner_execute() {
         echo "env: no $envfile; this machine's vaults only"
     fi
     runner_local_credentials "$(basename "$dir")"
+}
+
+# Usage: runner_execute <runner-dir> <send 0|1> <reuse 0|1> [week]
+# Runs a runner's own entrypoint on this machine, which is the path
+# `run-scheduled` takes and the one `run-local --host` takes. Having one of
+# these rather than two is the point: the difference between iterating by hand
+# and firing under launchd should be which flags are passed and where the
+# output goes, never which code runs.
+#
+# A runner that has a Dockerfile is a container in production, and on this
+# machine a headless `claude -p` is not what the container runs: it resolves
+# the model, effort and settings from this machine's own Claude Code config,
+# so a cost or a draft measured here is not production's. That is why
+# `run-local` prefers runner_execute_container for such a runner and reaches
+# this only on --host.
+runner_execute() {
+    local dir="$1" send="$2" reuse="$3" week="${4:-}"
+    runner_local_env "$dir"
 
     WORK="${WORK:-$dir/out}"
     mkdir -p "$WORK"
@@ -222,6 +253,53 @@ runner_execute() {
     [[ -z "$week" ]] || export WEEK="$week"
 
     "$dir/entrypoint.sh"
+}
+
+# Usage: runner_execute_container <runner-dir> <send 0|1> <reuse 0|1> [week]
+# Runs a runner in its own image on this machine: the Dockerfile promote ships
+# is built here, and the container gets the same environment names a host run
+# would, with out/ mounted as its work directory so --reuse, the rendered
+# email and the saved result all land where every other local loop expects.
+#
+# The image is built for this machine's architecture rather than Cloud Run's,
+# because the base image is multi arch and the point of the rehearsal is the
+# runtime inside it (the pinned Claude Code, the bare config, the model the
+# entrypoint names), none of which changes with the CPU. RUNNER_PLATFORM
+# overrides that for a run that needs the exact production architecture.
+runner_execute_container() {
+    local dir="$1" send="$2" reuse="$3" week="${4:-}"
+    local name image
+    name="$(basename "$dir")"
+    image="runner-$name:local"
+
+    [[ -f "$dir/Dockerfile" ]] || die "$name has no Dockerfile, so it only runs on this machine"
+    command -v docker >/dev/null 2>&1 || die "docker not found on PATH"
+    docker info >/dev/null 2>&1 || die "the Docker daemon is not running; start Docker Desktop, or pass --host to run the entrypoint on this machine"
+
+    runner_local_env "$dir"
+
+    WORK="${WORK:-$dir/out}"
+    mkdir -p "$WORK"
+    export WORK
+
+    local build=(docker build -q -t "$image")
+    [[ -z "${RUNNER_PLATFORM:-}" ]] || build+=(--platform "$RUNNER_PLATFORM")
+    echo "docker: building $image from $dir"
+    "${build[@]}" "$dir" >/dev/null || die "docker build failed for $name"
+
+    # Names, never values: `-e NAME` takes the value from this process's
+    # environment, so a multi line secret (a deploy key, an OAuth JSON) crosses
+    # intact and no secret is ever written to a file or shows in `ps`.
+    local args=() n
+    while read -r n; do
+        [[ -n "${!n:-}" ]] && args+=(-e "$n")
+    done < <(runner_env_names "$dir")
+    args+=(-e "DRY_RUN=$(( send ? 0 : 1 ))" -e "SKIP_PULLS=$reuse" -e "WORK=/home/runner/work")
+    [[ -z "$week" ]] || args+=(-e "WEEK=$week")
+    [[ -z "${RUNNER_PLATFORM:-}" ]] || args+=(--platform "$RUNNER_PLATFORM")
+
+    echo "docker: running $image with $WORK mounted at /home/runner/work"
+    docker run --rm "${args[@]}" -v "$WORK:/home/runner/work" "$image"
 }
 
 # Usage: runner_email_artifact <work-dir>
