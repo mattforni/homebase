@@ -278,6 +278,20 @@ runner_execute_container() {
 
     runner_local_env "$dir"
 
+    # The image has no gcloud and no metadata server, so a Strava rotation
+    # inside it would have nowhere to write the new refresh token back and the
+    # next cloud run could not refresh (vault_write_back in the retro's
+    # entrypoint). A run that pulls gets this operator's own access token,
+    # minted here, for exactly that one call; a --reuse run never refreshes.
+    if (( ! reuse )) && [[ -z "${VAULT_ACCESS_TOKEN:-}" ]]; then
+        if VAULT_ACCESS_TOKEN="$(gcloud auth print-access-token 2>/dev/null)" && [[ -n "$VAULT_ACCESS_TOKEN" ]]; then
+            export VAULT_ACCESS_TOKEN
+        else
+            unset VAULT_ACCESS_TOKEN
+            echo "WARNING: no gcloud access token on this machine; a Strava token rotation in this run would not be written back to the vault" >&2
+        fi
+    fi
+
     WORK="${WORK:-$dir/out}"
     mkdir -p "$WORK"
     export WORK
@@ -295,6 +309,7 @@ runner_execute_container() {
         [[ -n "${!n:-}" ]] && args+=(-e "$n")
     done < <(runner_env_names "$dir")
     args+=(-e "DRY_RUN=$(( send ? 0 : 1 ))" -e "SKIP_PULLS=$reuse" -e "WORK=/home/runner/work")
+    [[ -z "${VAULT_ACCESS_TOKEN:-}" ]] || args+=(-e VAULT_ACCESS_TOKEN)
     [[ -z "$week" ]] || args+=(-e "WEEK=$week")
     [[ -z "${RUNNER_PLATFORM:-}" ]] || args+=(--platform "$RUNNER_PLATFORM")
 
