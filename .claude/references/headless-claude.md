@@ -200,6 +200,15 @@ Where `<expected>` is the distinctive success string the skill emits.
   conflict) should not match and should report immediately. Idempotent routines
   are safe to retry. Reference impl: `bin/run-mise` in git history (PR #109,
   2026-06-09; pruned 2026-07-23).
+- **A headless call resolves the model from wherever it runs.** With no
+  `--model`, `claude -p` takes the model and effort from the config dir it
+  finds: the laptop's `~/.claude/settings.json` (Opus at high effort) on the
+  host, a bare default (the current Sonnet on this token) in a container. The
+  same retro draft cost 2.17 USD one way and 0.28 the other with the context
+  load about equal, roughly 35K to 44K tokens of Claude Code's own system
+  prompt either way (ATE-521, 2026-09-11). Name the model in the invocation,
+  and rehearse a containerised routine in its container (`bin/runner/run-local`
+  does this by default for a runner with a Dockerfile).
 
 ## Email reporting via Resend
 
