@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
 # Run a runner on this machine, rendering its email instead of sending it.
 #
-# Usage: run-local <runner-name> [--week YYYY-Www] [--reuse] [--send] [--no-open]
+# Usage: run-local <runner-name> [--week YYYY-Www] [--reuse] [--send] [--no-open] [--host]
 #
 #   --week    draft a past or future week instead of the current one
 #   --reuse   skip the API pulls and reuse the JSON already in out/, which is
 #             the loop to use while iterating on the prompt
 #   --send    actually deliver the email, off by default
 #   --no-open leave the rendered HTML on disk without opening a browser
+#   --host    run the entrypoint on this machine instead of in the runner's
+#             image; the default for a runner with no Dockerfile
 #
 # A runner that has never been promoted has no .env.local, and that is fine:
 # the secrets then come from this machine's Keychain alone. A runner that has
 # been promoted gets production parity by fetching its deployed job's own
 # secret mapping first (bin/runner/fetch-env).
 #
-# This runs the very entrypoint the container runs, against the very secrets
-# Cloud Run is injected with, so what passes here is what production will do.
-# The one deliberate difference is the send: a local run renders to out/ and
-# stops, because the whole point of iterating locally is to look at the thing
-# before anyone's inbox does.
+# A runner with a Dockerfile runs in that image, built here by Docker Desktop:
+# the very container Cloud Run runs, against the very secrets it is injected
+# with, so what passes here is what production will do, at what production
+# pays. The one deliberate difference is the send: a local run renders to out/
+# and stops, because the whole point of iterating locally is to look at the
+# thing before anyone's inbox does. --host runs the entrypoint directly on
+# this machine instead, where `claude -p` picks up this machine's model,
+# effort and settings and its cost line is not production's.
 set -euo pipefail
 
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
@@ -26,14 +31,15 @@ LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 # shellcheck source=lib.sh
 . "$LIB"
 
-name=""; week=""; reuse=0; send=0; open_it=1
+name=""; week=""; reuse=0; send=0; open_it=1; host=0
 while (( $# )); do
     case "$1" in
         --week)    week="${2:-}"; shift 2 ;;
         --reuse)   reuse=1; shift ;;
         --send)    send=1; shift ;;
         --no-open) open_it=0; shift ;;
-        -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --host)    host=1; shift ;;
+        -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)        die "unknown option $1" ;;
         *)         [[ -z "$name" ]] || die "unexpected argument $1"; name="$1"; shift ;;
     esac
@@ -45,9 +51,17 @@ if (( send )); then
     echo "SENDING for real"
 fi
 
-# One execution path, shared with run-scheduled, so iterating by hand and
-# firing under launchd differ in their flags rather than in their code.
-runner_execute "$dir" "$send" "$reuse" "$week"
+# A runner with a Dockerfile is a container in production, so it is a container
+# here too unless --host asks otherwise. A runner without one only ever runs on
+# this machine, and takes the same path run-scheduled does, so iterating by hand
+# and firing under launchd differ in their flags rather than in their code.
+if (( host )) || [[ ! -f "$dir/Dockerfile" ]]; then
+    echo "mode: host"
+    runner_execute "$dir" "$send" "$reuse" "$week"
+else
+    echo "mode: container"
+    runner_execute_container "$dir" "$send" "$reuse" "$week"
+fi
 
 html="$(runner_email_artifact "$WORK")" || html=""
 if [[ -n "$html" ]]; then

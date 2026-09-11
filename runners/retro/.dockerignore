@@ -1,0 +1,5 @@
+# docker build uses this directory as its context, the same way gcloud builds
+# submit does (see .gcloudignore), so the live credentials in .env.local and
+# the local work directory stay out of every image built here.
+.env.local
+out/

@@ -24,6 +24,7 @@
 #   WEEK                      optional YYYY-Www override for a test fire; default is the previous week, the ISO week that closed most recently
 #   DRY_RUN                   1 renders the email and skips the send; the local loop
 #   SKIP_PULLS                1 reuses the JSON already in $WORK instead of pulling again
+#   VAULT_ACCESS_TOKEN        optional; a local container run's write back credential for the rotated Strava token, minted on the host by bin/runner/run-local, since the image has no gcloud and no metadata server
 set -uo pipefail
 
 DRY_RUN="${DRY_RUN:-0}"
@@ -216,7 +217,10 @@ vault_write_back() {
     # allowed to swallow the rotation: Strava invalidated the old token the
     # moment it issued this one, so if the vault does not take the new one the
     # next cloud run cannot refresh at all. Fall back to the operator's own
-    # gcloud credentials, which reach the same secret.
+    # credentials, which reach the same secret: an access token handed in by
+    # run-local when this is its container (the image has no gcloud), else
+    # this machine's gcloud login.
+    [[ -n "$sa_token" ]] || sa_token="${VAULT_ACCESS_TOKEN:-}"
     if [[ -z "$sa_token" ]]; then
         if command -v gcloud >/dev/null 2>&1; then
             local secret_name secret_project
@@ -327,7 +331,13 @@ fi
 
 # ---------- Claude ----------
 prompt="$(sed -e "s/{{WEEK}}/$WEEK/g" -e "s/{{MONDAY}}/$MONDAY/g" -e "s/{{SUNDAY}}/$SUNDAY/g" -e "s/{{TODAY}}/$(date +%F)/g" -e "s#{{WORK}}#$WORK#g" -e "s#{{EUDY}}#$EUDY#g" "$PROMPT_FILE")"
+# The model is named rather than defaulted. A bare config resolves to the
+# current Sonnet on this token, which is what every production run has used
+# and what the 0.28 USD per run (ATE-521) was measured on; a laptop's own
+# config resolved the same call to Opus at high effort and cost 2.17 USD.
+# Naming it here makes the two places agree by construction.
 result="$(timeout 20m claude -p "$prompt" \
+    --model sonnet \
     --allowedTools "Read" \
     --output-format json 2>"$WORK/claude-stderr.txt")"
 rc=$?
