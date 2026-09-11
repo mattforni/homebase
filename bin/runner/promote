@@ -39,16 +39,20 @@ dir="$(runner_dir "$name")"
 command -v gcloud >/dev/null 2>&1 || die "gcloud not found on PATH"
 
 root="$(runner_repo_root)"
-dirty="$(git -C "$root" status --porcelain -- "runners/$name" 2>/dev/null || true)"
+# The image is built from a staged context (the runner, the shared library,
+# any agent it ships), so all three sources have to be clean for the artifact
+# to be reproducible.
+dirty="$(git -C "$root" status --porcelain -- "runners/$name" runners/lib .claude/agents 2>/dev/null || true)"
 if [[ -n "$dirty" && $allow_dirty -eq 0 ]]; then
-    echo "runners/$name has uncommitted changes:" >&2
+    echo "runners/$name, runners/lib or .claude/agents has uncommitted changes:" >&2
     printf '%s\n' "$dirty" >&2
     die "commit them, or pass --dirty to promote anyway"
 fi
 
+context="$(runner_build_context "$dir")" || die "could not stage the build context for $name"
 image="$RUNNER_REGISTRY/$name:$tag"
-echo "building $image from $dir"
-gcloud builds submit "$dir" --tag "$image" --project="$RUNNER_PROJECT"
+echo "building $image from $context"
+gcloud builds submit "$context" --tag "$image" --project="$RUNNER_PROJECT"
 
 echo "pointing the job at it"
 gcloud run jobs update "$name" --project="$RUNNER_PROJECT" --region="$RUNNER_REGION" --image="$image"
