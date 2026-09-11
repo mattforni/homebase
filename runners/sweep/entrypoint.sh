@@ -110,8 +110,8 @@ result=""
 rc=0
 
 # The board is the email, not an attachment to a status line: the report the
-# agent returns is the body, in full and visible, with the run's summary above
-# it and the cost beneath.
+# agent returns is the body, in full and visible, with one footer line for the
+# run's facts. A failure, and only a failure, gets a summary block on top.
 build_sweep_html() {
     local heading="$1" report="$2" summary_html="$3" meta_html="$4"
     local emoji report_html=""
@@ -146,10 +146,14 @@ finish() {
     local script_rc=$?
     local summary meta report body reported_rc
     if [[ "$rc" -ne 0 ]]; then reported_rc="$rc"; else reported_rc="$script_rc"; fi
-    summary="$(build_summary_block "$result" "$rc" "$SUCCESS_LINE")"
-    meta="$(build_meta_block "$result" "$reported_rc")"
+    summary=""
+    [[ "$status" == "success" ]] || summary="$(build_summary_block "$result" "$rc" "$SUCCESS_LINE")"
+    meta="$(build_meta_line "$result" "$reported_rc")"
     report="$(jq -r '.result // ""' <<<"$result" 2>/dev/null)"
     [[ -z "$report" ]] && report="$result"
+    # The success line is the runner's handshake, not the reader's.
+    report="${report%"$SUCCESS_LINE"}"
+    report="${report%$'\n'}"
 
     if [[ "$status" != "success" && -n "$fail_reason" ]]; then
         summary="<div style=\"background:#ffebee;border-left:4px solid #c62828;padding:10px 14px;border-radius:4px;margin:0 0 12px 0;\"><strong style=\"color:#b71c1c;\">$(printf '%s' "$fail_reason" | html_escape)</strong></div>$summary"

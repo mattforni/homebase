@@ -126,6 +126,43 @@ send_email() {
 # agent run (the outreach roster) gets its whole body from the three below, so
 # no runner has to grow its own HTML.
 
+# Usage: format_duration <milliseconds>
+# 42s, 12m 05s, or 1h 07m: a run's wall clock as a person reads it. Thousands
+# of seconds say nothing at a glance (Forni, 2026-09-11).
+format_duration() {
+    local ms="$1" s
+    [[ "$ms" =~ ^[0-9]+$ ]] || { printf '%s' "$ms"; return; }
+    s=$(( ms / 1000 ))
+    if (( s < 60 )); then
+        printf '%ds' "$s"
+    elif (( s < 3600 )); then
+        printf '%dm %02ds' $(( s / 60 )) $(( s % 60 ))
+    else
+        printf '%dh %02dm' $(( s / 3600 )) $(( (s % 3600) / 60 ))
+    fi
+}
+
+# Usage: build_meta_line <claude-json> <exit-code>
+# The run's facts on one quiet footer line: duration, cost, turns, the models
+# that answered, and the exit code only when it is not zero.
+build_meta_line() {
+    local result_json="$1" rc="$2"
+    local duration_ms cost turns models parts=() line="" p
+    duration_ms="$(jq -r '.duration_ms // empty' <<<"$result_json" 2>/dev/null)"
+    cost="$(jq -r '.total_cost_usd // empty' <<<"$result_json" 2>/dev/null)"
+    turns="$(jq -r '.num_turns // empty' <<<"$result_json" 2>/dev/null)"
+    models="$(jq -r '(.modelUsage // {}) | keys | join(", ")' <<<"$result_json" 2>/dev/null)"
+    [[ -n "$duration_ms" ]] && parts+=("$(format_duration "$duration_ms")")
+    [[ -n "$cost" ]] && parts+=("$(awk -v c="$cost" 'BEGIN { printf "$%.2f", c }')")
+    [[ -n "$turns" ]] && parts+=("$turns turns")
+    [[ -n "$models" ]] && parts+=("$models")
+    [[ "$rc" -eq 0 ]] || parts+=("exit $rc")
+    for p in "${parts[@]}"; do
+        [[ -z "$line" ]] && line="$p" || line="$line · $p"
+    done
+    printf '<p style="margin:16px 0 0 0;font-size:12px;color:#888;">%s</p>' "$(printf '%s' "$line" | html_escape)"
+}
+
 # Usage: build_meta_block <claude-json> <exit-code>
 # The run metadata table: duration, cost, turns, exit code, session id.
 build_meta_block() {
@@ -135,7 +172,7 @@ build_meta_block() {
     cost="$(jq -r '.total_cost_usd // empty' <<<"$result_json" 2>/dev/null)"
     turns="$(jq -r '.num_turns // empty' <<<"$result_json" 2>/dev/null)"
     session="$(jq -r '.session_id // empty' <<<"$result_json" 2>/dev/null)"
-    [[ -n "$duration_ms" ]] && duration_s="$(awk -v ms="$duration_ms" 'BEGIN { printf "%.1fs", ms/1000 }')"
+    [[ -n "$duration_ms" ]] && duration_s="$(format_duration "$duration_ms")"
     [[ -n "$cost" ]] && cost_fmt="$(awk -v c="$cost" 'BEGIN { printf "$%.4f", c }')"
     [[ -n "$duration_s" ]] && rows+="<tr><td style=\"padding:2px 12px 2px 0;color:#888;\">duration</td><td style=\"padding:2px 0;\">$duration_s</td></tr>"
     [[ -n "$cost_fmt" ]] && rows+="<tr><td style=\"padding:2px 12px 2px 0;color:#888;\">cost</td><td style=\"padding:2px 0;\">$cost_fmt</td></tr>"
