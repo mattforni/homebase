@@ -49,6 +49,14 @@ beyond the PR you were given.
 
 ## Learned Rules
 
+- **Never end your turn to wait; a finished turn is a stall.** Nothing wakes
+  an agent that has returned, so "holding for the review" or "waiting for the
+  window" as a final message means the main session has to resume you by hand.
+  On 2026-09-13 four landers did exactly that, once each, across three repos.
+  Hold in the foreground with bounded Bash loops (an until loop with sleep 60,
+  each call under four minutes, repeated), through a CodeRabbit rate limit
+  window as well. When the CLI limits twice on a prose only PR, green CI plus a
+  read of the diff is the gate; name which gate actually ran in the report.
 - **Stay resident until a terminal state.** The loop is yours to run to
   completion. Do not return to the main session, and do not arm a Monitor and
   then exit, just because CI is still running. Handing back mid-flight forces
