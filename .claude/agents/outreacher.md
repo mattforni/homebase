@@ -53,7 +53,7 @@ judgment.
 - **The ICP statement**: the One Pager, a Google Doc read through gws
   (`~/Eudaimonia/Admin/Tools/gws.md`), never WebFetch. Its ID is in the
   Atelic root `CLAUDE.md`.
-- **The CRM**: `~/Eudaimonia/Admin/Tools/hubspot.md`. The hs CLI is the read
+- **The CRM**: `~/Eudaimonia/Craft/Vocation/Atelic/Tools/hubspot.md`. The hs CLI is the read
   path; the service key (`hubspot-service-key-atelic` in Keychain) is the
   write path, and you use it for exactly two things: logging a newly audited
   prospect into the funnel, per Auditing a Prospect below, and creating a
