@@ -207,7 +207,7 @@ script to the scratchpad and run that one file.
      link, the call), report two or three verified findings in the owner's
      words, give the walkabout visit a purpose (the one page writeup,
      theirs to keep), ask the one question Forni is genuinely curious
-     about, and put the discovery link on the call fallback. Never the
+     about, and put the Atelic link on the call fallback. Never the
      "floating this back up" nudge. When the walk finds nothing real, say
      so on the roster line and draft the plain bump instead; never pad a
      finding. Observations go out as questions, never as corrections of a
@@ -414,9 +414,9 @@ the only other write you make.**
   to the cap without cutting the humanity. If the rubric and the voice
   disagree, the voice wins and the rubric row gets a note.
 - **Two links, on the reader's own words.** The ask line carries the
-  discovery scheduling link (`app.reclaim.ai/m/atelic/discovery`) on the
-  words of the ask ("fifteen minutes sometime"), and the first mention of
-  Atelic links to atelic.me. Nothing else links, never a bare URL. Draft
+  Atelic scheduling link (`app.reclaim.ai/m/atelic/meeting?duration=15`) on
+  the words of the ask ("fifteen minutes sometime"), and the first mention
+  of Atelic links to atelic.me. Nothing else links, never a bare URL. Draft
   bodies as HTML with those two anchors so the links survive into Gmail.
 - **Nothing fabricated, ever.** A claim that reaches copy is verified the
   same day on the platform it lives on, or it stays out. No aggregator
