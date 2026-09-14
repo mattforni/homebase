@@ -42,7 +42,8 @@ Conflict, not count. Two rules that cannot both be satisfied let Claude pick eit
 ## Shape
 
 - Pointer at the top layer, depth one hop down, never a third copy.
-- Rule first, incident after, dated. A rule that keeps getting dropped gets scoped or enforced, not restated louder.
+- In an always loaded file or memory, rule first, incident after, dated, so a future prune can judge whether it still earns its place. In a tool doc, a CLAUDE.md, or any other reference file, state the rule alone; the incident is not worth the words there.
+- A rule that keeps getting dropped gets scoped or enforced, not restated louder.
 - One emphasized line per file at most. Emphasize many and none stands out.
 - Block level HTML comments are stripped before injection, so maintainer notes cost nothing.
 - Nested CLAUDE.md files and path scoped rules drop out of context after a compaction until a matching file is read again; anything that must survive compaction belongs in a root CLAUDE.md, an unscoped rule, or auto memory.
