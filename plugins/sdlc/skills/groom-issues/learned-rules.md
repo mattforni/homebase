@@ -80,7 +80,7 @@ Reclaim no longer schedules Linear work. The groom's scheduling output is cycle 
 
 **Why:** A full Monday (2026-08-03) went to fighting the sync's undocumented behavior: a fixed scale aware estimate mapping with nothing between 1h and 4h, increases only estimate sync, block sizes frozen at import, and a priority gate on incremental sync. Forni chose manual control. The post mortem lives in `~/Eudaimonia/Admin/Tools/reclaim.md`.
 
-**How to apply:** Skip any Reclaim audit. During scope, check cycle membership against the real calendar; unscheduled work traces to an issue sitting in a cycle with no calendar block behind it. Estimates read as plain hours (ATE linear extended scale). If a Reclaim task for a Linear issue ever resurfaces, it is a zombie from before the retirement; flag it for deletion, and delete it only when the dispatch brief pre approves that action (the diff before apply gate still governs).
+**How to apply:** Skip any Reclaim audit. During scope, check cycle membership against the real calendar; unscheduled work traces to an issue sitting in a cycle with no calendar block behind it. Estimates read on the exponential scale: 1 point is 30 minutes, 2 is an hour, 4 is two hours, 8 is four hours, and nothing is larger. If a Reclaim task for a Linear issue ever resurfaces, it is a zombie from before the retirement; flag it for deletion, and delete it only when the dispatch brief pre approves that action (the diff before apply gate still governs).
 
 ### Triage Means Three Fields, and the Cycle Means the Week
 
@@ -90,7 +90,7 @@ A groom is not done when the buckets are applied. It is done when every issue ca
 
 **How to apply:** Two drifts account for most of the damage, so check both on every run.
 
-- **Cycle overload.** A cycle accumulates more estimate hours than the week's standing blocks can hold. On 2026-08-10 five issues carrying 14 hours sat against roughly 5 hours of capacity. Surface the arithmetic (estimate hours against available hours) rather than relitigating the cut; the capacity override is Forni's to make.
+- **Cycle overload.** A cycle accumulates more estimate hours than the week's standing blocks can hold. On 2026-08-10 five issues carrying 14 hours sat against roughly 5 hours of capacity. Surface the arithmetic (estimate hours, converted from points, against available hours) rather than relitigating the cut; the capacity override is Forni's to make.
 - **Untriaged newcomers.** Issues created mid cycle arrive with no label, no estimate, and no tagging. The end of pass re query (see the rule above) is where they surface; treat every one as a Decision.
 
 Before reporting a queue groomed, re pull it and read what is there. Do not describe the board from your own earlier actions.

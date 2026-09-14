@@ -1,6 +1,6 @@
 ---
 name: plan-training
-description: Training plan scheduling, weekly retrospectives, and training adjacent constraint validation. Use this skill whenever the user mentions training, lifts, runs, swims, the 4K Friday, yoga placement, recovery days, the recomp block, asking to schedule a training session, or asking to look back / retrospect on a past training week. Also trigger for "/assist:plan-training", "schedule my training", "what does training look like this week", "how did last week go", "training retro", "this week's lifts", or any request that touches the block plan in `Constitution/Fitness/`. Independently usable, and also called by `/assist:plan-week` during Monday planning.
+description: Training plan scheduling, weekly retrospectives, and training adjacent constraint validation. Use this skill whenever the user mentions training, lifts, runs, swims, yoga placement, recovery days, the recomp block, asking to schedule a training session, or asking to look back / retrospect on a past training week. Also trigger for "/assist:plan-training", "schedule my training", "what does training look like this week", "how did last week go", "training retro", "this week's lifts", or any request that touches the block plan in `Constitution/Fitness/`. Independently usable, and also called by `/assist:plan-week` during Monday planning.
 argument-hint: "[week | move | retro]"
 allowed-tools:
   - Bash
@@ -55,7 +55,6 @@ These constraints exist for real physiological and practical reasons. They are n
 The named label table and title formats live in `~/Eudaimonia/Admin/Tools/google-calendar.md`; calendar reads and writes go through the `gws` CLI (`~/Eudaimonia/Admin/Tools/gws.md`) with `eventLabelVersion: 1` on every write. Events are colored via named labels (`eventLabelId`), never the legacy `colorId`. Training specific use:
 
 - Training events use the 🍏 Constitution label: runs, lifts, yoga, body care
-- 4K Friday: `🏃 4K Friday` with paired `🚙 <Trailhead>` and `🚙 Home` drive flanks (🚙 Travel label), 30 minute increments aligned to 30 minute blocks
 - Every change of location needs flanking transition or travel events
 
 ## Mode: week (default)
@@ -64,7 +63,7 @@ The Monday morning training pass. Runs as part of `/assist:plan-week` plan mode 
 
 ### Phase 1: Retrospective on the Previous Week
 
-The emailed retro (the runner's `YYYY-Www Retro`, consumed by `assist:plan-week` Review Week) is the coverage read: lifts, social runs, the 4K, and yoga against the block doc, plus the takeout count. Add only what it cannot see, the Sunday weigh in and how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
+The emailed retro (the runner's `YYYY-Www Retro`, consumed by `assist:plan-week` Review Week) is the coverage read: lifts, social runs, and yoga against the block doc, plus the takeout count. Add only what it cannot see, the Sunday weigh in and how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
 
 ### Phase 2: Detect Existing Placeholders
 
@@ -72,15 +71,14 @@ Fetch the week's calendar events (Monday through Sunday). Do not overwrite or du
 
 | Cadence | Items | Action |
 |---------|-------|--------|
-| Recurring (assumed on calendar) | Mon/Wed/Fri lift 15:30, Tue Fun Run 08:00, Tue DRC 18:00, Thu SPRC 06:00, Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Weigh In 05:45, Sun Hatha 09:30, Sun Yin 16:15 | Skip if present; surface if missing (may be intentional) |
-| Alternating (check which week) | 4K Friday (every other week) + drive flanks | Create on 4K weeks |
+| Recurring (assumed on calendar) | Mon/Wed/Fri lift 15:30, Tue Diego 08:00, Tue DRC 18:00, Thu SPRC 06:00, Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Weigh In 05:45, Sun Hatha 09:30, Sun Yin 16:15 | Skip if present; surface if missing (may be intentional) |
 | Opportunistic / optional | A fourth lift, extra mobility, an added social run | Surface as options, never auto create |
 
 ### Phase 3: Week Shape
 
-Determine which Friday this is (4K or deep work) from the alternation, then lay out the week as one small table: day, session, purpose. Place yoga against the actual Movement schedule for the week (the skeleton is a default; studio schedules change). Verify the studio still holds the assumed slots when in doubt.
+Lay out the week as one small table: day, session, purpose. Place yoga against the actual Movement schedule for the week (the skeleton is a default; studio schedules change). Verify the studio still holds the assumed slots when in doubt.
 
-**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here), which Friday it is, and the weight trend in one line. Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
+**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here) and the weight trend in one line. Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
 
 ### Phase 4: Special Week Handling
 
@@ -110,12 +108,12 @@ Default: the most recently completed ISO week. Natural cadence is Monday morning
 
 ### Phase 2: Gather Data
 
-1. **Block doc**: the weekly shape and any week specific notes (which Friday, checkpoints).
+1. **Block doc**: the weekly shape and any week specific notes (checkpoints).
 2. **Strava**: pull the week's activities via `mcp__claude_ai_Strava__list_activities` with `range_start`/`range_end`. Filter by `sport_type`. Strava is the sole source of record for all movement; never ask the user to confirm sessions, never infer from calendar.
 
 ### Phase 3: Build the Coverage Table
 
-One row per planned session: Mon lift, Tue Fun Run, Tue DRC, Tue Align and Flow, Wed lift, Thu SPRC, Thu Alignment, Fri (4K or deep work) + Fri lift, Sun Hatha, Sun Yin. Mark `✅` (hit), `❌` (missed), `↪️` (shifted), `n/a` (not applicable). Sessions skipped while travelling are `n/a`, never misses, and Alignment Yoga is `n/a` on the last Thursday of the month, when Liz replaces it. A session that moved days but happened is a hit; the skeleton is a default.
+One row per planned session: Mon lift, Tue Diego, Tue DRC, Tue Align and Flow, Wed lift, Thu SPRC, Thu Alignment, Fri lift, Sun Hatha, Sun Yin. Mark `✅` (hit), `❌` (missed), `↪️` (shifted), `n/a` (not applicable). Sessions skipped while travelling are `n/a`, never misses, and Alignment Yoga is `n/a` on the last Thursday of the month, when Liz replaces it. A session that moved days but happened is a hit; the skeleton is a default.
 
 ### Phase 4: The Numbers
 
@@ -133,7 +131,7 @@ Run mileage carries no target and no ceiling; it is context, not a grade. Mileag
 Reshaped for the recomp block; run every retro:
 
 1. **Hard effort count.** More than one hard run effort in the week is a flag (heel guardrail). Any hard effort the week after a flare is a flag.
-2. **Clustering.** Two big days (over 8 mi or over 1,000 ft) within 48 hours is a flag; the pattern to catch is a Saturday adventure stacked on a 4K Friday.
+2. **Clustering.** Two big days (over 8 mi or over 1,000 ft) within 48 hours is a flag; the pattern to catch is a big Saturday day on a cold trail base, since no trail running is left on the calendar after 4K Friday retired (2026-09-14).
 3. **Heel signal.** Any reported heel, calf, or foot signal drops the next week's hard and trail efforts.
 4. **Recovery read.** Only when runs look hot: check easy day HR vs the Z2 ceiling via `get_activity_performance`.
 
