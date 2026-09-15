@@ -13,11 +13,14 @@
 #
 # The driver side, which does know about this Mac, is bin/runner/lib.sh.
 #
-# Three things lived in two copies before this file existed: the Resend send
-# (bin/lib/email-report.sh and runners/retro/entrypoint.sh), html_escape (the
-# same sed, twice), and the GNU versus BSD date shims, which existed once and
-# were spread by a line in runners/README.md telling the next author to copy
-# them. Duplication by documentation is still duplication.
+# An entrypoint is three things of its own (the pulls, the prompt, the
+# renderer) and calls the scaffold below for everything else: the work
+# directory and the log, the week, the `claude -p` call with its retries, the
+# draft cut out of the result, the footer line, the render through the shared
+# email design, and the send with the failure page. Three runners each carried
+# a copy of all of that before the scaffold existed (ATE-543, 2026-09-15), and
+# the copies had already drifted: two artifact names, two failure pages, two
+# meanings of SKIP_PULLS. Duplication by documentation is still duplication.
 
 # ---------- environment ----------
 
@@ -26,16 +29,27 @@
 # run stops at the top rather than failing three pulls later with a 401.
 #
 # fail_reason is this function's out parameter: deliberately not `local`, and
-# read by the caller's own EXIT trap, which puts the reason in the failure
-# email. Static analysis cannot see a cross file read, so the assignment looks
-# unused. Same shape, and same reason, as email_error in the retired
-# bin/lib/email-report.sh.
+# read by the EXIT trap, which puts the reason in the failure email. Static
+# analysis cannot see a cross file read, so the assignment looks unused.
 # shellcheck disable=SC2034
 require() {
     local missing=() v
     for v in "$@"; do [[ -n "${!v:-}" ]] || missing+=("$v"); done
     if (( ${#missing[@]} > 0 )); then
         fail_reason="missing environment: ${missing[*]}"
+        return 1
+    fi
+}
+
+# Usage: require_tools NAME [NAME...]
+# The same shape for commands on PATH. A missing tool is a failed run and not a
+# degraded one; the 2026-08-31 outreach outage was this check firing correctly
+# on a PATH that lacked $HOME/bin.
+require_tools() {
+    local missing=() t
+    for t in "$@"; do command -v "$t" &>/dev/null || missing+=("$t"); done
+    if (( ${#missing[@]} > 0 )); then
+        fail_reason="not on PATH: ${missing[*]} (PATH=$PATH)"
         return 1
     fi
 }
@@ -72,6 +86,35 @@ week_monday() {
     jan4_dow="$(day_of_week "${iso_year}-01-04")"
     w1="$(shift_days "${iso_year}-01-04" "-$((jan4_dow - 1))")"
     shift_days "$w1" "$(( (10#$iso_week - 1) * 7 ))"
+}
+
+# Usage: week_bounds YYYY-Www
+# Validates the week (the shape, and that the year has that many ISO weeks: W00
+# and W99 parse, and week_monday would hand back a confident date in the wrong
+# year rather than failing) and sets MONDAY, SUNDAY and NEXT_MONDAY. A year has
+# 53 ISO weeks exactly when January 1st or December 31st falls on a Thursday.
+week_bounds() {
+    local week="$1" year number last=52
+    if [[ ! "$week" =~ ^[0-9]{4}-W[0-9]{2}$ ]]; then
+        echo "FATAL: WEEK must look like YYYY-Www, got \"$week\"" >&2
+        return 1
+    fi
+    year="${week%-W*}"
+    number="10#${week#*-W}"
+    if [[ "$(day_of_week "$year-01-01")" == "4" || "$(day_of_week "$year-12-31")" == "4" ]]; then
+        last=53
+    fi
+    if (( number < 1 || number > last )); then
+        echo "FATAL: $year has $last ISO weeks, so $week is not one of them" >&2
+        return 1
+    fi
+    MONDAY="$(week_monday "$week")"
+    SUNDAY="$(shift_days "$MONDAY" 6)"
+    NEXT_MONDAY="$(shift_days "$MONDAY" 7)"
+    if [[ -z "$MONDAY" || -z "$SUNDAY" || -z "$NEXT_MONDAY" ]]; then
+        echo "FATAL: could not resolve the week bounds for $week" >&2
+        return 1
+    fi
 }
 
 # ---------- html ----------
@@ -134,11 +177,7 @@ send_email() {
     return 1
 }
 
-# ---------- the status report body ----------
-# A runner that renders its own document (the retro) builds its body with a
-# renderer and never calls these. A runner whose email is a status report on an
-# agent run (the outreach roster) gets its whole body from the three below, so
-# no runner has to grow its own HTML.
+# ---------- the run's facts ----------
 
 # Usage: format_duration <milliseconds>
 # 42s, 12m 05s, or 1h 07m: a run's wall clock as a person reads it. Thousands
@@ -156,126 +195,292 @@ format_duration() {
     fi
 }
 
-# Usage: build_meta_line <claude-json> <exit-code>
-# The run's facts on one quiet footer line: duration, cost, turns, the models
-# that answered, and the exit code only when it is not zero.
-build_meta_line() {
-    local result_json="$1" rc="$2"
-    local duration_ms cost turns models parts=() line="" p
-    duration_ms="$(jq -r '.duration_ms // empty' <<<"$result_json" 2>/dev/null)"
-    cost="$(jq -r '.total_cost_usd // empty' <<<"$result_json" 2>/dev/null)"
-    turns="$(jq -r '.num_turns // empty' <<<"$result_json" 2>/dev/null)"
-    models="$(jq -r '(.modelUsage // {}) | keys | join(", ")' <<<"$result_json" 2>/dev/null)"
-    [[ -n "$duration_ms" ]] && parts+=("$(format_duration "$duration_ms")")
-    [[ -n "$cost" ]] && parts+=("$(awk -v c="$cost" 'BEGIN { printf "$%.2f", c }')")
-    [[ -n "$turns" ]] && parts+=("$turns turns")
-    [[ -n "$models" ]] && parts+=("$models")
-    [[ "$rc" -eq 0 ]] || parts+=("exit $rc")
-    for p in "${parts[@]}"; do
-        [[ -z "$line" ]] && line="$p" || line="$line · $p"
-    done
-    printf '<p style="margin:16px 0 0 0;font-size:12px;color:#888;">%s</p>' "$(printf '%s' "$line" | html_escape)"
+# Usage: meta_line <claude-result-json-file>
+# The footer's one quiet line: duration, cost, turns, and the models that
+# answered with their date suffixes dropped, joined by middots. Plain text; the
+# renderer's footer() escapes it. bin/runner/render-local uses it too, so a
+# local re-render carries the same line the run did.
+meta_line() {
+    local file="$1"
+    [[ -s "$file" ]] || return 0
+    jq -r '[
+        (if .duration_ms then (.duration_ms / 1000 | floor) as $s
+            | (if $s < 60 then "\($s)s"
+               elif $s < 3600 then "\($s / 60 | floor)m \($s % 60 | tostring | if length < 2 then "0" + . else . end)s"
+               else "\($s / 3600 | floor)h \(($s % 3600) / 60 | floor | tostring | if length < 2 then "0" + . else . end)m" end)
+         else empty end),
+        (if .total_cost_usd then "$" + (.total_cost_usd * 100 | round / 100 | tostring) else empty end),
+        (if .num_turns then "\(.num_turns) turns" else empty end),
+        ((.modelUsage // {}) | keys | map(sub("-20[0-9]{6}$"; "")) | join(", "))
+      ] | map(select(. != "")) | join(" · ")' "$file" 2>/dev/null
 }
 
-# Usage: build_meta_block <claude-json> <exit-code>
-# The run metadata table: duration, cost, turns, exit code, session id.
-build_meta_block() {
-    local result_json="$1" rc="$2"
-    local duration_ms cost turns session duration_s="" cost_fmt="" rows=""
-    duration_ms="$(jq -r '.duration_ms // empty' <<<"$result_json" 2>/dev/null)"
-    cost="$(jq -r '.total_cost_usd // empty' <<<"$result_json" 2>/dev/null)"
-    turns="$(jq -r '.num_turns // empty' <<<"$result_json" 2>/dev/null)"
-    session="$(jq -r '.session_id // empty' <<<"$result_json" 2>/dev/null)"
-    [[ -n "$duration_ms" ]] && duration_s="$(format_duration "$duration_ms")"
-    [[ -n "$cost" ]] && cost_fmt="$(awk -v c="$cost" 'BEGIN { printf "$%.4f", c }')"
-    [[ -n "$duration_s" ]] && rows+="<tr><td style=\"padding:2px 12px 2px 0;color:#888;\">duration</td><td style=\"padding:2px 0;\">$duration_s</td></tr>"
-    [[ -n "$cost_fmt" ]] && rows+="<tr><td style=\"padding:2px 12px 2px 0;color:#888;\">cost</td><td style=\"padding:2px 0;\">$cost_fmt</td></tr>"
-    [[ -n "$turns" ]] && rows+="<tr><td style=\"padding:2px 12px 2px 0;color:#888;\">turns</td><td style=\"padding:2px 0;\">$turns</td></tr>"
-    rows+="<tr><td style=\"padding:2px 12px 2px 0;color:#888;\">exit code</td><td style=\"padding:2px 0;\">$rc</td></tr>"
-    [[ -n "$session" ]] && rows+="<tr><td style=\"padding:2px 12px 2px 0;color:#888;\">session</td><td style=\"padding:2px 0;font-family:ui-monospace,Menlo,monospace;font-size:11px;\">$session</td></tr>"
-    printf '<table style="border-collapse:collapse;font-size:12px;color:#444;margin-top:16px;">%s</table>' "$rows"
+# ---------- the scaffold ----------
+# An entrypoint sources this file, then calls runner_init and gets a work
+# directory, a log, a validated week, every file name, and an EXIT trap that
+# mails the page or the failure. What it writes itself is its pulls, its
+# prompt, and the arguments to claude; the scaffold handles the rest.
+
+# Usage: runner_init <name> <Title> [current|previous]
+# The name is the runner's directory name (retro, sweep, outreach), named
+# explicitly because inside an image the entrypoint lives at /home/runner and
+# its directory says nothing. Title is how the runner names itself everywhere
+# a reader sees it: the subject ("2026-W38 Retro"), the masthead, the failure
+# page. The third argument says which week is the default when WEEK is not
+# set: the week in progress, or the one that closed most recently (the retro
+# fires Monday morning about the week just ended). Reads DRY_RUN, SKIP_PULLS, WORK and WEEK
+# from the environment, and needs SELF_DIR (the entrypoint's own directory)
+# and RUNNER_LIB (this file's path) set by the entrypoint's bootstrap. Sets:
+#   RUNNER_NAME RUNNER_TITLE    the name and the title
+#   WORK LOG                    the work directory and its log; stdout and
+#                               stderr are tee'd into the log from here on
+#   WEEK MONDAY SUNDAY NEXT_MONDAY
+#   SUBJECT                     "$WEEK $Title"
+#   RESULT_JSON RESULT_RC       the whole claude -p result and its exit status
+#   DRAFT_JSON                  $WORK/<name>.json, the object the model returned
+#   REPORT_HTML                 $WORK/email.html, what run-local opens and mail sends
+#   ATTACHMENT                  empty; a runner sets it to a file to send along
+#   PROMPT_FILE RENDER JQ_LIB   prompt.md and render.jq beside the entrypoint,
+#                               and the directory holding email.jq
+#   status fail_reason result rc
+# and traps runner_finish on EXIT.
+runner_init() {
+    RUNNER_NAME="$1"
+    RUNNER_TITLE="$2"
+    local week_default="${3:-current}"
+
+    DRY_RUN="${DRY_RUN:-0}"
+    SKIP_PULLS="${SKIP_PULLS:-0}"
+
+    # Checked rather than assumed. If either fails, the exec below sends the
+    # whole run's output nowhere while the agent runs anyway and still costs
+    # money, so this is the one place worth failing loudly before spending.
+    WORK="${WORK:-$HOME/work}"
+    if ! mkdir -p "$WORK"; then
+        echo "FATAL: cannot create the work directory $WORK" >&2
+        exit 1
+    fi
+    LOG="$WORK/run.log"
+    if ! touch "$LOG"; then
+        echo "FATAL: cannot write the log at $LOG" >&2
+        exit 1
+    fi
+    exec > >(tee -a "$LOG") 2>&1
+
+    if [[ -z "${WEEK:-}" ]]; then
+        if [[ "$week_default" == "previous" ]]; then WEEK="$(previous_week)"; else WEEK="$(current_week)"; fi
+    fi
+    week_bounds "$WEEK" || exit 1
+
+    SUBJECT="$WEEK $RUNNER_TITLE"
+    RESULT_JSON="$WORK/result.json"
+    # The exit status rides in its own file because the failure worth
+    # replaying most often is a timeout, and a timeout leaves the result
+    # empty. An empty file can carry no status, and its existence cannot be
+    # trusted as the marker that a run happened either, so this one is.
+    RESULT_RC="$WORK/result.rc"
+    DRAFT_JSON="$WORK/$RUNNER_NAME.json"
+    REPORT_HTML="$WORK/email.html"
+    ATTACHMENT=""
+    PROMPT_FILE="${PROMPT_FILE:-$SELF_DIR/prompt.md}"
+    RENDER="${RENDER:-$SELF_DIR/render.jq}"
+    # The shared email design (email.jq) sits beside this library, wherever
+    # it was found: runners/lib in the repo, /home/runner/lib in an image.
+    JQ_LIB="$(dirname "$RUNNER_LIB")"
+
+    status="failure"
+    fail_reason=""
+    result=""
+    rc=0
+    trap runner_finish EXIT
+
+    # The banner shape is load bearing: run-local parses the week out of it so
+    # a draft can be rendered again and mailed later without being told which
+    # week it belongs to a second time.
+    echo "=== $(date -Iseconds) $RUNNER_NAME start: $WEEK ($MONDAY to $SUNDAY) ==="
 }
 
-# Usage: build_summary_block <claude-json> <exit-code> <expected-substring>
-# The scannable block above the fold: the first line of a successful result, or
-# the likeliest reason plus the tail of the output and any permission denials
-# on a failure. A reader should not have to expand anything to know what
-# happened.
-build_summary_block() {
-    local result_json="$1" rc="$2" expected_pattern="$3"
-    local subtype is_error err_field result_text denials_count out="" is_success=false
-    subtype="$(jq -r '.subtype // empty' <<<"$result_json" 2>/dev/null)"
-    is_error="$(jq -r '.is_error // false' <<<"$result_json" 2>/dev/null)"
-    err_field="$(jq -r '.error // empty' <<<"$result_json" 2>/dev/null)"
-    result_text="$(jq -r '.result // empty' <<<"$result_json" 2>/dev/null)"
-    denials_count="$(jq -r '.permission_denials // [] | length' <<<"$result_json" 2>/dev/null)"
-    [[ -z "$denials_count" ]] && denials_count=0
+# The failure email, in the same design as the page: the reason on top, the
+# log's tail beneath. Falls back to a bare <pre> if the renderer itself is
+# what broke.
+runner_failure_html() {
+    jq -rn -L "$JQ_LIB" --arg title "$RUNNER_TITLE" --arg eyebrow "$RUNNER_TITLE · $WEEK" \
+        --arg reason "${fail_reason:-unknown failure}" --rawfile tail <(tail -n 40 "$LOG") \
+        'include "email"; failure_page($title; $eyebrow; $reason; $tail)' \
+    || printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
+}
 
-    if [[ "$rc" -eq 0 ]] && [[ "$subtype" == "success" ]] && [[ "$is_error" == "false" ]]; then
-        if [[ -z "$expected_pattern" ]] || printf '%s' "$result_text" | grep -qF -- "$expected_pattern"; then
-            is_success=true
-        fi
-    fi
-
-    if [[ "$is_success" == "true" ]]; then
-        local first_line
-        first_line="$(printf '%s' "$result_text" | awk 'NF {print; exit}')"
-        [[ -z "$first_line" ]] && first_line="Completed."
-        out+="<div style=\"background:#e8f5e9;border-left:4px solid #43a047;padding:10px 14px;border-radius:4px;margin:0 0 12px 0;\"><strong style=\"color:#1b5e20;\">$(printf '%s' "$first_line" | html_escape)</strong></div>"
-        printf '%s' "$out"
-        return 0
-    fi
-
-    local reason=""
-    if [[ "$rc" -ne 0 ]]; then
-        reason="Process exit $rc"
-    elif [[ -n "$err_field" ]]; then
-        reason="$(printf '%s' "$err_field" | tr '\n' ' ' | head -c 200)"
-    elif [[ "$is_error" == "true" ]]; then
-        reason="is_error=true in result JSON"
-    elif [[ -n "$subtype" && "$subtype" != "success" ]]; then
-        reason="subtype=$subtype"
-    elif [[ -n "$expected_pattern" ]]; then
-        reason="missing expected pattern: $expected_pattern"
+# The EXIT trap. Mails the rendered page (with ATTACHMENT beside it when the
+# runner set one), or the failure page; a dry run prints where the page is
+# instead. A failed delivery is a failed run: nobody is watching, so the exit
+# status and the log are the only places left that could show it. The sleeps
+# let the tee behind stdout flush before a container exits, or the last lines
+# never reach the Cloud Run log.
+runner_finish() {
+    local body attachment=""
+    if [[ "$status" != "success" ]]; then
+        echo "FAILED: ${fail_reason:-unknown failure}"
+        body="$(runner_failure_html)"
+        printf '%s' "$body" > "$REPORT_HTML"
     else
-        reason="unknown failure"
-    fi
-    out+="<div style=\"background:#ffebee;border-left:4px solid #c62828;padding:10px 14px;border-radius:4px;margin:0 0 12px 0;\"><strong style=\"color:#b71c1c;\">$(printf '%s' "$reason" | html_escape)</strong></div>"
-
-    if [[ -n "$result_text" ]]; then
-        local tail_lines
-        tail_lines="$(printf '%s' "$result_text" | awk 'NF' | tail -n 8)"
-        if [[ -n "$tail_lines" ]]; then
-            out+="<p style=\"margin:0 0 4px 0;font-size:12px;color:#666;\"><strong>Last lines of output</strong></p>"
-            out+="<pre style=\"background:#fff5f5;border-left:3px solid #ef5350;padding:10px 12px;border-radius:0 4px 4px 0;font-size:12px;line-height:1.4;overflow-x:auto;white-space:pre-wrap;margin:0 0 12px 0;\">$(printf '%s' "$tail_lines" | html_escape)</pre>"
-        fi
+        body="$(cat "$REPORT_HTML")"
+        [[ -n "$ATTACHMENT" && -s "$ATTACHMENT" ]] && attachment="$ATTACHMENT"
     fi
 
-    if [[ "$denials_count" -gt 0 ]]; then
-        local denials_list
-        denials_list="$(jq -r '.permission_denials[] | "\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring)"' <<<"$result_json" 2>/dev/null)"
-        out+="<p style=\"margin:0 0 4px 0;font-size:12px;color:#666;\"><strong>Permission denials ($denials_count)</strong></p>"
-        out+="<pre style=\"background:#fff8e1;border-left:3px solid #ffa000;padding:10px 12px;border-radius:0 4px 4px 0;font-size:12px;line-height:1.4;overflow-x:auto;white-space:pre-wrap;margin:0 0 12px 0;\">$(printf '%s' "$denials_list" | html_escape)</pre>"
+    if [[ "$DRY_RUN" == "1" ]]; then
+        echo "dry run: subject \"$SUBJECT\""
+        echo "dry run: rendered $REPORT_HTML${attachment:+, with $attachment attached}"
+        sleep 1
+        [[ "$status" == "success" ]] || exit 1
+        return
     fi
 
-    printf '%s' "$out"
+    send_email "$SUBJECT" "$body" "$attachment" || {
+        echo "email: the report could not be delivered"
+        sleep 1
+        exit 1
+    }
+    sleep 1
+    [[ "$status" == "success" ]] || exit 1
 }
 
-# Usage: build_report_html <heading> <status> <summary-html> <full-text> <meta-html>
-# Assembles the status email and writes it to stdout, sending nothing. Kept
-# separate from send_email so a dry run renders exactly what a real run would
-# mail, which is the cheap half of the local loop.
-build_report_html() {
-    local heading="$1" status="$2" summary_html="$3" full_text="$4" meta_block_html="$5"
-    local emoji full_html=""
-    if [[ "$status" == "success" ]]; then emoji="✅"; else emoji="❌"; fi
-    if [[ -n "$full_text" ]]; then
-        full_html="<details style=\"margin:0 0 12px 0;\"><summary style=\"cursor:pointer;color:#666;font-size:12px;padding:4px 0;\">Full output</summary><pre style=\"background:#f5f5f7;padding:12px;border-radius:6px;font-size:12px;line-height:1.4;overflow-x:auto;white-space:pre-wrap;margin:8px 0 0 0;\">$(printf '%s' "$full_text" | html_escape)</pre></details>"
+# Usage: fill_prompt <file>
+# The prompt with its placeholders filled: {{WEEK}}, {{MONDAY}}, {{SUNDAY}},
+# {{NEXT_MONDAY}}, {{TODAY}}, {{WORK}}, and any of EUDY, PULLS and ATELIC the
+# runner has set. A runner names the checkout and the pulled files this way
+# rather than carrying paths in the brief, so the brief reads the same in the
+# image and on this machine.
+fill_prompt() {
+    local file="$1" v val args=()
+    TODAY="$(date +%F)"
+    for v in WEEK MONDAY SUNDAY NEXT_MONDAY TODAY WORK EUDY PULLS ATELIC; do
+        val="${!v:-}"
+        [[ -n "$val" ]] || continue
+        val="$(printf '%s' "$val" | sed -e 's/[|&\\]/\\&/g')"
+        args+=(-e "s|{{$v}}|$val|g")
+    done
+    sed "${args[@]}" "$file"
+}
+
+# Usage: runner_claude <prompt> [claude -p arguments...]
+# One headless call with the retry the long sessions need: `claude -p` can die
+# mid stream and exit non zero, and a timeout or a transient API error is
+# worth one more attempt, while anything else is a real failure reported as
+# one rather than a second agent run burned on it. The result and its exit
+# status are saved on every attempt, successes and failures alike, so a replay
+# can put the very same JSON back through the reporting path. Sets result and
+# rc; sets fail_reason and returns non zero when the call did not complete.
+# ATTEMPT_TIMEOUT, MAX_ATTEMPTS and RETRY_BACKOFF_SECONDS come from the
+# environment when a runner needs other values.
+runner_claude() {
+    local prompt="$1"; shift
+    local stderr_file="$WORK/claude-stderr.txt" attempt=1 transient
+    local attempt_timeout="${ATTEMPT_TIMEOUT:-45m}" max_attempts="${MAX_ATTEMPTS:-2}" backoff="${RETRY_BACKOFF_SECONDS:-15}"
+    local transient_re='socket connection was closed|API Error|overloaded|Connection error|terminated'
+    while :; do
+        echo "=== $(date -Iseconds) claude attempt $attempt/$max_attempts (timeout $attempt_timeout) ==="
+        result="$(timeout "$attempt_timeout" claude -p "$prompt" "$@" --output-format json 2>"$stderr_file")"
+        rc=$?
+        [[ $rc -eq 0 ]] && break
+
+        transient=false
+        if [[ $rc -eq 124 ]]; then
+            transient=true
+            echo "attempt $attempt timed out after $attempt_timeout"
+        elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$transient_re"; then
+            transient=true
+            echo "attempt $attempt hit a transient API error (exit $rc)"
+        fi
+
+        if [[ "$transient" == true && $attempt -lt $max_attempts ]]; then
+            echo "retrying in ${backoff}s"
+            attempt=$((attempt + 1))
+            sleep "$backoff"
+            continue
+        fi
+        break
+    done
+
+    printf '%s' "$result" > "$RESULT_JSON"
+    printf '%s' "$rc" > "$RESULT_RC"
+    runner_check_result
+}
+
+# Usage: runner_replay
+# The saved result and its saved exit status, back through the same checks, so
+# a runner whose only "pull" is the agent itself (the outreach roster) can
+# render again without paying for the agent. Both halves come back, so a saved
+# failure replays as that failure rather than as a success that fails a
+# predicate a moment later.
+runner_replay() {
+    if [[ ! -f "$RESULT_RC" ]]; then
+        fail_reason="SKIP_PULLS is set but no saved run is in $WORK; run once without it"
+        return 1
     fi
-    printf '%s' "<!DOCTYPE html><html><body style=\"font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;font-size:14px;color:#1d1d1f;line-height:1.5;\">
-<h2 style=\"margin:0 0 8px 0;font-size:18px;\">$emoji $(printf '%s' "$heading" | html_escape) — $(date '+%Y-%m-%d %H:%M')</h2>
-$summary_html
-$full_html
-$meta_block_html
-</body></html>"
+    result="$(cat "$RESULT_JSON" 2>/dev/null)" || result=""
+    rc="$(cat "$RESULT_RC")"
+    [[ "$rc" =~ ^[0-9]+$ ]] || rc=1
+    echo "claude: replaying the run saved in $WORK (exit $rc)"
+    runner_check_result
+}
+
+# The three things a result has to be before it is trusted: exit zero, JSON,
+# and a completed turn. Exit zero alone is not enough: `claude -p` answers an
+# unknown agent with exit 0 and "Unknown skill" as text. Permission denials are
+# logged here so a failure page's log tail carries them.
+runner_check_result() {
+    if [[ $rc -ne 0 ]]; then
+        fail_reason="claude exited $rc: $(head -c 400 "$WORK/claude-stderr.txt" 2>/dev/null)"
+        return 1
+    fi
+    if ! jq -e . <<<"$result" >/dev/null 2>"$WORK/jq-stderr.txt"; then
+        fail_reason="the agent returned output that is not JSON: $(head -c 300 <<<"$result")"
+        return 1
+    fi
+    local denials
+    denials="$(jq -r '.permission_denials // [] | map("\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring)") | join("; ")' <<<"$result" 2>/dev/null)"
+    [[ -z "$denials" ]] || echo "claude: permission denials: $(head -c 400 <<<"$denials")"
+    if ! jq -e '.subtype == "success" and .is_error == false' <<<"$result" >/dev/null; then
+        fail_reason="claude did not complete: $(jq -r '.subtype // "unknown"' <<<"$result")"
+        return 1
+    fi
+    local usage
+    usage="$(jq -r '"\(.num_turns // "?") turns; " + ((.modelUsage // {}) | to_entries | map("\(.key) in \(.value.inputTokens // 0) out \(.value.outputTokens // 0) cache read \(.value.cacheReadInputTokens // 0) write \(.value.cacheCreationInputTokens // 0)") | join("; "))' <<<"$result")"
+    echo "claude: complete (cost $(jq -r '.total_cost_usd // "?"' <<<"$result") USD; $usage)"
+}
+
+# Usage: runner_draft <jq test>
+# The object the prompt asked for, cut out of the result (a code fence, or
+# prose the model wrote before it despite the brief, are tolerated) and
+# written to DRAFT_JSON, then held to the shape the renderer reads: the test
+# is a jq expression over the object that must be true, naming every key with
+# its type, so a missing key or a wrong type is a failed run here rather than
+# a broken email later.
+runner_draft() {
+    local test="$1" raw
+    raw="$(jq -r '.result // ""' <<<"$result")"
+    if [[ "$raw" == *"{"* && "$raw" == *"}"* ]]; then
+        raw="{${raw#*\{}"
+        raw="${raw%\}*}}"
+    fi
+    printf '%s\n' "$raw" > "$DRAFT_JSON"
+    if ! jq -e "type == \"object\" and ($test)" "$DRAFT_JSON" >/dev/null 2>&1; then
+        fail_reason="the agent did not return the $RUNNER_NAME shape: $(head -c 300 "$DRAFT_JSON")"
+        return 1
+    fi
+}
+
+# Usage: runner_render [extra jq arguments...]
+# DRAFT_JSON through render.jq with the shared design on the include path, the
+# week, and the footer line, into REPORT_HTML. Extra arguments (--arg pairs)
+# pass straight to jq for a renderer that needs more than the draft.
+runner_render() {
+    local meta
+    meta="$(meta_line "$RESULT_JSON")"
+    if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" "$@" \
+        -f "$RENDER" "$DRAFT_JSON" > "$REPORT_HTML" 2>"$WORK/render-stderr.txt" || [[ ! -s "$REPORT_HTML" ]]; then
+        fail_reason="render failed: $(head -c 300 "$WORK/render-stderr.txt")"
+        return 1
+    fi
+    echo "render: $(wc -c < "$REPORT_HTML" | tr -d ' ') bytes of html"
 }

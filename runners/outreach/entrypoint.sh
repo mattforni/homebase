@@ -36,7 +36,12 @@
 #   WEEK                      optional YYYY-Www override; default is this week
 #   DRY_RUN                   1 renders the report and skips the send
 #   SKIP_PULLS                1 replays the saved agent result instead of
-#                             running the agent again
+#                             running the agent again; this runner's only
+#                             pull is the agent itself
+# fail_reason, result, DRAFT_JSON and status cross into the scaffold in
+# lib/runner.sh (its EXIT trap and runner_render read them), which static
+# analysis cannot see across files.
+# shellcheck disable=SC2034,SC2154
 set -uo pipefail
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,115 +61,9 @@ if [[ -z "${RUNNER_LIB:-}" ]]; then
     exit 1
 fi
 
-DRY_RUN="${DRY_RUN:-0}"
-SKIP_PULLS="${SKIP_PULLS:-0}"
-
-WORK="${WORK:-$HOME/work}"
-# Checked rather than assumed. If either fails, the exec below sends the whole
-# run's output nowhere while the agent runs anyway and still costs money, so
-# this is the one place worth failing loudly before spending anything.
-if ! mkdir -p "$WORK"; then
-    echo "FATAL: cannot create the work directory $WORK" >&2
-    exit 1
-fi
-LOG="$WORK/run.log"
-if ! touch "$LOG"; then
-    echo "FATAL: cannot write the log at $LOG" >&2
-    exit 1
-fi
-exec > >(tee -a "$LOG") 2>&1
-
-WEEK="${WEEK:-$(current_week)}"
-if [[ ! "$WEEK" =~ ^[0-9]{4}-W[0-9]{2}$ ]]; then
-    echo "FATAL: WEEK must look like YYYY-Www, got \"$WEEK\"" >&2
-    exit 1
-fi
-# The shape alone is not enough: W00 and W99 parse, and week_monday would hand
-# back a confident date in the wrong year rather than failing. A year has 53
-# ISO weeks exactly when January 1st or December 31st falls on a Thursday.
-week_year="${WEEK%-W*}"
-week_number="10#${WEEK#*-W}"
-week_last=52
-if [[ "$(day_of_week "$week_year-01-01")" == "4" || "$(day_of_week "$week_year-12-31")" == "4" ]]; then
-    week_last=53
-fi
-if (( week_number < 1 || week_number > week_last )); then
-    echo "FATAL: $week_year has $week_last ISO weeks, so $WEEK is not one of them" >&2
-    exit 1
-fi
-MONDAY="$(week_monday "$WEEK")"
-SUNDAY="$(shift_days "$MONDAY" 6)"
-if [[ -z "$MONDAY" || -z "$SUNDAY" ]]; then
-    echo "FATAL: could not resolve the week bounds for $WEEK" >&2
-    exit 1
-fi
+runner_init outreach "Outreach" current
 ATELIC="${ATELIC:-$HOME/Eudaimonia/Craft/Vocation/Atelic}"
-
-# The banner shape is shared with the retro, and not only for the log's sake:
-# run-local parses the week out of it so a draft can be rendered again and
-# mailed later without being told which week it belongs to a second time.
-echo "=== $(date -Iseconds) outreach start: $WEEK ($MONDAY to $SUNDAY) ==="
-
-# The retro runner mails "2026-W36 Retro"; this is its sibling and reads the
-# same way. Both are weekly, so the week is the handle worth carrying and the
-# day the send went out is noise. The bracketed "[Routine] YYYY-MM-DD" shape
-# stays for daily status routines, where a Gmail filter archives on the tag.
-SUBJECT="$WEEK Outreach"
 SUCCESS_LINE="Outreach roster prepped for $WEEK"
-
-RESULT_JSON="$WORK/result.json"
-# The exit status rides in its own file because the failure worth replaying
-# most often is a timeout, and a timeout leaves the result empty. An empty file
-# can carry no status, and its existence cannot be trusted as the marker that a
-# run happened either, so this one is the marker.
-RESULT_RC="$WORK/result.rc"
-REPORT_HTML="$WORK/email.html"
-
-status="failure"
-fail_reason=""
-result=""
-rc=0
-
-finish() {
-    local script_rc=$?
-    local summary meta full body reported_rc
-    # The agent's own code when it has one, the script's otherwise.
-    if [[ "$rc" -ne 0 ]]; then reported_rc="$rc"; else reported_rc="$script_rc"; fi
-    summary="$(build_summary_block "$result" "$rc" "$SUCCESS_LINE")"
-    meta="$(build_meta_block "$result" "$reported_rc")"
-    full="$(jq -r '.result // ""' <<<"$result" 2>/dev/null)"
-    [[ -z "$full" ]] && full="$result"
-
-    if [[ "$status" != "success" && -n "$fail_reason" ]]; then
-        # A reason this script worked out itself beats one inferred from the
-        # agent's JSON, so it goes on top rather than replacing the block.
-        summary="<div style=\"background:#ffebee;border-left:4px solid #c62828;padding:10px 14px;border-radius:4px;margin:0 0 12px 0;\"><strong style=\"color:#b71c1c;\">$(printf '%s' "$fail_reason" | html_escape)</strong></div>$summary"
-        echo "FAILED: $fail_reason"
-    fi
-
-    body="$(build_report_html "Outreach" "$status" "$summary" "$full" "$meta")"
-    printf '%s' "$body" > "$REPORT_HTML"
-
-    if [[ "$DRY_RUN" == "1" ]]; then
-        # A dry run reports on stdout, where the person reading it already is.
-        echo "dry run: subject \"$SUBJECT\""
-        echo "dry run: rendered $REPORT_HTML"
-        sleep 1
-        [[ "$status" == "success" ]] || exit 1
-        return
-    fi
-
-    # A failed delivery is a failed run: nobody is watching, so the log is the
-    # only place left that could show it.
-    send_email "$SUBJECT" "$body" || {
-        echo "email: the report could not be delivered"
-        sleep 1
-        exit 1
-    }
-    sleep 1
-    [[ "$status" == "success" ]] || exit 1
-}
-trap finish EXIT
 
 # What a run needs depends on what it will do. A dry run never sends, and a
 # replayed run never calls the agent, so demanding everything every time would
@@ -174,32 +73,6 @@ required=()
 [[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)
 if (( ${#required[@]} )); then
     require "${required[@]}" || exit 1
-fi
-
-# ---------- preflight ----------
-# The agent's whole job is reading systems of record through these, so a
-# missing one is a failed run and not a degraded one. The 2026-08-31 outage was
-# exactly this check firing correctly on a PATH that lacked $HOME/bin: the
-# check was right and the PATH was wrong. bin/runner/lib.sh owns that PATH now.
-if [[ "$SKIP_PULLS" != "1" ]]; then
-    missing_tools=()
-    for tool in claude jq curl timeout hs gws agent-browser; do
-        command -v "$tool" &>/dev/null || missing_tools+=("$tool")
-    done
-    if (( ${#missing_tools[@]} )); then
-        fail_reason="not on PATH: ${missing_tools[*]} (PATH=$PATH)"
-        exit 1
-    fi
-
-    # The .account marker under this directory is what points hs at the Atelic
-    # portal and gws at the atelic mailbox. Running from anywhere else silently
-    # reads the wrong CRM, which is the expensive failure, so this is a hard
-    # gate rather than a warning.
-    if [[ ! -d "$ATELIC" ]]; then
-        fail_reason="the Atelic repo is not at $ATELIC"
-        exit 1
-    fi
-    cd "$ATELIC" || { fail_reason="cannot enter $ATELIC"; exit 1; }
 fi
 
 # ---------- the agent ----------
@@ -230,93 +103,42 @@ ALLOWED_TOOLS=(
     "WebSearch"
     "Write($WORK/*)"
     # The one write the agent makes outside its own work directory: this run's
-    # roster file in the Atelic repo. Pinned to $WEEK, which is validated above,
-    # so the rest of Outreach/ (the method, the CLAUDE.md, the Voice samples)
-    # and every prior week's roster stay out of reach; prose forbidding it is
-    # the weakest kind of rule. A pattern that fails to match shows up as a
-    # permission denial in the report's summary block, visible rather than
-    # silent.
+    # roster file in the Atelic repo. Pinned to $WEEK, which is validated by
+    # runner_init, so the rest of Outreach/ (the method, the CLAUDE.md, the
+    # Voice samples) and every prior week's roster stay out of reach; prose
+    # forbidding it is the weakest kind of rule. A pattern that fails to match
+    # shows up as a permission denial in the log, visible rather than silent.
     "Write($ATELIC/Outreach/$WEEK-roster.md)"
 )
 
-ATTEMPT_TIMEOUT="${ATTEMPT_TIMEOUT:-45m}"
-MAX_ATTEMPTS="${MAX_ATTEMPTS:-2}"
-RETRY_BACKOFF_SECONDS=15
-# claude -p can die mid stream on a long session and exit non zero. These are
-# worth one more attempt; anything else is a real failure and is reported as
-# one rather than burning a second agent run on it.
-TRANSIENT='socket connection was closed|API Error|overloaded|Connection error|terminated'
-
 if [[ "$SKIP_PULLS" == "1" ]]; then
-    if [[ ! -f "$RESULT_RC" ]]; then
-        fail_reason="SKIP_PULLS is set but no saved run is in $WORK; run once without it"
+    runner_replay || exit 1
+else
+    # The agent's whole job is reading systems of record through these, so a
+    # missing one is a failed run and not a degraded one.
+    require_tools claude jq curl timeout hs gws agent-browser || exit 1
+    # The .account marker under this directory is what points hs at the Atelic
+    # portal and gws at the atelic mailbox. Running from anywhere else silently
+    # reads the wrong CRM, which is the expensive failure, so this is a hard
+    # gate rather than a warning.
+    if [[ ! -d "$ATELIC" ]]; then
+        fail_reason="the Atelic repo is not at $ATELIC"
         exit 1
     fi
-    # Both halves come back, so a saved failure replays as that failure rather
-    # than as a success that fails the predicate a moment later. Rendering the
-    # wrong failure would be worse than rendering none: the whole reason to
-    # replay a run locally is that the failure email is the one nobody has ever
-    # read before trusting it.
-    result="$(cat "$RESULT_JSON" 2>/dev/null)" || result=""
-    rc="$(cat "$RESULT_RC")"
-    [[ "$rc" =~ ^[0-9]+$ ]] || rc=1
-    echo "agent: replaying the run saved in $WORK (exit $rc)"
-else
+    cd "$ATELIC" || { fail_reason="cannot enter $ATELIC"; exit 1; }
     prompt="Prep the weekly outreach roster for ISO week $WEEK. Write the roster to $ATELIC/Outreach/$WEEK-roster.md, the one path outside the scratch directory you may write; do not stage it and do not commit it. Scratch directory for scripts and working files: $WORK. Run the full method in your definition and end with the success line."
-    stderr_file="$WORK/claude-stderr.txt"
-    attempt=1
-    while :; do
-        echo "=== $(date -Iseconds) claude attempt $attempt/$MAX_ATTEMPTS (timeout $ATTEMPT_TIMEOUT) ==="
-        result="$(timeout "$ATTEMPT_TIMEOUT" claude -p "$prompt" \
-            --agent outreacher \
-            --allowedTools "${ALLOWED_TOOLS[@]}" \
-            --output-format json 2>"$stderr_file")"
-        rc=$?
-        [[ $rc -eq 0 ]] && break
-
-        transient=false
-        if [[ $rc -eq 124 ]]; then
-            transient=true
-            echo "attempt $attempt timed out after $ATTEMPT_TIMEOUT"
-        elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$TRANSIENT"; then
-            transient=true
-            echo "attempt $attempt hit a transient API error (exit $rc)"
-        fi
-
-        if [[ "$transient" == true && $attempt -lt $MAX_ATTEMPTS ]]; then
-            echo "retrying in ${RETRY_BACKOFF_SECONDS}s"
-            attempt=$((attempt + 1))
-            sleep "$RETRY_BACKOFF_SECONDS"
-            continue
-        fi
-        break
-    done
-
-    # Saved on every real run, successes and failures alike, so SKIP_PULLS can
-    # put the very same JSON and the very same exit status back through the
-    # reporting path.
-    printf '%s' "$result" > "$RESULT_JSON"
-    printf '%s' "$rc" > "$RESULT_RC"
+    runner_claude "$prompt" --agent outreacher --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 fi
 
-if [[ $rc -ne 0 ]]; then
-    fail_reason="claude exited $rc: $(head -c 400 "$WORK/claude-stderr.txt" 2>/dev/null)"
-    exit 1
-fi
-
-# Exit zero is not enough: `claude -p` answers an unknown agent with exit 0 and
-# "Unknown skill" as text, so the success line the agent is told to end with is
-# what actually confirms the roster was written.
-if ! jq -e . <<<"$result" >/dev/null 2>"$WORK/jq-stderr.txt"; then
-    fail_reason="the agent returned output that is not JSON: $(head -c 300 <<<"$result")"
-    exit 1
-fi
-if ! jq -e --arg line "$SUCCESS_LINE" \
-    '.subtype == "success" and .is_error == false and ((.result // "") | contains($line))' \
-    <<<"$result" >/dev/null; then
+# A completed turn is not enough: the success line the agent is told to end
+# with is what actually confirms the roster was written.
+if ! jq -e --arg line "$SUCCESS_LINE" '(.result // "") | contains($line)' <<<"$result" >/dev/null; then
     fail_reason="the agent did not confirm the roster: expected \"$SUCCESS_LINE\""
     exit 1
 fi
 
-echo "agent: roster prepped (cost $(jq -r '.total_cost_usd // "?"' <<<"$result") USD)"
+# The report renders from the agent's own result: there is no draft object
+# here, the roster is the artifact and it lives in the Atelic repo.
+DRAFT_JSON="$RESULT_JSON"
+runner_render || exit 1
 status="success"

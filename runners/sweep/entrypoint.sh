@@ -39,6 +39,10 @@
 #   SKIP_PULLS                1 skips the board pulls and runs the agent over
 #                             the files already in $WORK, so a prompt change
 #                             costs one model call and no fetches
+# fail_reason, result, status and ATTACHMENT cross into the scaffold in
+# lib/runner.sh (its EXIT trap and runner_render read them), which static
+# analysis cannot see across files.
+# shellcheck disable=SC2034,SC2154
 set -uo pipefail
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,42 +62,12 @@ if [[ -z "${RUNNER_LIB:-}" ]]; then
     exit 1
 fi
 
-DRY_RUN="${DRY_RUN:-0}"
-SKIP_PULLS="${SKIP_PULLS:-0}"
+runner_init sweep "Recruiter" current
 
-WORK="${WORK:-$HOME/work}"
-if ! mkdir -p "$WORK"; then
-    echo "FATAL: cannot create the work directory $WORK" >&2
-    exit 1
-fi
-LOG="$WORK/run.log"
-if ! touch "$LOG"; then
-    echo "FATAL: cannot write the log at $LOG" >&2
-    exit 1
-fi
-exec > >(tee -a "$LOG") 2>&1
-
-WEEK="${WEEK:-$(current_week)}"
-if [[ ! "$WEEK" =~ ^[0-9]{4}-W[0-9]{2}$ ]]; then
-    echo "FATAL: WEEK must look like YYYY-Www, got \"$WEEK\"" >&2
-    exit 1
-fi
-week_year="${WEEK%-W*}"
-week_number="10#${WEEK#*-W}"
-week_last=52
-if [[ "$(day_of_week "$week_year-01-01")" == "4" || "$(day_of_week "$week_year-12-31")" == "4" ]]; then
-    week_last=53
-fi
-if (( week_number < 1 || week_number > week_last )); then
-    echo "FATAL: $week_year has $week_last ISO weeks, so $WEEK is not one of them" >&2
-    exit 1
-fi
-MONDAY="$(week_monday "$WEEK")"
-SUNDAY="$(shift_days "$MONDAY" 6)"
-if [[ -z "$MONDAY" || -z "$SUNDAY" ]]; then
-    echo "FATAL: could not resolve the week bounds for $WEEK" >&2
-    exit 1
-fi
+required=(CLAUDE_CODE_OAUTH_TOKEN)
+[[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)
+require "${required[@]}" || exit 1
+require_tools claude jq curl node xargs timeout git || exit 1
 
 # The agent's definition names its sources as ~/Eudaimonia/... paths. Inside
 # the image HOME is /home/runner, so a checkout there makes every one of those
@@ -102,69 +76,7 @@ fi
 EUDY="${EUDY:-$HOME/Eudaimonia}"
 EUDY_REPO="${EUDY_REPO:-git@github.com:mattforni/Eudaimonia.git}"
 RUBRIC="Craft/Vocation/role-rubric.md"
-
-# The brief and the renderer sit beside this script in both places.
-PROMPT_FILE="${PROMPT_FILE:-$SELF_DIR/prompt.md}"
-RENDER="${RENDER:-$SELF_DIR/render.jq}"
-# The shared email design (email.jq) sits beside runner.sh, wherever that was found.
-JQ_LIB="$(dirname "$RUNNER_LIB")"
-
-echo "=== $(date -Iseconds) sweep start: $WEEK ($MONDAY to $SUNDAY) ==="
-
-SUBJECT="$WEEK Recruiter"
-
-RESULT_JSON="$WORK/result.json"
-RESULT_RC="$WORK/result.rc"
-SWEEP_JSON="$WORK/sweep.json"
-REPORT_HTML="$WORK/email.html"
 LEDGER_MD="$WORK/$WEEK-ledger.md"
-
-status="failure"
-fail_reason=""
-result=""
-rc=0
-
-# A failure is mailed in the same design as the board, from the shared
-# library's failure page: the reason on top, the log's tail beneath it.
-build_failure_html() {
-    jq -rn -L "$JQ_LIB" --arg title "Recruiter" --arg eyebrow "Recruiter · $WEEK" \
-        --arg reason "${fail_reason:-unknown failure}" --rawfile tail <(tail -n 40 "$LOG") \
-        'include "email"; failure_page($title; $eyebrow; $reason; $tail)' \
-    || printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
-}
-
-finish() {
-    local body attachment=""
-    if [[ "$status" != "success" ]]; then
-        echo "FAILED: ${fail_reason:-unknown failure}"
-        body="$(build_failure_html)"
-        printf '%s' "$body" > "$REPORT_HTML"
-    else
-        body="$(cat "$REPORT_HTML")"
-        [[ -s "$LEDGER_MD" ]] && attachment="$LEDGER_MD"
-    fi
-
-    if [[ "$DRY_RUN" == "1" ]]; then
-        echo "dry run: subject \"$SUBJECT\""
-        echo "dry run: rendered $REPORT_HTML${attachment:+, with $attachment attached}"
-        sleep 1
-        [[ "$status" == "success" ]] || exit 1
-        return
-    fi
-
-    send_email "$SUBJECT" "$body" "$attachment" || {
-        echo "email: the report could not be delivered"
-        sleep 1
-        exit 1
-    }
-    sleep 1
-    [[ "$status" == "success" ]] || exit 1
-}
-trap finish EXIT
-
-required=(CLAUDE_CODE_OAUTH_TOKEN)
-[[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)
-require "${required[@]}" || exit 1
 
 # ---------- Eudaimonia ----------
 # A checkout that is already there is used as it is and never touched: on this
@@ -352,7 +264,7 @@ pulls_ready() {
 # WebSearch for the search angles, curl for the ATS APIs the method names, and
 # a scratch directory. WebFetch is deliberately absent since the boards are
 # already pulled. No write reaches the checkout, so the ledger cannot be
-# appended from here; it travels back inside the report instead.
+# appended from here; it travels back beside the report instead.
 ALLOWED_TOOLS=(
     "Read"
     "Grep"
@@ -366,19 +278,6 @@ ALLOWED_TOOLS=(
     "Write($WORK/*)"
 )
 
-ATTEMPT_TIMEOUT="${ATTEMPT_TIMEOUT:-45m}"
-MAX_ATTEMPTS="${MAX_ATTEMPTS:-2}"
-RETRY_BACKOFF_SECONDS=15
-TRANSIENT='socket connection was closed|API Error|overloaded|Connection error|terminated'
-
-missing_tools=()
-for tool in claude jq curl node xargs timeout git; do
-    command -v "$tool" &>/dev/null || missing_tools+=("$tool")
-done
-if (( ${#missing_tools[@]} )); then
-    fail_reason="not on PATH: ${missing_tools[*]} (PATH=$PATH)"
-    exit 1
-fi
 eudy_ready || exit 1
 if [[ "$SKIP_PULLS" == "1" ]]; then
     pulls_ready || exit 1
@@ -386,75 +285,16 @@ else
     pull_sources || exit 1
 fi
 
-prompt="$(sed -e "s/{{WEEK}}/$WEEK/g" -e "s/{{MONDAY}}/$MONDAY/g" -e "s/{{SUNDAY}}/$SUNDAY/g" -e "s/{{TODAY}}/$(date +%F)/g" -e "s#{{WORK}}#$WORK#g" -e "s#{{PULLS}}#$PULLS#g" -e "s#{{EUDY}}#$EUDY#g" "$PROMPT_FILE")"
-stderr_file="$WORK/claude-stderr.txt"
-attempt=1
-while :; do
-    echo "=== $(date -Iseconds) claude attempt $attempt/$MAX_ATTEMPTS (timeout $ATTEMPT_TIMEOUT) ==="
-    result="$(timeout "$ATTEMPT_TIMEOUT" claude -p "$prompt" \
-        --agent recruiter \
-        --allowedTools "${ALLOWED_TOOLS[@]}" \
-        --output-format json 2>"$stderr_file")"
-    rc=$?
-    [[ $rc -eq 0 ]] && break
-
-    transient=false
-    if [[ $rc -eq 124 ]]; then
-        transient=true
-        echo "attempt $attempt timed out after $ATTEMPT_TIMEOUT"
-    elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$TRANSIENT"; then
-        transient=true
-        echo "attempt $attempt hit a transient API error (exit $rc)"
-    fi
-
-    if [[ "$transient" == true && $attempt -lt $MAX_ATTEMPTS ]]; then
-        echo "retrying in ${RETRY_BACKOFF_SECONDS}s"
-        attempt=$((attempt + 1))
-        sleep "$RETRY_BACKOFF_SECONDS"
-        continue
-    fi
-    break
-done
-
-printf '%s' "$result" > "$RESULT_JSON"
-printf '%s' "$rc" > "$RESULT_RC"
-
-if [[ $rc -ne 0 ]]; then
-    fail_reason="claude exited $rc: $(head -c 400 "$WORK/claude-stderr.txt" 2>/dev/null)"
-    exit 1
-fi
-
-if ! jq -e . <<<"$result" >/dev/null 2>"$WORK/jq-stderr.txt"; then
-    fail_reason="the agent returned output that is not JSON: $(head -c 300 <<<"$result")"
-    exit 1
-fi
-if ! jq -e '.subtype == "success" and .is_error == false' <<<"$result" >/dev/null; then
-    fail_reason="claude did not complete: $(jq -r '.subtype // "unknown"' <<<"$result")"
-    exit 1
-fi
-
-# The result is the JSON object the prompt asked for. Cut it out of whatever
-# surrounds it (a code fence, prose the model wrote despite the brief), then
-# require every key the renderer reads, with the right type.
-raw="$(jq -r '.result // ""' <<<"$result")"
-if [[ "$raw" == *"{"* && "$raw" == *"}"* ]]; then
-    raw="{${raw#*\{}"
-    raw="${raw%\}*}}"
-fi
-printf '%s\n' "$raw" > "$SWEEP_JSON"
-if ! jq -e 'type == "object"
-    and (.headline | type == "array") and (.lede | type == "string")
+runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent recruiter --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
+runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.shortlist | type == "array") and (.flagged | type == "array")
     and (.fractional | type == "array")
     and (.rejected | type == "array") and (.sources | type == "array")
-    and (.ledger | type == "array")' "$SWEEP_JSON" >/dev/null 2>&1; then
-    fail_reason="the agent did not return the sweep shape: $(head -c 300 "$SWEEP_JSON")"
-    exit 1
-fi
+    and (.ledger | type == "array")' || exit 1
 
 # The ledger rows, as the table FY27-sweep-ledger.md is made of, ready to
 # append. They ride beside the email as an attachment rather than in it.
-jq -r '
+if ! jq -r '
     def cell: tostring | gsub("\\|"; "\\|") | gsub("\n"; " ");
     ["# \($week) sweep ledger",
      "",
@@ -463,32 +303,12 @@ jq -r '
      "| Date | Company | Role | Key | Verdict |",
      "|------|---------|------|-----|---------|"]
     + (.ledger | map("| \(.date | cell) | \(.company | cell) | \(.role | cell) | \(.key | cell) | \(.verdict | cell) |"))
-    | join("\n")' --arg week "$WEEK" "$SWEEP_JSON" > "$LEDGER_MD" || {
+    | join("\n")' --arg week "$WEEK" "$DRAFT_JSON" > "$LEDGER_MD"; then
     fail_reason="could not write the ledger file"
     exit 1
-}
-echo "ledger: $(jq -r '.ledger | length' "$SWEEP_JSON") rows in $LEDGER_MD"
-
-usage="$(jq -r '"\(.num_turns // "?") turns; " + ((.modelUsage // {}) | to_entries | map("\(.key) in \(.value.inputTokens // 0) out \(.value.outputTokens // 0) cache read \(.value.cacheReadInputTokens // 0) write \(.value.cacheCreationInputTokens // 0)") | join("; "))' <<<"$result")"
-echo "agent: sweep complete (cost $(jq -r '.total_cost_usd // "?"' <<<"$result") USD; $usage)"
-
-# ---------- render ----------
-# The footer is one quiet line: duration, cost, turns, the models that
-# answered with their date suffixes dropped.
-meta="$(jq -r '[
-    (if .duration_ms then (.duration_ms / 1000 | floor) as $s
-        | (if $s < 60 then "\($s)s"
-           elif $s < 3600 then "\($s / 60 | floor)m \($s % 60 | tostring | if length < 2 then "0" + . else . end)s"
-           else "\($s / 3600 | floor)h \(($s % 3600) / 60 | floor | tostring | if length < 2 then "0" + . else . end)m" end)
-     else empty end),
-    (if .total_cost_usd then "$" + (.total_cost_usd * 100 | round / 100 | tostring) else empty end),
-    (if .num_turns then "\(.num_turns) turns" else empty end),
-    ((.modelUsage // {}) | keys | map(sub("-20[0-9]{6}$"; "")) | join(", "))
-  ] | map(select(. != "")) | join(" · ")' <<<"$result")"
-
-if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" -f "$RENDER" "$SWEEP_JSON" > "$REPORT_HTML" 2>"$WORK/render-stderr.txt" || [[ ! -s "$REPORT_HTML" ]]; then
-    fail_reason="render failed: $(head -c 300 "$WORK/render-stderr.txt")"
-    exit 1
 fi
-echo "render: $(wc -c < "$REPORT_HTML") bytes of html"
+echo "ledger: $(jq -r '.ledger | length' "$DRAFT_JSON") rows in $LEDGER_MD"
+ATTACHMENT="$LEDGER_MD"
+
+runner_render || exit 1
 status="success"

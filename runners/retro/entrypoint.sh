@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # The Retro Runner. Fires Monday 05:00 Denver from Cloud Scheduler.
 #
-# Shape: deterministic pulls first (curl, into /work/*.json), then one headless
+# Shape: deterministic pulls first (curl, into $WORK/*.json), then one headless
 # Claude Code call that reads those files and writes the retrospective, then
-# one Resend send. Read only against the world, with one exception: Strava
-# invalidates the old refresh token whenever it issues a new one, so the
-# rotated token is written back to the vault through the Secret Manager REST
-# API using the job's service account.
+# one Resend send as "YYYY-Www Retro". Read only against the world, with one
+# exception: Strava invalidates the old refresh token whenever it issues a new
+# one, so the rotated token is written back to the vault through the Secret
+# Manager REST API using the job's service account.
 #
 # Secrets arrive as environment variables injected by Cloud Run from the vault:
 #   CLAUDE_CODE_OAUTH_TOKEN   atelic-keys/claude-code-oauth
@@ -25,130 +25,37 @@
 #   DRY_RUN                   1 renders the email and skips the send; the local loop
 #   SKIP_PULLS                1 reuses the JSON already in $WORK instead of pulling again
 #   VAULT_ACCESS_TOKEN        optional; a local container run's write back credential for the rotated Strava token, minted on the host by bin/runner/run-local, since the image has no gcloud and no metadata server
+# fail_reason, result, status and ATTACHMENT cross into the scaffold in
+# lib/runner.sh (its EXIT trap and runner_render read them), which static
+# analysis cannot see across files.
+# shellcheck disable=SC2034,SC2154
 set -uo pipefail
 
-DRY_RUN="${DRY_RUN:-0}"
-SKIP_PULLS="${SKIP_PULLS:-0}"
-
-# The runner directory, whichever it is: /home/runner inside the image, the
-# repo's runners/retro on a local run. The prompt and the renderer sit
-# beside this script in both, so one expression finds them either way.
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Under the runner's home: the container runs non root and / is read only to it.
-WORK="${WORK:-$HOME/work}"
-mkdir -p "$WORK"
-LOG="$WORK/run.log"
-exec > >(tee -a "$LOG") 2>&1
-
-REPORT_SENDER="${REPORT_SENDER:-Claude <claude@atelic.me>}"
-STRAVA_SECRET_RESOURCE="${STRAVA_SECRET_RESOURCE:-projects/forni-keys/secrets/strava-refresh-token}"
-RETRO_JSON="$WORK/retro.json"
-RETRO_HTML="$WORK/retro.html"
-RENDER="${RENDER:-$SELF_DIR/render.jq}"
-PROMPT_FILE="${PROMPT_FILE:-$SELF_DIR/prompt.md}"
-status="failure"
-fail_reason=""
-
-require() {
-    local missing=()
-    for v in "$@"; do [[ -n "${!v:-}" ]] || missing+=("$v"); done
-    if (( ${#missing[@]} > 0 )); then
-        fail_reason="missing environment: ${missing[*]}"
-        return 1
+# The shared library sits beside this script inside an image and one level up
+# in the repo, so both are tried rather than either being assumed.
+for candidate in "$SELF_DIR/lib/runner.sh" "$SELF_DIR/../lib/runner.sh"; do
+    if [[ -r "$candidate" ]]; then
+        # shellcheck source=../lib/runner.sh
+        . "$candidate"
+        RUNNER_LIB="$candidate"
+        break
     fi
-}
-
-# ---------- dates ----------
-# The image carries GNU date; a local run on macOS gets BSD date, which cannot
-# read GNU's relative expressions at all. Four helpers, one implementation each
-# way, so the week math below is written once and reads the same in both
-# places. BSD's -f leaves unspecified fields at their current value, which is
-# why midnight has to name its seconds. Every one of them reads the local
-# clock, and the image pins TZ to America/Denver, so a day here is a Denver day
-# and yesterday is Denver's yesterday.
-if date -d 2026-01-04 +%F >/dev/null 2>&1; then
-    day_of_week()       { date -d "$1" +%u; }
-    shift_days()        { date -d "$1 $2 days" +%F; }
-    midnight_epoch()    { date -d "$1 00:00" +%s; }
-    previous_week() { date -d yesterday +%G-W%V; }
-else
-    day_of_week()       { date -j -f %Y-%m-%d "$1" +%u; }
-    shift_days()        { local off="$2"; [[ "$off" == -* ]] || off="+$off"; date -j -v"${off}d" -f %Y-%m-%d "$1" +%F; }
-    midnight_epoch()    { date -j -f '%Y-%m-%d %H:%M:%S' "$1 00:00:00" +%s; }
-    previous_week() { date -v-1d +%G-W%V; }
+done
+if [[ -z "${RUNNER_LIB:-}" ]]; then
+    echo "FATAL: cannot find runners/lib/runner.sh from $SELF_DIR" >&2
+    exit 1
 fi
 
-# ---------- the week ----------
 # The retro is for the previous week, the ISO week that closed most recently.
 # The job fires Monday 05:00 Denver, by which hour that week is over, so the
-# default is read off yesterday's date rather than today's. Yesterday shares its
-# ISO week with today on every day but Monday, so a test fire on any other day
-# still reads the week in progress.
-WEEK="${WEEK:-$(previous_week)}"
-iso_year="${WEEK%-W*}"
-iso_week="${WEEK#*-W}"
-# Monday of the ISO week, computed from January 4 (always in week 1).
-jan4_dow="$(day_of_week "${iso_year}-01-04")"
-week1_monday="$(shift_days "${iso_year}-01-04" "-$((jan4_dow - 1))")"
-MONDAY="$(shift_days "$week1_monday" "$(( (10#$iso_week - 1) * 7 ))")"
-NEXT_MONDAY="$(shift_days "$MONDAY" 7)"
-SUNDAY="$(shift_days "$MONDAY" 6)"
+# default is read off yesterday's date rather than today's.
+runner_init retro "Retro" previous
+
+STRAVA_SECRET_RESOURCE="${STRAVA_SECRET_RESOURCE:-projects/forni-keys/secrets/strava-refresh-token}"
 AFTER_EPOCH="$(midnight_epoch "$MONDAY")"
 BEFORE_EPOCH="$(midnight_epoch "$NEXT_MONDAY")"
-echo "=== $(date -Iseconds) retro start: $WEEK ($MONDAY to $SUNDAY) ==="
-
-# ---------- Resend ----------
-send_email() {
-    # $1 subject, $2 html body
-    local payload
-    payload="$(jq -n --arg from "$REPORT_SENDER" --arg to "$REPORT_RECIPIENT" \
-        --arg subject "$1" --arg html "$2" \
-        '{from: $from, to: [$to], subject: $subject, html: $html}')"
-    local code
-    code="$(curl -sS --max-time 30 -o "$WORK/resend.json" -w '%{http_code}' \
-        -X POST https://api.resend.com/emails \
-        -H "Authorization: Bearer $RESEND_API_KEY" \
-        -H "Content-Type: application/json" \
-        -d "$payload")"
-    if [[ "$code" =~ ^2 ]]; then
-        echo "email: sent ($1)"
-        return 0
-    fi
-    echo "email: failed with HTTP $code: $(head -c 500 "$WORK/resend.json")"
-    return 1
-}
-
-html_escape() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
-
-finish() {
-    if [[ "$status" == "success" ]]; then
-        if [[ "$DRY_RUN" == "1" ]]; then
-            echo "dry run: nothing sent. html at $RETRO_HTML"
-            sleep 1
-            return
-        fi
-        # A failed delivery is a failed run: Cloud Run has to see it.
-        send_email "$WEEK Retro" "$(cat "$RETRO_HTML")" || { sleep 1; exit 1; }
-    else
-        echo "FAILED: $fail_reason"
-        # A local run reports its failure on stdout, where the person reading
-        # it already is; only the cloud run needs the failure mailed out.
-        if [[ "$DRY_RUN" == "1" ]]; then
-            sleep 1
-            exit 1
-        fi
-        local body
-        body="<body style=\"margin:0;padding:40px 16px;background:#f6f1e7;font-family:Geist,'Helvetica Neue',Helvetica,Arial,sans-serif;color:#151515;\"><div style=\"max-width:760px;margin:0 auto;background:#fdfbf6;border:1px solid #ece8de;border-radius:20px;padding:36px 40px;\"><div style=\"font-family:'Geist Mono',Menlo,monospace;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:#55503f;\">Retro</div><div style=\"font-size:28px;font-weight:600;margin-top:18px;\">The retro did not run.</div><p style=\"font-size:15px;line-height:1.55;color:#55503f;\">$(printf '%s' "$fail_reason" | html_escape)</p><pre style=\"font-family:'Geist Mono',Menlo,monospace;font-size:12px;white-space:pre-wrap;color:#55503f;border-top:1px solid #d9d4c8;padding-top:14px;\">$(tail -n 60 "$LOG" | html_escape)</pre></div></body>"
-        send_email "$WEEK Retro" "$body" || true
-        sleep 1
-        exit 1
-    fi
-    # Let the tee behind stdout flush before the container exits, or the
-    # last lines never reach the Cloud Run log.
-    sleep 1
-}
-trap finish EXIT
 
 # What a run needs depends on what it will do. A dry run never sends, and a run
 # over cached pulls never authenticates to Strava, Google, HubSpot or GitHub, so
@@ -157,6 +64,7 @@ required=(CLAUDE_CODE_OAUTH_TOKEN)
 [[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)
 [[ "$SKIP_PULLS" == "1" ]] || required+=(STRAVA_CLIENT_ID STRAVA_CLIENT_SECRET STRAVA_REFRESH_TOKEN GWS_OAUTH_TOKEN_JSON EUDY_DEPLOY_KEY HUBSPOT_SERVICE_KEY)
 require "${required[@]}" || exit 1
+require_tools claude jq curl node timeout git || exit 1
 
 # ---------- Eudaimonia ----------
 # The first pull is the repo itself: the block doc is the one source for what
@@ -243,7 +151,7 @@ vault_write_back() {
         return 1
     fi
     local payload
-    payload="$(jq -n --arg d "$(printf '%s' "$1" | base64 -w0)" '{payload: {data: $d}}')"
+    payload="$(jq -n --arg d "$(printf '%s' "$1" | base64 | tr -d '\n')" '{payload: {data: $d}}')"
     local code
     code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' \
         -X POST "https://secretmanager.googleapis.com/v1/$STRAVA_SECRET_RESOURCE:addVersion" \
@@ -330,57 +238,22 @@ else
 fi
 
 # ---------- Claude ----------
-prompt="$(sed -e "s/{{WEEK}}/$WEEK/g" -e "s/{{MONDAY}}/$MONDAY/g" -e "s/{{SUNDAY}}/$SUNDAY/g" -e "s/{{TODAY}}/$(date +%F)/g" -e "s#{{WORK}}#$WORK#g" -e "s#{{EUDY}}#$EUDY#g" "$PROMPT_FILE")"
 # The model is named rather than defaulted. A bare config resolves to the
 # current Sonnet on this token, which is what every production run has used
 # and what the 0.28 USD per run (ATE-521) was measured on; a laptop's own
 # config resolved the same call to Opus at high effort and cost 2.17 USD.
 # Naming it here makes the two places agree by construction.
-result="$(timeout 20m claude -p "$prompt" \
-    --model sonnet \
-    --allowedTools "Read" \
-    --output-format json 2>"$WORK/claude-stderr.txt")"
-rc=$?
-# The whole result is kept: the total alone cannot say where a run's money
-# went, and ATE-521 spent a week on a cost no run had recorded the shape of.
-printf '%s\n' "$result" > "$WORK/claude-result.json"
-if [[ $rc -ne 0 ]]; then
-    fail_reason="claude exited $rc: $(head -c 400 "$WORK/claude-stderr.txt")"
-    exit 1
-fi
-if ! jq -e '.subtype == "success" and .is_error == false' <<<"$result" >/dev/null; then
-    fail_reason="claude did not complete: $(jq -r '.subtype // "unknown"' <<<"$result")"
-    exit 1
-fi
-# The result is the JSON object the prompt asked for; tolerate a stray code
-# fence, then require every key the renderer reads.
-# Cut the object out of whatever surrounds it: a code fence, or prose the
-# model wrote before it despite the brief.
-raw="$(jq -r '.result // ""' <<<"$result")"
-if [[ "$raw" == *"{"* && "$raw" == *"}"* ]]; then
-    raw="{${raw#*\{}"
-    raw="${raw%\}*}}"
-fi
-printf '%s\n' "$raw" > "$RETRO_JSON"
-if ! jq -e 'type == "object" and has("headline") and has("movement") and has("coverage") and has("movement_read") and has("takeout") and has("takeout_read") and has("atelic_read") and has("blind_spots")' "$RETRO_JSON" >/dev/null 2>&1; then
-    fail_reason="claude did not return the retro shape: $(head -c 300 "$RETRO_JSON")"
-    exit 1
-fi
-usage="$(jq -r '"\(.num_turns // "?") turns; " + ((.modelUsage // {}) | to_entries | map("\(.key) in \(.value.inputTokens // 0) out \(.value.outputTokens // 0) cache read \(.value.cacheReadInputTokens // 0) write \(.value.cacheCreationInputTokens // 0)") | join("; "))' <<<"$result")"
-echo "claude: retro drafted (cost $(jq -r '.total_cost_usd // "?"' <<<"$result") USD; $usage)"
+ATTEMPT_TIMEOUT="${ATTEMPT_TIMEOUT:-20m}"
+runner_claude "$(fill_prompt "$PROMPT_FILE")" --model sonnet --allowedTools "Read" || exit 1
+runner_draft 'has("headline") and has("movement") and has("coverage") and has("movement_read") and has("takeout") and has("takeout_read") and has("atelic_read") and has("blind_spots")' || exit 1
 
 # The Atelic tables are data, not draft: they go in after the model, so nothing
 # it writes can move a number.
-if ! jq -s '.[0] * {atelic: .[1]}' "$RETRO_JSON" "$WORK/atelic.json" > "$RETRO_JSON.merged" 2>/dev/null; then
+if ! jq -s '.[0] * {atelic: .[1]}' "$DRAFT_JSON" "$WORK/atelic.json" > "$DRAFT_JSON.merged" 2>/dev/null; then
     fail_reason="could not merge the Atelic tables into the retro"
     exit 1
 fi
-mv "$RETRO_JSON.merged" "$RETRO_JSON"
+mv "$DRAFT_JSON.merged" "$DRAFT_JSON"
 
-# ---------- render ----------
-if ! jq -r --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" -f "$RENDER" "$RETRO_JSON" > "$RETRO_HTML" 2>"$WORK/render-stderr.txt" || [[ ! -s "$RETRO_HTML" ]]; then
-    fail_reason="render failed: $(head -c 300 "$WORK/render-stderr.txt")"
-    exit 1
-fi
-echo "render: $(wc -c < "$RETRO_HTML") bytes of html"
+runner_render || exit 1
 status="success"
