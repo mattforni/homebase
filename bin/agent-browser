@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# PATH shim that points agent-browser at Brave instead of Chrome for Testing.
+#
+# agent-browser ships and manages its own Chrome for Testing build under
+# ~/.agent-browser/browsers and launches it with a throwaway profile. That is
+# the worst possible fingerprint for any site that screens automation: no
+# history, no extensions, and Chromium's automation flags on the command line.
+# Workable's captcha refused it outright on 2026-09-15, and the same class of
+# failure is already documented for the ID.me Cloudflare check in the
+# assist:report-unemployment skill.
+#
+# Brave is the browser this workstation actually uses, so it is the browser the
+# tooling should drive. `--executable-path` is the lever, and
+# AGENT_BROWSER_EXECUTABLE_PATH is its environment form.
+#
+# Why a shim and not just an export in .zshrc: Claude Code captures a shell
+# snapshot once per session and replays it for every tool call, preserving
+# function definitions but dropping top-level calls, so a bare export never
+# reaches an agent shell. launchd jobs, cron, CI and any `sh -c` caller have the
+# same hole. Resolving here, at invocation time, is the one layer that holds for
+# every caller regardless of how the process was started. This is the same
+# reasoning as the gws and hs shims beside it.
+#
+# This shim decides WHICH BINARY runs, and nothing else. It does not touch the
+# profile, so a launch through it still gets a clean automated profile. When a
+# site screens hard enough that the real logged in profile is required, connect
+# to the running Brave instead:
+#
+#   agent-browser connect 9222
+#
+# which the me.atelic.brave-debug-port LaunchAgent keeps available. See
+# launchd/README.md.
+
+set -euo pipefail
+
+BRAVE="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+
+# Find the next `agent-browser` on PATH that isn't this shim.
+# Bash's `-ef` compares by device+inode, so this holds when the script is
+# reached through the ~/bin -> homebase/bin symlink. The -d guard matters
+# because a directory is also -x, and bin/ holds tool namespace folders
+# alongside shims.
+real_ab=""
+IFS=':' read -ra path_parts <<< "$PATH"
+for p in "${path_parts[@]}"; do
+    candidate="$p/agent-browser"
+    if [[ -x "$candidate" && ! -d "$candidate" && ! "$candidate" -ef "$0" ]]; then
+        real_ab="$candidate"
+        break
+    fi
+done
+if [[ -z "$real_ab" ]]; then
+    echo "agent-browser shim: cannot find real agent-browser binary on PATH" >&2
+    exit 127
+fi
+
+# A caller that named an executable meant it. Never second guess that.
+if [[ -n "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ]]; then
+    exec "$real_ab" "$@"
+fi
+
+# Brave is not on every machine homebase deploys to. Pass through rather than
+# failing, so the tooling degrades to Chrome for Testing instead of breaking.
+if [[ ! -x "$BRAVE" ]]; then
+    echo "agent-browser shim: Brave not found at $BRAVE, falling back to the bundled browser" >&2
+    exec "$real_ab" "$@"
+fi
+
+exec env AGENT_BROWSER_EXECUTABLE_PATH="$BRAVE" "$real_ab" "$@"

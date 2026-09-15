@@ -91,6 +91,13 @@ DEPLOY_TABLE=(
   # Runtime versions. mise reads this only when the current directory declares
   # nothing of its own.
   "link|mise/config.toml|$HOME/.config/mise/config.toml"
+
+  # Login agents. Copied rather than linked because ~/Library/LaunchAgents is
+  # full of foreign writes (Google, Grammarly, Steam and Homebrew all drop
+  # plists there), which is exactly what the copy mode exists for. A copy also
+  # means an edit here needs a setup.sh run and a reload to take effect, rather
+  # than silently diverging from the job launchd already has loaded.
+  "copy|launchd/me.atelic.brave-debug-port.plist|$HOME/Library/LaunchAgents/me.atelic.brave-debug-port.plist"
 )
 
 # One time cleanup. Older setup.sh runs rsynced the whole repo into $HOME with

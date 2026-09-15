@@ -63,6 +63,7 @@ Claude Code has no profiles and one config dir (the `~/bin/claude` wrapper retir
 │   └── lint/        #   shell, reconciler, and context size checks, run by CI and pre-commit
 ├── plugins/         # The skillset marketplace plugins (sdlc, linear-lifecycle)
 ├── coderabbit/      # The two CodeRabbit house standards
+├── launchd/         # Login agents: Brave holding the CDP port (see its README)
 ├── .githooks/       # Tracked git hooks; activate with core.hooksPath
 └── setup.sh         # Installation and reconciliation
 ```
