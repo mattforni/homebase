@@ -47,8 +47,12 @@ Promoting it to Cloud Run would mean, roughly: a vaulted `authorized_user` JSON 
 
 The agent definition is `.claude/agents/outreacher.md`, and it names its own sources of truth: the Outreach method, the voice, the ICP statement in the One Pager, HubSpot, and the client board. This runner adds nothing to that and deliberately carries no prompt of its own; the prompt is one line naming the week and the scratch directory, and everything else lives in the agent.
 
+## The Report
+
+The email is the shared runner design (`runners/lib/email.jq`, since 2026-09-15): a title card with the agent's first line and the run's wall clock, cost and turns as its three counts, then the agent's whole output under a fold. `render.jq` composes it straight from `out/result.json`, since there is no draft object here; the roster in the Atelic repo is the artifact. The entrypoint is the shared scaffold with one difference: `SKIP_PULLS=1` calls `runner_replay` rather than skipping pulls, because this runner's only pull is the agent itself.
+
 ## Failure
 
-The report is mailed on failure as well as success, with the reason on top and the last lines of the agent's output beneath it. A run that cannot deliver its report exits non zero so the log carries it, since nobody is watching at 06:00.
+The report is mailed on failure as well as success, as the shared failure page: the reason on top and the last lines of the log beneath it, permission denials included. A run that cannot deliver its report exits non zero so the log carries it, since nobody is watching at 06:00.
 
 `SKIP_PULLS=1` replays the saved run in `out/result.json` with its saved exit status, which is how a failure gets looked at without paying for the agent again.

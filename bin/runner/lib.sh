@@ -371,18 +371,10 @@ runner_execute_container() {
 
 # Usage: runner_email_artifact <work-dir>
 # The rendered email a runner left behind, which `mail` sends and `run-local`
-# opens. New runners write $WORK/email.html.
-#
-# The retro predates the convention and writes retro.html, so it is checked
-# second. Folding the retro onto runners/lib/runner.sh is deliberately its own
-# piece of work: it is the one runner in production, this machine has no
-# .env.local for it, and a local run of it rotates the real Strava refresh
-# token, so a change to it cannot be proven cheaply. The fallback goes away
-# with that pass, not before.
+# opens: $WORK/email.html, written by the scaffold's runner_render (or its
+# failure page) for every runner since ATE-543.
 runner_email_artifact() {
-    local work="$1" candidate
-    for candidate in "$work/email.html" "$work/retro.html"; do
-        [[ -s "$candidate" ]] && { printf '%s' "$candidate"; return 0; }
-    done
+    local work="$1"
+    [[ -s "$work/email.html" ]] && { printf '%s' "$work/email.html"; return 0; }
     return 1
 }

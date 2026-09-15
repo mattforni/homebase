@@ -4,16 +4,26 @@
 # Usage: render-local <runner-name> [--week YYYY-Www] [--json <file>] [--no-open]
 #
 # No network, no model, no credentials: this reads the JSON a previous run left
-# in out/ and pushes it back through render.jq. It is the loop to use while
-# iterating on how the email looks, and it turns a two minute round trip into
-# an instant one. Editing what the email says is the other loop, run-local
-# --reuse, which re-asks Claude over the same cached pulls.
+# in out/ and pushes it back through render.jq exactly the way the scaffold's
+# runner_render does (the shared design on the include path, the week, the
+# footer line from the saved result). It is the loop to use while iterating on
+# how the email looks, and it turns a two minute round trip into an instant
+# one. Editing what the email says is the other loop, run-local --reuse, which
+# re-asks Claude over the same cached pulls.
+#
+# The draft is out/<name>.json, the object the model returned; a runner whose
+# email renders from the claude result itself (the outreach report) has no
+# draft, and out/result.json stands in. --json names any other file.
 set -euo pipefail
 
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 [[ -r "$LIB" ]] || { echo "cannot read $LIB" >&2; exit 1; }
 # shellcheck source=lib.sh
 . "$LIB"
+# The entrypoint side library, for the week math and the footer line, so a
+# local re-render carries the same line the run did.
+# shellcheck source=../../runners/lib/runner.sh
+. "$(runner_entrypoint_lib)"
 
 name=""; week=""; json=""; open_it=1
 while (( $# )); do
@@ -21,7 +31,7 @@ while (( $# )); do
         --week)    week="${2:-}"; shift 2 ;;
         --json)    json="${2:-}"; shift 2 ;;
         --no-open) open_it=0; shift ;;
-        -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)        die "unknown option $1" ;;
         *)         [[ -z "$name" ]] || die "unexpected argument $1"; name="$1"; shift ;;
     esac
@@ -32,37 +42,25 @@ render="$dir/render.jq"
 [[ -r "$render" ]] || die "$name has no render.jq"
 
 work="$dir/out"
-json="${json:-$work/retro.json}"
+if [[ -z "$json" ]]; then
+    json="$work/$name.json"
+    [[ -s "$json" ]] || json="$work/result.json"
+fi
 [[ -s "$json" ]] || die "no draft at $json; run 'bin/runner/run-local $name' once first"
 
 # The week the saved draft belongs to, left behind by run-local. An explicit
 # --week wins, and today's week is the last resort.
-monday=""; sunday=""
-if [[ -r "$work/week.env" ]]; then
-    # shellcheck source=/dev/null
-    . "$work/week.env"
-    [[ -n "$week" ]] && WEEK="$week"
-    monday="${MONDAY:-}"; sunday="${SUNDAY:-}"
+if [[ -z "$week" && -r "$work/week.env" ]]; then
+    week="$(sed -n 's/^WEEK=//p' "$work/week.env" | head -1)"
 fi
-WEEK="${week:-${WEEK:-$(date +%G-W%V)}}"
-if [[ -z "$monday" || -n "$week" ]]; then
-    iso_year="${WEEK%-W*}"; iso_week="${WEEK#*-W}"
-    jan4_dow="$(date -j -f %Y-%m-%d "${iso_year}-01-04" +%u 2>/dev/null || date -d "${iso_year}-01-04" +%u)"
-    if date -d 2026-01-04 +%F >/dev/null 2>&1; then
-        w1="$(date -d "${iso_year}-01-04 -$((jan4_dow - 1)) days" +%F)"
-        monday="$(date -d "$w1 +$(( (10#$iso_week - 1) * 7 )) days" +%F)"
-        sunday="$(date -d "$monday +6 days" +%F)"
-    else
-        w1="$(date -j -v-$((jan4_dow - 1))d -f %Y-%m-%d "${iso_year}-01-04" +%F)"
-        monday="$(date -j -v+$(( (10#$iso_week - 1) * 7 ))d -f %Y-%m-%d "$w1" +%F)"
-        sunday="$(date -j -v+6d -f %Y-%m-%d "$monday" +%F)"
-    fi
-fi
+WEEK="${week:-$(current_week)}"
+week_bounds "$WEEK" || exit 1
 
-html="$work/retro.html"
-jq -r --arg week "$WEEK" --arg monday "$monday" --arg sunday "$sunday" -f "$render" "$json" > "$html"
+html="$work/email.html"
+meta="$(meta_line "$work/result.json")"
+jq -r -L "$(dirname "$(runner_entrypoint_lib)")" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" -f "$render" "$json" > "$html"
 [[ -s "$html" ]] || die "render produced nothing"
-echo "$WEEK ($monday to $sunday): $(wc -c < "$html" | tr -d ' ') bytes -> $html"
+echo "$WEEK ($MONDAY to $SUNDAY): $(wc -c < "$html" | tr -d ' ') bytes -> $html"
 if (( open_it )) && command -v open >/dev/null 2>&1; then
     open "$html"
 fi

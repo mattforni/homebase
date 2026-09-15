@@ -22,6 +22,8 @@ COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
 COPY --chown=runner:runner prompt.md /home/runner/prompt.md
 COPY --chown=runner:runner render.jq /home/runner/render.jq
 COPY --chown=runner:runner hubspot.mjs /home/runner/hubspot.mjs
+# The shared library: runner.sh for the entrypoint, email.jq for the renderer.
+COPY --chown=runner:runner lib/ /home/runner/lib/
 RUN chmod +x /home/runner/entrypoint.sh
 
 # GitHub's published ed25519 host key, pinned so the Eudy clone never trusts

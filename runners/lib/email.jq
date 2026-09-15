@@ -104,6 +104,12 @@ def list_row($html):
 def lead_row($lead; $rest):
   list_row("<b style=\"color:" + ink + ";font-weight:500\">" + ($lead | esc) + "</b> " + ($rest | esc));
 
+# A card row holding any block the pieces above built (a mono_table, a list),
+# with the card's own padding and hairline.
+def row($html; $last):
+  "<tr><td style=\"padding:18px 24px " + (if $last then "22px" else "18px" end) + ";" + sans
+  + (if $last then "" else "border-bottom:1px solid " + line + ";" end) + "\">" + $html + "</td></tr>";
+
 # A card row that holds a card level fold.
 def fold_row($fold_html; $last):
   "<tr><td style=\"padding:18px 24px" + (if $last then " 20px" else "" end) + ";" + sans + (if $last then "" else ";border-bottom:1px solid " + line end) + "\">" + $fold_html + "</td></tr>";
