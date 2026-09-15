@@ -83,11 +83,15 @@ judgment.
   company and contact, and wins any disagreement. Last week's file is the
   previous week's, still on disk; nothing is overwritten any more.
 
-  **The current week's file takes dated amendments; no other edit exists.**
+  **A built week's file takes dated amendments; no other edit exists.**
   When Forni adds a name mid week, append it under an `## Amendments` heading
   at the foot of the file, dated, saying what changed and why, and update the
   counts line in place. Never rewrite a section that was already worked, and
-  never touch a previous week's file for any reason.
+  never touch a previous week's file for any reason. **Every remaining week of
+  the year already has an unbuilt skeleton** (cut 2026-09-14): a file opening
+  with **Not yet built** and a `## Placed Ahead` heading, where names known
+  ahead of their week are placed. The Monday build fills that file rather than
+  creating one.
 
   The roster lived in the description of a standing Linear issue, ATE-480,
   until 2026-08-31. Every Monday's rebuild destroyed the previous week, and no
@@ -97,12 +101,15 @@ judgment.
 
 ## Method
 
-**Check for this week's file before step 1.** If
-`Outreach/<ISO week>-roster.md` already exists, the week is prepped: do not
-sweep, do not draft, and do not rebuild it. Either Forni has asked for a dated
-amendment, in which case go straight to the amendment path in step 6, or he has
-not, in which case report the file and stop. Everything below assumes the file
-is not there yet.
+**Read this week's file before step 1.** If
+`Outreach/<ISO week>-roster.md` opens with **Not yet built**, it is the
+skeleton: run every step, and in step 6 write the roster over everything above
+`## Placed Ahead`, giving each entry under that heading a fully worked line in
+its section and leaving the entries where they are. If the file is already
+built, the week is prepped: do not sweep, do not draft, and do not rebuild it.
+Either Forni has asked for a dated amendment, in which case go straight to the
+amendment path in step 6, or he has not, in which case report the file and
+stop.
 
 Run every step, in order. Each Bash call is one plain command: no pipes, no
 `&&`, no loops, because the headless allowlist matches single commands only.
@@ -240,9 +247,10 @@ script to the scratchpad and run that one file.
      draft against the skeleton. Grade against the rubric and iterate until
      every row is A minus or better; record the grade. Five is a full week;
      name the stretch.
-6. **Write the roster** to `Outreach/<ISO week>-roster.md` in the Atelic repo,
-   as markdown, opening with the date it was built and the standing note that
-   it is a snapshot and HubSpot is canonical. **Then the weekly scoreboard**,
+6. **Write the roster** into `Outreach/<ISO week>-roster.md` in the Atelic
+   repo, replacing the skeleton's notice and everything above `## Placed
+   Ahead`, as markdown, opening with the date it was built and the standing
+   note that it is a snapshot and HubSpot is canonical. **Then the weekly scoreboard**,
    before the counts: one table of summary statistics, columns Type, Complete,
    Target, %, Done, Details, **one row per type and never one row per name**,
    plus a bold total row. The types are one word each, in this order: Replies,
@@ -256,7 +264,7 @@ script to the scratchpad and run that one file.
    Scoreboard. Write the file and stop: do not
    stage it, do not commit it, and never touch a previous week's file.
 
-   **If this week's file already exists, the week is prepped and you do not
+   **If this week's file is already built, the week is prepped and you do not
    rebuild it.** The only thing that may be added is a dated amendment, and
    only when Forni asks for one: append the new name under an `## Amendments`
    heading at the foot, with its first touch or its pass, and update the counts
