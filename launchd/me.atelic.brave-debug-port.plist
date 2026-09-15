@@ -6,7 +6,7 @@
 	<string>me.atelic.brave-debug-port</string>
 
 	<!-- Launched from the binary rather than `open -a` on purpose. `open -a`
-	     drops its --args when the app is already running, and it returns
+	     does not pass launch arguments when the app is already running, and it returns
 	     immediately, which leaves launchd with nothing to supervise. -->
 	<key>ProgramArguments</key>
 	<array>
