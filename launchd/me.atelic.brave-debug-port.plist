@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>me.atelic.brave-debug-port</string>
+
+	<!-- Launched from the binary rather than `open -a` on purpose. `open -a`
+	     does not pass launch arguments when the app is already running, and it returns
+	     immediately, which leaves launchd with nothing to supervise. -->
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Applications/Brave Browser.app/Contents/MacOS/Brave Browser</string>
+		<string>--remote-debugging-port=9222</string>
+		<string>--restore-last-session</string>
+	</array>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<!-- Comes back when Brave crashes or an update restarts it, which is the
+	     case that kept losing the port. A clean quit is respected, so Brave
+	     stays quittable. Switch to a bare <true/> to make the port
+	     unconditional, at the cost of never being able to quit Brave. -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+
+	<key>ProcessType</key>
+	<string>Interactive</string>
+
+	<key>StandardOutPath</key>
+	<string>/tmp/brave-debug-port.log</string>
+	<key>StandardErrorPath</key>
+	<string>/tmp/brave-debug-port.log</string>
+</dict>
+</plist>
