@@ -17,7 +17,7 @@ Three standing questions (what genuinely feels like reward; die in the morning s
 ## Writing Style
 
 - **Forni's written voice canon is `~/Eudaimonia/VOICE.md`.** The voice constants, the dash rule's full nuanced form, the register map, and the index of every sample collection (the `Voice/` folders). Consult it before writing anything in Forni's voice, in any repo; the register overlays (email, Slack, Substack, job search, the practice) hang off it.
-- **Title Case for headings, full caps for acronyms.** Headings capitalize as a book title, lowercasing short prepositions (of, in, to, for, by) and articles (a, an, the) unless they lead, everywhere. Acronyms stay capitalized in prose and code: `StickyCTABar` not `StickyCtaBar`, `stickyCTA`, `.nav-CTA` (2026-09-15).
+- **Title Case for headings, full caps for acronyms.** Headings capitalize as a book title, lowercasing short prepositions (of, in, to, for, by) and articles (a, an, the) unless they lead, everywhere. Acronyms stay capitalized in prose and code names (`StickyCTABar`, `stickyCTA`); CSS classes and file names stay lowercase (2026-09-15).
 - **Distance and elevation in imperial, always.** Miles and feet, never metric, in every context; convert at the presentation layer and do not show metric alongside. Forni reads imperial at a glance.
 
 ## General Behavior
