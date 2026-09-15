@@ -240,8 +240,9 @@ meta_line() {
 #   DRAFT_JSON                  $WORK/<name>.json, the object the model returned
 #   REPORT_HTML                 $WORK/email.html, what run-local opens and mail sends
 #   ATTACHMENT                  empty; a runner sets it to a file to send along
-#   PROMPT_FILE RENDER JQ_LIB   prompt.md and render.jq beside the entrypoint,
-#                               and the directory holding email.jq
+#   PROMPT_FILE RENDER          prompt.md and render.jq beside the entrypoint
+#   LIB_DIR JQ_LIB              the shared library (email.jq, hubspot.mjs,
+#                               text.mjs), one name for the jq include path
 #   status fail_reason result rc
 # and traps runner_finish on EXIT.
 runner_init() {
@@ -286,7 +287,8 @@ runner_init() {
     RENDER="${RENDER:-$SELF_DIR/render.jq}"
     # The shared email design (email.jq) sits beside this library, wherever
     # it was found: runners/lib in the repo, /home/runner/lib in an image.
-    JQ_LIB="$(dirname "$RUNNER_LIB")"
+    LIB_DIR="$(dirname "$RUNNER_LIB")"
+    JQ_LIB="$LIB_DIR"
 
     status="failure"
     fail_reason=""
@@ -342,6 +344,27 @@ runner_finish() {
     }
     sleep 1
     [[ "$status" == "success" ]] || exit 1
+}
+
+# Usage: google_access_token <authorized_user json>
+# An access token minted from a gws profile's exported authorized_user JSON
+# (client id, client secret, refresh token), which is how a container reads a
+# mailbox or a Doc without the per machine credentials.enc. Prints the token;
+# on failure prints nothing and sets fail_reason with the error body, minus the
+# token fields.
+google_access_token() {
+    local resp access
+    resp="$(curl -sS --max-time 30 -X POST https://oauth2.googleapis.com/token \
+        -d client_id="$(jq -r .client_id <<<"$1")" \
+        -d client_secret="$(jq -r .client_secret <<<"$1")" \
+        -d refresh_token="$(jq -r .refresh_token <<<"$1")" \
+        -d grant_type=refresh_token)"
+    access="$(jq -r '.access_token // empty' <<<"$resp")"
+    if [[ -z "$access" ]]; then
+        fail_reason="Google token refresh failed: $(jq -c 'del(.access_token)' <<<"$resp" 2>/dev/null | head -c 300)"
+        return 1
+    fi
+    printf '%s' "$access"
 }
 
 # Usage: fill_prompt <file>
@@ -404,6 +427,28 @@ runner_claude() {
     printf '%s' "$result" > "$RESULT_JSON"
     printf '%s' "$rc" > "$RESULT_RC"
     runner_check_result
+}
+
+# Usage: runner_probe_write [claude -p arguments...]
+# A one line Haiku call with the same agent and allowlist the real call will
+# get, asked only to write a marker file into the work directory. Seconds and
+# about a cent, run before the expensive call, so an agent that cannot write
+# fails here rather than after drafting a whole week (the first outreach run
+# in its image, 2026-09-15: the agent's definition listed no Write tool, the
+# allowlist's Write($WORK/*) granted nothing, and the roster check failed
+# after 18 minutes and 11 USD). Sets fail_reason and returns non zero when
+# the marker does not appear.
+runner_probe_write() {
+    local marker="$WORK/.write-probe" out
+    rm -f "$marker"
+    out="$(timeout 3m claude -p "Write the single word ok to the file $marker using the Write tool, then reply with the word done. Do nothing else." \
+        --model haiku --output-format json "$@" 2>"$WORK/probe-stderr.txt")"
+    if [[ ! -s "$marker" ]]; then
+        fail_reason="the write probe failed: the agent could not write $marker (denials: $(jq -r '.permission_denials // [] | map(.tool_name) | unique | join(", ")' <<<"$out" 2>/dev/null); $(head -c 200 "$WORK/probe-stderr.txt"))"
+        return 1
+    fi
+    rm -f "$marker"
+    echo "probe: the agent can write into $WORK ($(jq -r '.total_cost_usd // "?"' <<<"$out" 2>/dev/null) USD)"
 }
 
 # Usage: runner_replay

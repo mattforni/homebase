@@ -1,0 +1,6 @@
+# docker build and gcloud builds submit both use the staged context as their
+# root, so the live credentials in .env.local and the local work directory
+# stay out of every image.
+.env.local
+out/
+.build/

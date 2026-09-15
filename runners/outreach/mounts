@@ -1,0 +1,5 @@
+# Host paths mounted into a local container run, one per line, as
+# host:container[:ro]; $HOME is expanded. The Eudaimonia checkout, with the
+# Atelic repo nested inside it, stands in for the two deploy key clones, so a
+# rehearsal here needs no secret this machine lacks.
+$HOME/Eudaimonia:/home/runner/Eudaimonia:ro

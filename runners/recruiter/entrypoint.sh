@@ -126,7 +126,7 @@ GETRO_DIR="$PULLS/getro"
 LISTINGS_JSON="$WORK/listings.json"
 LISTINGS_MD="$WORK/listings.md"
 PULLS_MD="$WORK/pulls.md"
-TEXT="${TEXT:-$SELF_DIR/text.mjs}"
+TEXT="${TEXT:-$LIB_DIR/text.mjs}"
 LISTINGS_JQ="${LISTINGS_JQ:-$SELF_DIR/listings.jq}"
 DENY="${DENY:-$SELF_DIR/deny.txt}"
 FETCH_UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
@@ -275,7 +275,11 @@ ALLOWED_TOOLS=(
     "Bash(date:*)"
     "Bash(cat:*)"
     "Bash(ls:*)"
-    "Write($WORK/*)"
+    # Bare: a path scoped Write rule is denied by `claude -p` in every form
+    # (runners/outreach/entrypoint.sh has the test); the container's checkout
+    # is a read only mount, so the work directory is the only place a write
+    # can land.
+    "Write"
 )
 
 eudy_ready || exit 1
@@ -285,6 +289,9 @@ else
     pull_sources || exit 1
 fi
 
+# The agent writes its scratch files, so the half cent write probe runs
+# first (runners/README.md, Adding a Runner).
+runner_probe_write --agent recruiter --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent recruiter --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.shortlist | type == "array") and (.flagged | type == "array")
