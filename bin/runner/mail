@@ -34,12 +34,16 @@ html="$(runner_email_artifact "$work")" \
 
 week=""
 [[ -r "$work/week.env" ]] && week="$(sed -n 's/^WEEK=//p' "$work/week.env" | head -1)"
+# The subject wears the title the runner names itself with in runner_init
+# ("Outreach"), the same one a real run sends under, never the directory name.
+title="$(sed -n 's/^runner_init [^ ]* "\([^"]*\)".*/\1/p' "$dir/entrypoint.sh" | head -1)"
+title="${title:-$name}"
 # Every draft gets its own subject. Gmail threads messages that share one and
 # then hides the parts a later message repeats behind its trimmed content
 # button, so a second draft of the same week arrives with its tables collapsed
 # and reads as broken markup rather than as a repeat. A real run sends one
 # email a week and never hits this.
-subject="${subject:-${week:-$(date +%G-W%V)} $name (draft $(date +%H:%M))}"
+subject="${subject:-${week:-$(date +%G-W%V)} $title (draft $(date +%H:%M))}"
 
 # The send itself comes from the entrypoint side library, so there is one
 # Resend implementation rather than one here and another in every runner. The
