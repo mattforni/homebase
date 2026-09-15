@@ -1,8 +1,10 @@
-# Renders the sweep JSON into the Sweep email, composed from the shared
+# Renders the sweep JSON into the Recruiter email, composed from the shared
 # runner email design (runners/lib/email.jq). Invoked by entrypoint.sh as
 #   jq -r -L <lib> --arg week ... --arg monday ... --arg sunday ... --arg meta ... -f render.jq sweep.json
 # The pieces and the palette live in the library; this file only says which
-# of the board's fields go where.
+# of the board's fields go where. The ledger is deliberately not here: it
+# travels as a file beside the email (entrypoint.sh), since the Tuesday block
+# appends it rather than reads it.
 
 include "email";
 
@@ -23,6 +25,20 @@ def shortlist:
       end
     );
 
+# The escape hatches, above the fold where they cannot be read past: a growth
+# engineering title that missed a filter, a hub hybrid outlier. The accent
+# value on the right is what the role missed, so the call is visible at a glance.
+def flagged:
+  (.flagged // []) as $f
+  | if ($f | length) == 0 then ""
+    else eyebrow("For your call")
+      + card([range(0; $f | length)] | map(
+          $f[.] as $r
+          | item($r.company; ($r.missed // "flagged"); [$r.role, $r.comp, $r.arrangement]; $r.why;
+                 ""; ""; "Posting"; $r.url; . == (($f | length) - 1))
+        ) | join(""))
+    end;
+
 def fractional:
   (.fractional // []) as $f
   | eyebrow("Fractional lane")
@@ -35,26 +51,24 @@ def fractional:
 
 def dig_in:
   ((.rejected // []) | length) as $nr
-  | ((.ledger // []) | length) as $nl
   | eyebrow("If you want to dig in")
   + card(
       fold_row(big_fold("Considered and rejected"; ($nr | tostring);
         list(((.rejected // []) | map(lead_row(.company; "· " + .reason)) | join(""))
              + (if (.rejected_note // "") != "" then list_row("<span style=\"color:" + faint + "\">" + (.rejected_note | esc) + "</span>") else "" end); "13px")); false)
       + fold_row(big_fold("Source notes"; "";
-        list(((.sources // []) | map(lead_row(.lead; .note)) | join("")); "14px")); false)
-      + fold_row(big_fold("Ledger"; ($nl | tostring) + " rows for FY27-sweep-ledger.md";
-        mono_table(["Date", "Company", "Role", "Key", "Verdict"]; ((.ledger // []) | map([.date, .company, .role, .key, .verdict])))); true)
+        list(((.sources // []) | map(lead_row(.lead; .note)) | join("")); "14px")); true)
     );
 
-page($week + " Sweep"; (.preheader // "");
-  masthead("Job sweep")
+page($week + " Recruiter"; (.preheader // "");
+  masthead("Recruiter")
   + title_card("Week " + week_number + " · " + short_date($monday) + " to " + short_date($sunday);
                (.headline // []); (.lede // "");
                stats_row(stat((.shortlist // []) | length; "shortlisted")
-                         + stat((.fractional // []) | length; "fractional")
+                         + stat((.flagged // []) | length; "for your call")
                          + stat((.rejected // []) | length; "verified &amp; killed")))
   + shortlist
+  + flagged
   + fractional
   + dig_in
   + footer($ARGS.named.meta // "")
