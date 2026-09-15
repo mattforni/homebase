@@ -138,7 +138,7 @@ Todoist conventions (follow ups land on the next planning Monday, short Title Ca
 
 ## Growth Engineering
 
-Any SEO, GEO, or growth engineering work, Atelic client or personal, follows `~/Eudaimonia/Craft/Vocation/Atelic/GROWTH.md` (The Funnel and The Loop); the outbound motion and ICP method live beside it in `Outreach/`, and the Atelic CLAUDE.md orients both.
+Any SEO, GEO, or growth engineering work, Atelic client or personal, follows `~/Eudaimonia/Craft/Vocation/Atelic/GROWTH.md`; the outbound motion and ICP method live beside it in `Outreach/`, and the Atelic CLAUDE.md orients both.
 
 ## Problem Solving Approach
 
