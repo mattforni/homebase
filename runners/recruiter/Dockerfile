@@ -1,4 +1,4 @@
-# The Sweep Runner. A Cloud Run Job image: the entrypoint puts Eudaimonia in
+# The Recruiter Runner. A Cloud Run Job image: the entrypoint puts Eudaimonia in
 # place over a read only deploy key, then headless Claude Code runs the
 # recruiter agent against the job sources and Resend delivers the board.
 # Nothing here writes to the world.

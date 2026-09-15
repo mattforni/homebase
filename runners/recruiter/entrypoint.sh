@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Sweep Runner. Meant for Monday 18:00 Denver from Cloud Scheduler, so the
+# The Recruiter Runner. Meant for Monday 18:00 Denver from Cloud Scheduler, so the
 # Tuesday 07:00 work search block opens on a scored slate rather than a sweep.
 #
 # Shape: Eudaimonia first (the checkout already present, or a shallow clone over
@@ -62,7 +62,7 @@ if [[ -z "${RUNNER_LIB:-}" ]]; then
     exit 1
 fi
 
-runner_init sweep "Recruiter" current
+runner_init recruiter "Recruiter" current
 
 required=(CLAUDE_CODE_OAUTH_TOKEN)
 [[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)

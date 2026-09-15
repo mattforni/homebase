@@ -1,6 +1,6 @@
-# The Sweep Runner
+# The Recruiter Runner
 
-Pulls the job boards, runs the `recruiter` agent headlessly over what was pulled, so the week's sweep is done before the Tuesday 07:00 work search block opens, and mails the board as `YYYY-Www Recruiter` (the subject was `Sweep` until 2026-09-15: "I had no idea what Sweep was when it arrived"). A Cloud Run Job (`sweep`, project `atelic`, region `us-central1`) fired by Cloud Scheduler every Monday at 18:00 Denver since 2026-09-11; `bin/runner/run-local sweep` stays the way to iterate on it.
+Pulls the job boards, runs the `recruiter` agent headlessly over what was pulled, so the week's sweep is done before the Tuesday 07:00 work search block opens, and mails the board as `YYYY-Www Recruiter` (the subject was `Sweep` until 2026-09-15: "I had no idea what Sweep was when it arrived"). A Cloud Run Job (`recruiter`, project `atelic`, region `us-central1`) fired by Cloud Scheduler every Monday at 18:00 Denver since 2026-09-11; `bin/runner/run-local recruiter` stays the way to iterate on it.
 
 **What the email is.** Forni's design ("W38 Sweep Email", Claude Design, 2026-09-11): cream ground, the atelic masthead, a title card with a two line headline, a lede, and three counts (shortlisted, for your call, verified and killed); one card per shortlisted role with the fit in orange, the title, comp and arrangement on one line, why it cleared, what the company does folded under a disclosure, and the posting link; **For your call**, the escape hatches the brief names (a growth engineering title that missed a hard filter, a hub hybrid outlier) with what each missed where the fit would sit, above the fold where they cannot be read past (added 2026-09-15 after Project Canary and C.Scale were both buried in the rejected list and Forni pulled them out himself); the fractional lane in the same shape with the rate where the fit sits, the a16z prospects line, and the claim tradeoff once; then "If you want to dig in", where the considered and rejected list and the source notes fold away. One footer line carries the run's duration, cost, turns and models. **The ledger rows are not in the email.** They ride beside it as `YYYY-Www-ledger.md`, attached, in the exact table shape of `Craft/Vocation/FY27-sweep-ledger.md`, and the Tuesday block appends the file; the email is the only route from the sweep to the seen cache, so a run without the attachment means every rejected posting gets chased again next week. The agent returns the board as JSON (`prompt.md` carries the shape) and `render.jq` renders it; the Tuesday block picks from the shortlist and hands the picks to `assist:draft-applications`. The disclosures fold in Apple Mail and open flat in Gmail, which is the designed fallback.
 
@@ -13,13 +13,13 @@ Pulls the job boards, runs the `recruiter` agent headlessly over what was pulled
 ## Running It
 
 ```bash
-bin/runner/run-local sweep --week 2026-W38 --no-open   # in the image: pulls, one model call, renders to out/, sends nothing
-bin/runner/run-local sweep --reuse                      # skips the pulls, one model call over the files already in out/
-bin/runner/render-local sweep                           # re-render out/sweep.json, no network, no model
-bin/runner/run-local sweep --send                       # the real thing, from this machine
+bin/runner/run-local recruiter --week 2026-W38 --no-open   # in the image: pulls, one model call, renders to out/, sends nothing
+bin/runner/run-local recruiter --reuse                      # skips the pulls, one model call over the files already in out/
+bin/runner/render-local recruiter                           # re-render out/recruiter.json, no network, no model
+bin/runner/run-local recruiter --send                       # the real thing, from this machine
 ```
 
-A local run builds the image and runs it with Docker Desktop, and mounts this machine's `~/Eudaimonia` read only at the container's `/home/runner/Eudaimonia` (`mounts`), so the agent's `~/Eudaimonia/...` paths resolve there and no deploy key is needed on this machine. The work directory is `runners/sweep/out/`, which is also the agent's scratch directory: `pulls/` holds every page and pull record, `listings.json` and `listings.md` the reduced tier, `pulls.md` what else was fetched, `sweep.json` the board, `email.html` the render, and `YYYY-Www-ledger.md` the attachment.
+A local run builds the image and runs it with Docker Desktop, and mounts this machine's `~/Eudaimonia` read only at the container's `/home/runner/Eudaimonia` (`mounts`), so the agent's `~/Eudaimonia/...` paths resolve there and no deploy key is needed on this machine. The work directory is `runners/recruiter/out/`, which is also the agent's scratch directory: `pulls/` holds every page and pull record, `listings.json` and `listings.md` the reduced tier, `pulls.md` what else was fetched, `recruiter.json` the board, `email.html` the render, and `YYYY-Www-ledger.md` the attachment.
 
 ## What It Reads
 
@@ -27,7 +27,7 @@ The agent definition is `.claude/agents/recruiter.md`, copied into the image by 
 
 ## Promoting It
 
-Promoted 2026-09-11: a Cloud Run Job `sweep` in the `atelic` project under its own service account with three vault secrets injected (`atelic-keys/claude-code-oauth`, `atelic-keys/resend-api-key`, `forni-keys/github-deploy-key-eudy`), `REPORT_RECIPIENT` set to the personal mailbox, and a Cloud Scheduler entry at `0 18 * * 1` Denver. `bin/runner/promote sweep` rebuilds and repoints the job after a change. The runtime one pager for the pattern is Eudy's `Admin/Tools/cloud-run.md`. The job, the scheduler entry and this directory keep the `sweep` name; only the email says Recruiter.
+Promoted 2026-09-11: a Cloud Run Job `recruiter` in the `atelic` project (named `sweep` until 2026-09-15, when the runner, its job, its scheduler entry and its image all took the agent's name) under its own service account with three vault secrets injected (`atelic-keys/claude-code-oauth`, `atelic-keys/resend-api-key`, `forni-keys/github-deploy-key-eudy`), `REPORT_RECIPIENT` set to the personal mailbox, and a Cloud Scheduler entry `recruiter` at `0 18 * * 1` Denver. `bin/runner/promote recruiter` rebuilds and repoints the job after a change. The runtime one pager for the pattern is Eudy's `Admin/Tools/cloud-run.md`. The job, the scheduler entry, the image and this directory are all `recruiter`; only the service account keeps its original `sweep-runner` name, since a service account cannot be renamed.
 
 ## Failure
 
