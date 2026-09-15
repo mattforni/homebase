@@ -176,7 +176,7 @@ runner_env_names() {
     local envfile="$1/.env.local"
     {
         [[ -r "$envfile" ]] && sed -n "s/^export \\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p" "$envfile"
-        printf '%s\n' CLAUDE_CODE_OAUTH_TOKEN RESEND_API_KEY REPORT_RECIPIENT REPORT_SENDER TZ
+        printf '%s\n' CLAUDE_CODE_OAUTH_TOKEN RESEND_API_KEY REPORT_RECIPIENT REPORT_SENDER TZ RUNNER_MODEL
     } | awk 'NF && !seen[$0]++'
 }
 

@@ -12,6 +12,11 @@
 //   text.mjs rss <feed.xml> <out-dir>
 //       One markdown file per item (title, link, date, then the post as text)
 //       plus an index.md, newest first, so a reader can pick only what is new.
+//   text.mjs head <page.html> <base-url>
+//       What the head of the page says, as markdown bullets: title, meta
+//       description, canonical, the structured data types, the h1s, and the
+//       third party hosts its scripts and iframes load, so a reader never
+//       opens the raw HTML for the things an audit reads off it.
 //
 // A page that does not carry what a mode expects exits 2 with the reason on
 // stderr; the entrypoint records that as a failed pull rather than dying.
@@ -60,7 +65,7 @@ const strip = (html, base) => {
 const fail = (why) => { process.stderr.write(`${why}\n`); process.exit(2); };
 
 const [mode, file, extra] = process.argv.slice(2);
-if (!mode || !file) fail('usage: text.mjs getro <html> | html <html> <base-url> | rss <xml> <out-dir>');
+if (!mode || !file) fail('usage: text.mjs getro <html> | html <html> <base-url> | rss <xml> <out-dir> | head <html> <base-url>');
 const raw = readFileSync(file, 'utf8');
 
 if (mode === 'getro') {
@@ -76,6 +81,44 @@ if (mode === 'getro') {
     process.stdout.write(JSON.stringify({ found: jobs.found, total: jobs.total ?? null }));
 } else if (mode === 'html') {
     process.stdout.write(strip(raw, extra) + '\n');
+} else if (mode === 'head') {
+    const attr = (tag, name) => { const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s>]+))`, 'i')); return m ? decode(m[2] ?? m[3] ?? m[4] ?? '') : ''; };
+    const tags = (re) => raw.match(re) ?? [];
+    const title = (raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i) ?? [, ''])[1].replace(/\s+/g, ' ').trim();
+    const metas = tags(/<meta\s[^>]*>/gi);
+    const meta = (n) => attr(metas.find((t) => attr(t, 'name').toLowerCase() === n || attr(t, 'property').toLowerCase() === n) ?? '', 'content');
+    const links = tags(/<link\s[^>]*>/gi);
+    const canonical = attr(links.find((t) => attr(t, 'rel').toLowerCase() === 'canonical') ?? '', 'href');
+    const ld = tags(/<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
+        .flatMap((s) => { try { const j = JSON.parse(s.replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '')); const all = (x) => Array.isArray(x) ? x.flatMap(all) : (x && typeof x === 'object') ? [x, ...all(x['@graph'] ?? [])] : []; return all(j).map((o) => o['@type']).filter(Boolean).flat(); } catch { return ['(unparseable)']; } });
+    const h1s = tags(/<h1[^>]*>([\s\S]*?)<\/h1>/gi).map((h) => decode(h.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const host = (u) => { try { return new URL(u, extra).host; } catch { return ''; } };
+    const own = host(extra || '').replace(/^www\./, '');
+    const third = (list) => [...new Set(list.map(host).filter((h) => h && !h.endsWith(own)))].sort();
+    const scripts = third(tags(/<script\s[^>]*src\s*=\s*["'][^"']+["'][^>]*>/gi).map((t) => attr(t, 'src')));
+    const frames = third(tags(/<iframe\s[^>]*src\s*=\s*["'][^"']+["'][^>]*>/gi).map((t) => attr(t, 'src')));
+    const inline = raw.replace(/<script[^>]*src=[^>]*>/gi, '');
+    const tells = [
+        [/googletagmanager\.com\/gtm\.js|GTM-[A-Z0-9]+/, 'Google Tag Manager'], [/gtag\(|google-analytics\.com|G-[A-Z0-9]{6,}/, 'Google Analytics or gtag'],
+        [/googleads|AW-\d{6,}/, 'Google Ads tag'], [/fbq\(|connect\.facebook\.net/, 'Meta pixel'], [/callrail|calltrk/i, 'CallRail'], [/hotjar|clarity\.ms/i, 'session recording'],
+        [/wp-content|wp-includes/, 'WordPress'], [/squarespace/i, 'Squarespace'], [/wixstatic|wix\.com/i, 'Wix'], [/shopify/i, 'Shopify'], [/webflow/i, 'Webflow'], [/showit/i, 'Showit'],
+        [/wp-rocket|rocket-loader|lazyload/i, 'a speed or lazy load plugin'], [/hellowalla|mindbody|acuity|calendly|housecall|jobber|servicetitan|toasttab|square(up)?\.com|opentable|resy|vagaro|booksy|zocdoc|nexhealth/i, 'a booking or ordering embed'],
+        [/elfsight|trustindex|birdeye|podium|nicejob|reviews\.io|widget.*review|review.*widget/i, 'a review widget'],
+    ].filter(([re]) => re.test(raw) || re.test(inline)).map(([, name]) => name);
+    const out = [
+        `- title: ${title || '(none)'}`,
+        `- meta description: ${meta('description') || '(none)'}`,
+        `- canonical: ${canonical || '(none)'}`,
+        `- robots meta: ${meta('robots') || '(none)'}`,
+        `- og:title: ${meta('og:title') || '(none)'}`,
+        `- h1: ${h1s.length ? h1s.slice(0, 4).join(' | ') : '(none)'}`,
+        `- structured data types: ${ld.length ? [...new Set(ld)].join(', ') : '(none)'}`,
+        `- tells in the code: ${tells.length ? tells.join(', ') : '(none of the usual ones)'}`,
+        `- third party script hosts: ${scripts.length ? scripts.slice(0, 25).join(', ') : '(none)'}`,
+        `- iframe hosts: ${frames.length ? frames.join(', ') : '(none)'}`,
+        `- html size: ${raw.length} bytes`,
+    ];
+    process.stdout.write(out.join('\n') + '\n');
 } else if (mode === 'rss') {
     if (!extra) fail('rss needs an output directory');
     const items = raw.match(/<item>[\s\S]*?<\/item>/g) ?? [];

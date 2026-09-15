@@ -1,11 +1,12 @@
-# The Recruiter Runner. A Cloud Run Job image: the entrypoint puts Eudaimonia in
-# place over a read only deploy key, then headless Claude Code runs the
-# recruiter agent against the job sources and Resend delivers the board.
-# Nothing here writes to the world.
+# The Outreach Runner. A Cloud Run Job image: the entrypoint puts Eudaimonia
+# and the Atelic repo in place over read only deploy keys, pulls the portal,
+# both mailboxes, the One Pager and the candidate sites, then headless Claude
+# Code runs the outreacher agent over those files and Resend delivers the
+# report with the roster attached. Nothing here writes to the world.
 #
 # Built from the staged context bin/runner/lib.sh assembles, which is this
-# directory plus lib/runner.sh and agents/recruiter.md copied in from the
-# repo, since a Docker context cannot reach above its own root.
+# directory plus lib/ and agents/outreacher.md copied in from the repo, since
+# a Docker context cannot reach above its own root.
 FROM node:20-slim
 
 RUN apt-get update \
@@ -24,19 +25,16 @@ WORKDIR /home/runner
 COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
 COPY --chown=runner:runner prompt.md /home/runner/prompt.md
 COPY --chown=runner:runner render.jq /home/runner/render.jq
-# The pull side: the listing table and the deny list (the page reducer,
-# text.mjs, ships with lib/).
-COPY --chown=runner:runner listings.jq /home/runner/listings.jq
-COPY --chown=runner:runner deny.txt /home/runner/deny.txt
-# The shared library: runner.sh for the entrypoint, email.jq for the renderer.
+# The shared library: runner.sh for the entrypoint, email.jq for the renderer,
+# hubspot.mjs, gmail.mjs and text.mjs for the pulls.
 COPY --chown=runner:runner lib/ /home/runner/lib/
 # The brief: the same agent definition the laptop runs, found where Claude Code
 # looks for user level agents.
-COPY --chown=runner:runner agents/recruiter.md /home/runner/.claude/agents/recruiter.md
+COPY --chown=runner:runner agents/outreacher.md /home/runner/.claude/agents/outreacher.md
 RUN chmod +x /home/runner/entrypoint.sh
 
-# GitHub's published ed25519 host key, pinned so the Eudy clone never trusts
-# on first use. Rotate from https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+# GitHub's published ed25519 host key, pinned so the clones never trust on
+# first use. Rotate from https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
 RUN mkdir -p /home/runner/.ssh && chmod 700 /home/runner/.ssh \
     && echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > /home/runner/.ssh/known_hosts
 

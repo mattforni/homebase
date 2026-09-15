@@ -202,14 +202,16 @@ gmail_pull() {
 # ---------- HubSpot (the Atelic week) ----------
 # The joins behind these tables have traps that a model reading raw JSON would
 # get wrong quietly, so the arithmetic is done here and the prompt is handed
-# three finished tables to write one sentence about. See hubspot.mjs.
+# three finished tables to write one sentence about. See the shared
+# lib/hubspot.mjs, whose `week` command is this pull (it moved there from this
+# directory on 2026-09-15, ATE-551, so the outreach sweep could share it).
 atelic_pull() {
     # The same Denver midnight epochs the Strava pull uses, so both weeks close
     # at the same instant; hubspot.mjs says why a date string would not do.
     # Bounded like the other external steps, since a hung HubSpot call would
     # otherwise hold the job until Cloud Run's own deadline killed it.
     local rc
-    HUBSPOT_SERVICE_KEY="$HUBSPOT_SERVICE_KEY" timeout 10m node "$SELF_DIR/hubspot.mjs" "$AFTER_EPOCH" "$BEFORE_EPOCH" > "$WORK/atelic.json" 2>"$WORK/hubspot-stderr.txt"
+    HUBSPOT_SERVICE_KEY="$HUBSPOT_SERVICE_KEY" timeout 10m node "$LIB_DIR/hubspot.mjs" week "$AFTER_EPOCH" "$BEFORE_EPOCH" > "$WORK/atelic.json" 2>"$WORK/hubspot-stderr.txt"
     rc=$?
     if (( rc == 124 )); then
         fail_reason="HubSpot pull timed out after 10m"
