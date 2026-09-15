@@ -245,12 +245,14 @@ fi
 # Naming it here makes the two places agree by construction.
 ATTEMPT_TIMEOUT="${ATTEMPT_TIMEOUT:-20m}"
 runner_claude "$(fill_prompt "$PROMPT_FILE")" --model sonnet --allowedTools "Read" || exit 1
-runner_draft 'has("headline") and has("movement") and has("coverage") and has("movement_read") and has("takeout") and has("takeout_read") and has("atelic_read") and has("blind_spots")' || exit 1
+runner_draft '(.headline | type == "string") and (.movement | type == "array") and (.coverage | type == "array")
+    and (.movement_read | type == "string") and (.takeout | type == "array") and (.takeout_read | type == "string")
+    and (.atelic_read | type == "string") and (.blind_spots | type == "string")' || exit 1
 
 # The Atelic tables are data, not draft: they go in after the model, so nothing
 # it writes can move a number.
-if ! jq -s '.[0] * {atelic: .[1]}' "$DRAFT_JSON" "$WORK/atelic.json" > "$DRAFT_JSON.merged" 2>/dev/null; then
-    fail_reason="could not merge the Atelic tables into the retro"
+if ! jq -s '.[0] * {atelic: .[1]}' "$DRAFT_JSON" "$WORK/atelic.json" > "$DRAFT_JSON.merged" 2>"$WORK/merge-stderr.txt"; then
+    fail_reason="could not merge the Atelic tables into the retro: $(head -c 300 "$WORK/merge-stderr.txt")"
     exit 1
 fi
 mv "$DRAFT_JSON.merged" "$DRAFT_JSON"
