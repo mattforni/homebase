@@ -1,6 +1,6 @@
 # The Sweep Runner
 
-Runs the `recruiter` agent headlessly, so the week's job board sweep is done before the Tuesday 07:00 work search block opens, and mails the board as `YYYY-Www Sweep`. Meant for a Cloud Run Job firing Monday 18:00 Denver; until it is promoted, `bin/runner/run-local sweep` by hand is production.
+Runs the `recruiter` agent headlessly, so the week's job board sweep is done before the Tuesday 07:00 work search block opens, and mails the board as `YYYY-Www Sweep`. A Cloud Run Job (`sweep`, project `atelic`, region `us-central1`) fired by Cloud Scheduler every Monday at 18:00 Denver since 2026-09-11; `bin/runner/run-local sweep` stays the way to iterate on it.
 
 **What the email is.** Forni's design ("W38 Sweep Email", Claude Design, 2026-09-11): cream ground, the atelic masthead, a title card with a two line headline, a lede, and three counts (shortlisted, fractional, verified and killed); one card per shortlisted role with the fit in orange, the title, comp and arrangement on one line, why it cleared, what the company does folded under a disclosure, and the posting link; the fractional lane in the same shape with the rate where the fit sits, the a16z prospects line, and the claim tradeoff once; then "If you want to dig in", where the considered and rejected list, the source notes, and the ledger rows fold away. One footer line carries the run's duration, cost, turns and models. The agent returns the board as JSON (`prompt.md` carries the shape) and `render.jq` renders it, the retro's pattern; the Tuesday block picks from the shortlist, hands the picks to `assist:draft-applications`, and appends the ledger rows to `Craft/Vocation/FY27-sweep-ledger.md`. The disclosures fold in Apple Mail and open flat in Gmail, which is the designed fallback.
 
@@ -24,7 +24,7 @@ The agent definition is `.claude/agents/recruiter.md`, copied into the image by 
 
 ## Promoting It
 
-Not yet promoted. Promoting takes: a Cloud Run Job `sweep` in the `atelic` project under its own service account with three vault secrets injected (`atelic-keys/claude-code-oauth`, `atelic-keys/resend-api-key`, `forni-keys/github-deploy-key-eudy`), `REPORT_RECIPIENT` set to the personal mailbox, and a Cloud Scheduler entry at `0 18 * * 1` Denver. `bin/runner/promote sweep` then builds and points the job at the image. The runtime one pager for the pattern is Eudy's `Admin/Tools/cloud-run.md`.
+Promoted 2026-09-11: a Cloud Run Job `sweep` in the `atelic` project under its own service account with three vault secrets injected (`atelic-keys/claude-code-oauth`, `atelic-keys/resend-api-key`, `forni-keys/github-deploy-key-eudy`), `REPORT_RECIPIENT` set to the personal mailbox, and a Cloud Scheduler entry at `0 18 * * 1` Denver. `bin/runner/promote sweep` rebuilds and repoints the job after a change. The runtime one pager for the pattern is Eudy's `Admin/Tools/cloud-run.md`.
 
 ## Failure
 
