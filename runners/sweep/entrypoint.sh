@@ -463,7 +463,10 @@ jq -r '
      "| Date | Company | Role | Key | Verdict |",
      "|------|---------|------|-----|---------|"]
     + (.ledger | map("| \(.date | cell) | \(.company | cell) | \(.role | cell) | \(.key | cell) | \(.verdict | cell) |"))
-    | join("\n")' --arg week "$WEEK" "$SWEEP_JSON" > "$LEDGER_MD" || fail_reason="could not write the ledger file"
+    | join("\n")' --arg week "$WEEK" "$SWEEP_JSON" > "$LEDGER_MD" || {
+    fail_reason="could not write the ledger file"
+    exit 1
+}
 echo "ledger: $(jq -r '.ledger | length' "$SWEEP_JSON") rows in $LEDGER_MD"
 
 usage="$(jq -r '"\(.num_turns // "?") turns; " + ((.modelUsage // {}) | to_entries | map("\(.key) in \(.value.inputTokens // 0) out \(.value.outputTokens // 0) cache read \(.value.cacheReadInputTokens // 0) write \(.value.cacheCreationInputTokens // 0)") | join("; "))' <<<"$result")"

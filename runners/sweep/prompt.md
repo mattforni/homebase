@@ -8,7 +8,7 @@ The fetching in step 1 of your method is already done, by the runner, before you
 - {{PULLS}}/fractional-jobs.md: the board as text. Its listing is never evidence a role is open; fetch each candidate's detail page with one curl before reporting it.
 - {{PULLS}}/a16z/index.md, then only the issues dated since the last sweep, one file each in the same directory.
 
-Then run the rest of your method: score, verify every shortlist candidate on the employer's own ATS with one curl per candidate (the APIs your definition names, piped through jq where the answer is JSON), dedupe against the log and the ledger, and run at least two WebSearch angles. Then, instead of the markdown report your Output section describes, return exactly one JSON object and nothing else: no prose before it, no code fence around it. The runner renders it into the email, so a key that is missing or a value of the wrong type is a failed run.
+Then run the rest of your method: score, verify every shortlist and flagged candidate on the employer's own ATS with one curl per candidate (the APIs your definition names, piped through jq where the answer is JSON), dedupe against the log and the ledger, and run at least two WebSearch angles. Then, instead of the markdown report your Output section describes, return exactly one JSON object and nothing else: no prose before it, no code fence around it. The runner renders it into the email, so a key that is missing or a value of the wrong type is a failed run.
 
 The shape, every key present (use `null` or `[]` where a week has nothing):
 
