@@ -222,7 +222,7 @@ meta_line() {
 # prompt, and the arguments to claude; the scaffold handles the rest.
 
 # Usage: runner_init <name> <Title> [current|previous]
-# The name is the runner's directory name (retro, sweep, outreach), named
+# The name is the runner's directory name (retro, recruiter, outreach), named
 # explicitly because inside an image the entrypoint lives at /home/runner and
 # its directory says nothing. Title is how the runner names itself everywhere
 # a reader sees it: the subject ("2026-W38 Retro"), the masthead, the failure

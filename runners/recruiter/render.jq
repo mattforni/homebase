@@ -1,6 +1,6 @@
-# Renders the sweep JSON into the Recruiter email, composed from the shared
+# Renders the recruiter JSON into the Recruiter email, composed from the shared
 # runner email design (runners/lib/email.jq). Invoked by entrypoint.sh as
-#   jq -r -L <lib> --arg week ... --arg monday ... --arg sunday ... --arg meta ... -f render.jq sweep.json
+#   jq -r -L <lib> --arg week ... --arg monday ... --arg sunday ... --arg meta ... -f render.jq recruiter.json
 # The pieces and the palette live in the library; this file only says which
 # of the board's fields go where. The ledger is deliberately not here: it
 # travels as a file beside the email (entrypoint.sh), since the Tuesday block

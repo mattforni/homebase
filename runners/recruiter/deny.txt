@@ -1,4 +1,4 @@
-# The recruiter's standing deny list, the list of record, applied by the sweep
+# The recruiter's standing deny list, the list of record, applied by the recruiter
 # runner before the model sees a card and read by the agent on a hand run.
 #
 # One entry per line. A bare brand drops every card from that employer. A

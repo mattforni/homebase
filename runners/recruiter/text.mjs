@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The sweep runner's deterministic extraction, so the model reads text and
+// The recruiter runner's deterministic extraction, so the model reads text and
 // JSON rather than pages. Three modes, no dependencies, node 20:
 //
 //   text.mjs getro <page.html>
