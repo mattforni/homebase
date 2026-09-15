@@ -5,7 +5,7 @@ Headless Claude routines that run on a schedule. One directory per runner, each 
 | Runner | Runs On | What It Does |
 |---|---|---|
 | [retro/](retro/README.md) | Cloud Run | Monday 05:00 Denver. Pulls the ISO week from Strava, Gmail, and HubSpot, has Claude write the retrospective, and emails it as `YYYY-Www Retro`. |
-| [sweep/](sweep/README.md) | Cloud Run | Monday 18:00 Denver. Runs the `recruiter` agent over the job boards so the week's sweep is done before the Tuesday work search block, and emails the board as `YYYY-Www Sweep`. Promoted 2026-09-11. |
+| [sweep/](sweep/README.md) | Cloud Run | Monday 18:00 Denver. Pulls the job boards with curl, runs the `recruiter` agent over the pulled listings so the week's sweep is done before the Tuesday work search block, and emails the board as `YYYY-Www Recruiter` with the ledger rows attached as a file. Promoted 2026-09-11. |
 | [outreach/](outreach/README.md) | by hand | Runs the `outreacher` agent to build the week's roster into `Outreach/YYYY-Www-roster.md` in the Atelic repo before the Tuesday desk block, and emails a report as `YYYY-Www Outreach`. Deliberately unscheduled: one pass is about $7.50, which is worth paying on purpose and not on a timer. |
 
 The runtime one pager (why Cloud Run over Routines, the service accounts and their secrets, the schedules, the traps) lives in Eudy at `Admin/Tools/cloud-run.md`.

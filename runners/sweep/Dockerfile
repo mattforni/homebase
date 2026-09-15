@@ -24,6 +24,10 @@ WORKDIR /home/runner
 COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
 COPY --chown=runner:runner prompt.md /home/runner/prompt.md
 COPY --chown=runner:runner render.jq /home/runner/render.jq
+# The pull side: the page reducers, the listing table, and the deny list.
+COPY --chown=runner:runner text.mjs /home/runner/text.mjs
+COPY --chown=runner:runner listings.jq /home/runner/listings.jq
+COPY --chown=runner:runner deny.txt /home/runner/deny.txt
 # The shared library: runner.sh for the entrypoint, email.jq for the renderer.
 COPY --chown=runner:runner lib/ /home/runner/lib/
 # The brief: the same agent definition the laptop runs, found where Claude Code

@@ -1,0 +1,44 @@
+# The recruiter's standing deny list, the list of record, applied by the sweep
+# runner before the model sees a card and read by the agent on a hand run.
+#
+# One entry per line. A bare brand drops every card from that employer. A
+# brand, a pipe, and a role drops only that employer's cards whose title
+# contains the role, and a brand may carry several such lines:
+#
+#   Crusoe
+#   Some Company | Staff Software Engineer
+#   Some Company | Principal Engineer
+#
+# Matching is case insensitive on the employer name exactly as the board
+# renders it. The story behind each entry (why it is here, when it was added,
+# and when to recheck it) lives in the recruiter agent's deny list section;
+# this file carries only the names, and the runner's listings.md reports what
+# it dropped.
+
+# Kind one, mismapped brands: the card lies about who the employer is. Never
+# recheck; a dead brand stays dead.
+RatedPower
+Sustain.Life
+Pearl Street
+Pachama
+Li-Cycle
+Alloy Enterprises
+Cobalt
+Urbint
+
+# Kind two, employers that permanently fail a hard filter: the card is
+# accurate and every software role is onsite. Recheck quarterly, or the moment
+# a Remote US software posting surfaces.
+Crusoe
+Form Energy
+Base Power
+Redwood Materials
+Twelve
+Air Company
+Moment Energy
+Sila
+Lunar Energy
+ChargePoint
+Mill
+Span
+Molg

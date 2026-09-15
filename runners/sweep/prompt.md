@@ -1,6 +1,14 @@
 Sweep the job sources for ISO week {{WEEK}} ({{MONDAY}} to {{SUNDAY}}); today is {{TODAY}}. Eudaimonia is checked out at {{EUDY}}, so every path in your definition that begins with ~/Eudaimonia resolves under it. Scratch directory for working files: {{WORK}}; write nowhere else.
 
-Run the full method in your definition. Then, instead of the markdown report your Output section describes, return exactly one JSON object and nothing else: no prose before it, no code fence around it. The runner renders it into the email, so a key that is missing or a value of the wrong type is a failed run.
+The fetching in step 1 of your method is already done, by the runner, before you started. Do not fetch any board or feed yourself; WebFetch is not available and you do not need it. Read these first, in this order:
+
+- {{WORK}}/pulls.md: what was pulled, and which source failed this run (a failed source is reported under `sources`, never silently skipped).
+- {{WORK}}/listings.md: the whole Getro tier, every board on the software title query set, deduplicated on job id, with the deny list already applied and what it dropped listed at the top. Each line carries the employer's own posting url, so step 3a starts there rather than from a slug guess. A board page shows the first twenty results for a query; the pull table's Total column says when a query had more, which is worth a line under `sources` if it hid roles.
+- {{PULLS}}/tech-jobs-for-good.md: the board as text, links kept.
+- {{PULLS}}/fractional-jobs.md: the board as text. Its listing is never evidence a role is open; fetch each candidate's detail page with one curl before reporting it.
+- {{PULLS}}/a16z/index.md, then only the issues dated since the last sweep, one file each in the same directory.
+
+Then run the rest of your method: score, verify every shortlist candidate on the employer's own ATS with one curl per candidate (the APIs your definition names, piped through jq where the answer is JSON), dedupe against the log and the ledger, and run at least two WebSearch angles. Then, instead of the markdown report your Output section describes, return exactly one JSON object and nothing else: no prose before it, no code fence around it. The runner renders it into the email, so a key that is missing or a value of the wrong type is a failed run.
 
 The shape, every key present (use `null` or `[]` where a week has nothing):
 
@@ -19,6 +27,17 @@ The shape, every key present (use `null` or `[]` where a week has nothing):
       "why": "One or two sentences on why it cleared, and any flag (freshness, comp against the floor).",
       "about": "One or two sentences on what the company actually does, then how the posting was verified (which API or page, what it said).",
       "url": "https://jobs.lever.co/foodsmart/..."
+    }
+  ],
+  "flagged": [
+    {
+      "company": "C.Scale",
+      "role": "Growth Engineer",
+      "missed": "Comp $95 to 115K",
+      "comp": "$95 to 115K",
+      "arrangement": "Remote US",
+      "why": "One or two sentences: which escape hatch this is (a growth engineering title, a hub hybrid outlier) and why it still earns a call.",
+      "url": "https://..."
     }
   ],
   "fractional": [
@@ -47,4 +66,4 @@ The shape, every key present (use `null` or `[]` where a week has nothing):
 }
 ```
 
-Rules for the values: `shortlist` is ordered by fit, highest first, and holds only roles verified on the employer's own posting; `rejected` holds only roles individually verified this sweep, one clause each; `sources` holds at most five entries and only what would change the source list; `ledger` holds every posting judged this sweep, shortlisted or rejected, keyed by ATS job id where there is one. Brevity everywhere: the reader gives this two minutes. Currency and ranges as plain text.
+Rules for the values: `shortlist` is ordered by fit, highest first, and holds only roles verified on the employer's own posting; `flagged` holds every escape hatch your definition names (a growth engineering title on any hard filter miss, comp included; a hub hybrid outlier), with `missed` in three to five words, and a role in `flagged` never also appears in `rejected`; `rejected` holds only roles individually verified this sweep, one clause each; `sources` holds at most five entries and only what would change the source list; `ledger` holds every posting judged this sweep, shortlisted, flagged or rejected, keyed by ATS job id where there is one (the runner delivers it as a file beside the email, never in it). Brevity everywhere: the reader gives this two minutes. Currency and ranges as plain text. No dashes of any kind in prose (no hyphens, en dashes or em dashes; split the sentence or use a comma; hyphens inside identifiers, URLs and role titles as the employer wrote them are fine).

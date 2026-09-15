@@ -82,12 +82,12 @@ html_escape() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
 
 # ---------- resend ----------
 
-# Usage: send_email <subject> <html-body>
+# Usage: send_email <subject> <html-body> [attachment-path]
 # Reads RESEND_API_KEY, REPORT_RECIPIENT, and REPORT_SENDER from the
 # environment. Prints what happened and returns non zero on any failure, so a
 # caller can treat a failed delivery as a failed run.
 send_email() {
-    local subject="$1" body="$2"
+    local subject="$1" body="$2" attachment="${3:-}"
     local sender="${REPORT_SENDER:-Claude <claude@atelic.me>}"
 
     if [[ -z "${RESEND_API_KEY:-}" || -z "${REPORT_RECIPIENT:-}" ]]; then
@@ -95,10 +95,24 @@ send_email() {
         return 1
     fi
 
-    local payload
+    # An optional file rides along as an attachment, base64 on one line
+    # (GNU base64 wraps at 76 columns unless told not to; BSD's never does).
+    local payload attachments='[]'
+    if [[ -n "$attachment" ]]; then
+        if [[ ! -r "$attachment" ]]; then
+            echo "email: attachment $attachment is not readable"
+            return 1
+        fi
+        attachments="$(jq -n --arg name "$(basename "$attachment")" --arg content "$(base64 < "$attachment" | tr -d '\n')" \
+            '[{filename: $name, content: $content}]')" || {
+            echo "email: could not encode the attachment"
+            return 1
+        }
+    fi
     payload="$(jq -n --arg from "$sender" --arg to "$REPORT_RECIPIENT" \
-        --arg subject "$subject" --arg html "$body" \
-        '{from: $from, to: [$to], subject: $subject, html: $html}')" || {
+        --arg subject "$subject" --arg html "$body" --argjson attachments "$attachments" \
+        '{from: $from, to: [$to], subject: $subject, html: $html}
+         + (if ($attachments | length) > 0 then {attachments: $attachments} else {} end)')" || {
         echo "email: could not build the Resend payload"
         return 1
     }
