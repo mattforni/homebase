@@ -21,7 +21,7 @@ RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 # published to npm: the public repo is the package, dist/ is committed, and a
 # tag is a release, so the install is a git spec pinned to a tag for the same
 # reason Claude Code is pinned above. Public, so the build needs no token.
-ARG PINOLE_CLI_REF=v0.1.0
+ARG PINOLE_CLI_REF=v0.1.1
 RUN npm install -g "github:atelic-action/pinole-cli#${PINOLE_CLI_REF}"
 
 # Non root, its own home so Claude Code has a writable config dir.
