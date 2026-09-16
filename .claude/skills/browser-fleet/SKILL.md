@@ -1,6 +1,6 @@
 ---
 name: browser-fleet
-description: Parallelize real browser work across 2 to 5 agents, each driving its own isolated agent-browser session. Use when the same browser task repeats across many targets, like submitting contact forms across a prospect list, sweeping lodging sites for a trip, or scraping JS rendered pages. Triggers on "browser fleet", "parallel browsers", "fan out the browser", "submit these forms in parallel", or /browser-fleet. Not for single site sessions (plain agent-browser) or authenticated Brave profile flows (Playwright MCP).
+description: Parallelize real browser work across 2 to 5 agents, each driving its own isolated agent-browser session. Use when the same browser task repeats across many targets, like submitting contact forms across a prospect list, sweeping lodging sites for a trip, or scraping JS rendered pages. Triggers on "browser fleet", "parallel browsers", "fan out the browser", "submit these forms in parallel", or /browser-fleet. Not for single site sessions (plain agent-browser) or authenticated flows in Forni's own Brave (one agent-browser session attached with --cdp 9222).
 ---
 
 # Browser Fleet
@@ -10,7 +10,7 @@ Fan browser work out across parallel subagents, each with its own isolated `agen
 ## Tool Choice
 
 - **agent-browser** (this skill) for everything unauthenticated or freshly authenticated: forms, scraping, sweeps, verification. Lightest context per action.
-- **Playwright MCP** only when the task needs the dedicated authenticated Brave profile with Bitwarden (banking, YNAB, logged in web apps). Keep its footprint shrinking.
+- **One session attached to Forni's Brave** (`agent-browser --session <name> --cdp 9222`) when the task needs his logins, Bitwarden, or a real browser past a bot check (banking, YNAB, Google, logged in web apps). That browser is shared with him, so it is never fanned out; the Playwright MCP that used to do this was retired 2026-09-16.
 
 ## Execution
 
