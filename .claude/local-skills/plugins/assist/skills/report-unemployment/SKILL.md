@@ -20,7 +20,7 @@ Claim weeks run Sunday through Saturday; the Monday task files for the week that
 
 - **Applications** (kind `application`) report as job applications with outcome Applied.
 - **Supporting activities** (kinds `listings_review`, `registration`, `registration_maintenance`, `resume_submission`) report with outcome No Decision.
-- **Excluded**: anything still in flight, a `follow_up` with no reportable activity of its own, and anything that would not survive an audit. Every activity left off gets `pinole work activities exclude <id> --reason <text>` so the ledger says why; a posting that closed before anything went out or a role declined on fit never became an activity and needs nothing.
+- **Excluded**: anything still in flight, a `follow_up` with no reportable activity of its own, and anything that would not survive an audit. Every activity left off gets `pinole work activities exclude <id> --reason <text>` so the ledger says why (inline; a background run never writes, and returns each omitted id with its reason for the main session to record); a posting that closed before anything went out or a role declined on fit never became an activity and needs nothing.
 - The cadence targets five activities (three applications plus two supporting, per the FY27 plan). Fewer than five is reported honestly, never padded.
 
 **Sweep forward before trusting the count.** The claim week's own rows are not the whole slate. An activity that was *committed to* in an earlier week and *happened* during the claim week is often recorded only on the earlier activity, as a note reading "call booked for <date>" or "interview scheduled", and never logged on the day it actually landed. Reading the claim week alone therefore undercounts. Before settling the count:

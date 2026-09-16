@@ -339,10 +339,22 @@ log_sweep_activity() {
         fail_reason="could not read today's activities before logging the sweep: $(head -c 300 "$PINOLE_ERR")"
         return 1
     fi
-    if jq -e --arg week "$WEEK" '.data.collection[] | select((.notes // "") | startswith($week + " sweep"))' <<<"$existing" >/dev/null 2>&1; then
-        echo "activity: a $WEEK sweep is already logged for $TODAY, not logging it again"
-        return 0
-    fi
+    # jq -e exits 0 on a match, 1 or 4 on none, and anything else on a
+    # malformed answer; only the first two are answers, the rest is a failed
+    # read, since logging on top of a response that could not be parsed is
+    # exactly the duplicate this check exists to prevent.
+    jq -e --arg week "$WEEK" '.data.collection[] | select((.notes // "") | startswith($week + " sweep"))' <<<"$existing" >/dev/null 2>"$PINOLE_ERR"
+    case $? in
+        0)
+            echo "activity: a $WEEK sweep is already logged for $TODAY, not logging it again"
+            return 0
+            ;;
+        1|4) ;;
+        *)
+            fail_reason="could not read today's activities before logging the sweep: $(head -c 300 "$PINOLE_ERR")"
+            return 1
+            ;;
+    esac
 
     sources="$(printf '%s\n' "${GETRO_BOARDS[@]}" | cut -d'|' -f1 | paste -sd ',' - | sed 's/,/, /g')"
     sources="$sources, Tech Jobs for Good, Fractional Jobs, a16z Jobs"
