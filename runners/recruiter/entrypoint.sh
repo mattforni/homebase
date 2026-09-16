@@ -312,7 +312,7 @@ upsert_postings() {
         return 0
     fi
     if ! jq '{postings: [.ledger[] | {
-            company, key, board, track, status, verdict,
+            company, key, board, track, status, verdict, url,
             title: .role, fit_score: .fit, first_seen_on: .date}]}' "$DRAFT_JSON" > "$POSTINGS_JSON" 2>"$PINOLE_ERR"; then
         fail_reason="could not build the postings from the ledger rows: $(head -c 300 "$PINOLE_ERR")"
         return 1
