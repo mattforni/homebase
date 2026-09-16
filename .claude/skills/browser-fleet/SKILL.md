@@ -10,7 +10,7 @@ Fan browser work out across parallel subagents, each with its own isolated `agen
 ## Tool Choice
 
 - **agent-browser** (this skill) for everything unauthenticated or freshly authenticated: forms, scraping, sweeps, verification. Lightest context per action.
-- **One session attached to Forni's Brave** (`agent-browser --session <name> --cdp 9222`) when the task needs his logins, Bitwarden, or a real browser past a bot check (banking, YNAB, Google, logged in web apps). That browser is shared with him, so it is never fanned out; the Playwright MCP that used to do this was retired 2026-09-16.
+- **One session attached to Forni's Brave** (`agent-browser --session <name> --cdp 9222`) when the task needs his logins, Bitwarden, or a real browser past a bot check (banking, YNAB, Google, logged in web apps). Pin the session to its tab (`tab list`, then `tab <id> --pin-tab`) and read back the bound URL before acting, since an unpinned session follows whatever tab he focuses. That browser is shared with him, so it is never fanned out; the Playwright MCP that used to do this was retired 2026-09-16.
 
 ## Execution
 
