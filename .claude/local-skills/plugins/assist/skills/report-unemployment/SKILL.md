@@ -1,33 +1,33 @@
 ---
 name: report-unemployment
-description: File the weekly Colorado unemployment payment request in MyUI+ from the FY27 work search log. Builds the reportable activity slate for the just ended claim week, drives MyUI+ through agent-browser attached to Forni's real Brave, walks the weekly payment request screens, and stops hard at both certifications for Forni's explicit yes. Use whenever Forni says "report unemployment", "request UI payment", "file the weekly claim", "MyUI+", mentions the Monday payment request task, or invokes /assist:report-unemployment. The claimer agent carries this method for background dispatch.
+description: File the weekly Colorado unemployment payment request in MyUI+ from the activities ledger in the Pinole work API. Builds the reportable activity slate for the just ended claim week, drives MyUI+ through agent-browser attached to Forni's real Brave, walks the weekly payment request screens, and stops hard at both certifications for Forni's explicit yes. Use whenever Forni says "report unemployment", "request UI payment", "file the weekly claim", "MyUI+", mentions the Monday payment request task, or invokes /assist:report-unemployment. The claimer agent carries this method for background dispatch.
 ---
 
 # Report Unemployment
 
-The weekly motion that turns the work search log into a filed MyUI+ payment request. The log is already kept in audit shape; this skill moves the week into the state system and captures the confirmation trail. The `claimer` agent runs this method in the background and bails to Forni at every gate; run it inline when Forni wants to drive together.
+The weekly motion that turns the activities ledger into a filed MyUI+ payment request. The ledger is already kept in audit shape (date, kind, employer, position, channel on every activity); this skill moves the week into the state system and stamps the confirmation trail back onto each activity. The `claimer` agent runs this method in the background and bails to Forni at every gate; run it inline when Forni wants to drive together.
 
 ## Where Truth Lives
 
-- **The log**: `~/Eudaimonia/Craft/Vocation/FY27-work-search.md`. Weekly sections in MyUI+ audit shape. The slate comes from here, and the confirmation number goes back here.
+- **The activities ledger**: the Pinole work API through the `pinole` CLI. The slate is `pinole work activities list --week <YYYY-Www> --table` for the claim week; the confirmation goes back with `pinole work activities report --confirmation <code> <id> [<id>...]` on every included activity id, and an activity left off the slate gets `pinole work activities exclude <id> --reason <text>` so the ledger records why. The table renders Id, Date, Kind, Employer, Position, Channel, Reported, and Notes; the report and exclude verbs take the Id. `--reported false` narrows a listing to what has not been stamped yet.
 - **The claim**: `~/Eudaimonia/Constitution/Financial/FY27-unemployment.md`. Claimant ID, effective date, benefit year end.
 - **The task**: Todoist "💰 Request UI Payment in MyUI+", recurring every Monday at 17:00. Completing it after submission is the last step.
 - **The site**: the [MyUI+ claimant portal](https://myui.clouduim.cdle.state.co.us/Claimant/Core/Login.ASPX), sign in via ID.me. System hours 04:00 to 19:00 MT, nightly processing 22:00 to 03:00 MT.
 
 ## The Slate
 
-Claim weeks run Sunday through Saturday; the Monday task files for the week that ended two days earlier. Pull the matching week section from the log and keep only what was genuinely completed:
+Claim weeks run Sunday through Saturday; the Monday task files for the week that ended two days earlier. Pull the claim week with `pinole work activities list --week <YYYY-Www> --table` (the `--week` filter expands to the Sunday through Saturday claim week containing that ISO week's Monday) and keep only what was genuinely completed:
 
-- **Applications actually submitted** report as job applications with outcome Applied.
-- **Supporting activities** (listings reviews, job platform registrations and profiles) report with outcome No Decision.
-- **Excluded**: postings that closed before anything went out, roles declined on fit, anything still in flight. If it would not survive an audit, it stays off.
+- **Applications** (kind `application`) report as job applications with outcome Applied.
+- **Supporting activities** (kinds `listings_review`, `registration`, `registration_maintenance`, `resume_submission`) report with outcome No Decision.
+- **Excluded**: anything still in flight, a `follow_up` with no reportable activity of its own, and anything that would not survive an audit. Every activity left off gets `pinole work activities exclude <id> --reason <text>` so the ledger says why (inline; a background run never writes, and returns each omitted id with its reason for the main session to record); a posting that closed before anything went out or a role declined on fit never became an activity and needs nothing.
 - The cadence targets five activities (three applications plus two supporting, per the FY27 plan). Fewer than five is reported honestly, never padded.
 
-**Sweep forward before trusting the count.** The claim week's own section is not the whole slate. An activity that was *committed to* in an earlier week and *happened* during the claim week is often recorded only in the earlier week's row, as "call booked for <date>" or "interview scheduled", and never written into the week it actually landed in. Reading the claim week's section alone therefore undercounts. Before settling the count:
+**Sweep forward before trusting the count.** The claim week's own rows are not the whole slate. An activity that was *committed to* in an earlier week and *happened* during the claim week is often recorded only on the earlier activity, as a note reading "call booked for <date>" or "interview scheduled", and never logged on the day it actually landed. Reading the claim week alone therefore undercounts. Before settling the count:
 
-1. Scan the two preceding week sections for any row naming a future date, and keep the ones falling inside the claim week.
+1. List the two preceding weeks (one `pinole work activities list --week <YYYY-Www> --table` call each) and scan their notes for any future date falling inside the claim week.
 2. Confirm each against the calendar (`gws calendar events list` over the claim week) and the mailbox, which is where a call leaves its real trace. A post call email is the strongest evidence a booked call was actually held.
-3. Anything confirmed is a genuine activity and goes in, and the log gets the missing row backfilled at the same time the confirmation number is appended. That backfill is the inline path's, exactly like the confirmation number append: a background run never writes the Eudy repo, and instead returns the confirmed rows in its report for the main session to record.
+3. Anything confirmed is a genuine activity: log it on the day it happened (`pinole work activities log --on <date> --kind interview --employer <name> --posting <id>`, or `--kind networking` for a call that was not an interview) before the slate is settled, so the stamp lands on it with the rest. That backfill is the inline path's, exactly like the confirmation stamp: a background run never writes the API, and instead returns the confirmed rows in its report for the main session to log.
 
 Codified 2026-08-25, when the week of 08-16 read as three applications and was actually four. A True Search intro call sat in the week of 08-09 as "Call booked 2026-08-18", the calendar showed it at 14:30 that Tuesday, and Forni's own "Great chatting, Nick" email an hour later proved it happened. Forni had to supply it from memory because neither the skill nor the agent thought to look one week back.
 
@@ -47,23 +47,26 @@ If a fresh ID.me login or MFA is needed, hand the keyboard to Forni and wait. An
 Drive every control by DOM id, and read the section and error state rather than trusting a reported success. Snapshot ref clicks do fire on this site, but refs shift on every postback, so a stable id is the safer target. Ids and the entry path are in [learned-rules.md](learned-rules.md).
 
 1. **Confirm the week.** Start from My Claim Status and open the specific week row whose dates match the slate, not a generic start button. Only one week is ever certifiable, and the next week's row shows the date it opens.
-2. **Basic Questions are Forni's answers** (work, earnings, offers, able, available). Inline, walk them with him; a background run bails to the main session the moment the section is not already Complete, per the agent contract. Forni may hand the whole section over ("I trust you to answer these"), and most of it genuinely is derivable from the record: offers, refusals, quits, discharges, layoffs, holidays, able, available, and work search all follow from the log and the week. **Two never are, no matter how broad the authorization: whether he worked (self employment counts, so any Atelic work is work) and whether he received severance, retirement pay, 401(K), or pension.** Only he knows those, a wrong answer is a false certification under penalty of perjury, and a blanket yes does not create knowledge. Ask those two, answer the rest, and say which is which.
+2. **Basic Questions are Forni's answers** (work, earnings, offers, able, available). Inline, walk them with him; a background run bails to the main session the moment the section is not already Complete, per the agent contract. Forni may hand the whole section over ("I trust you to answer these"), and most of it genuinely is derivable from the record: offers, refusals, quits, discharges, layoffs, holidays, able, available, and work search all follow from the ledger and the week. **Two never are, no matter how broad the authorization: whether he worked (self employment counts, so any Atelic work is work) and whether he received severance, retirement pay, 401(K), or pension.** Only he knows those, a wrong answer is a false certification under penalty of perjury, and a blanket yes does not create knowledge. Ask those two, answer the rest, and say which is which.
 3. **Activity count**: select the radio matching the slate size (Five or More at cadence).
 4. **One form per activity**, saved individually. Field ids, dropdown mapping, and the ASPX gotchas live in [learned-rules.md](learned-rules.md). Verify each save by the numbered activity list growing.
 5. **Work Search Plan** checkboxes describe the coming week's intent: inquire online, apply online, interview online and by phone, other activities.
 6. **GATE: work search certification.** Checkbox plus initials (MGF), then FINISH. Requires Forni's explicit yes in that moment.
 7. **Summary readback.** Read every section back to Forni in full: Basic Questions answers, all activities, the plan.
 8. **GATE: penalty of perjury certification and Submit.** Requires Forni's explicit yes in that moment. Two gates, two yeses; never batch them.
-9. **Capture and close.** Record the confirmation number, submitted week, and timestamp. Inline, append a confirmation line to the week's section in the log; a background run reports the number and leaves the append to the main session. Complete the Todoist task and report the number.
+9. **Capture and close.** Record the confirmation number, submitted week, and timestamp. Inline, stamp every included activity with `pinole work activities report --confirmation <code> <id> [<id>...]` (one call, every id from the slate); a background run reports the number and the ids and leaves the stamp to the main session. Complete the Todoist task and report the number.
 
 ## Activity Type Mapping
 
-| Log activity | MyUI+ type of activity option |
+| Activity `kind` | MyUI+ type of activity option |
 |---|---|
-| Application submitted | Completed a job application in person, by mail, or online with an employer who may reasonably be expected to have openings for suitable work. |
-| Listings or alert review | Reviewed job listings on the internet, newspapers or professional journals. |
-| Job platform registration, profile, or resume upload | Used online job matching systems, including Connecting Colorado, to submit applications/resumes, search for matches or request referrals, and/or apply for jobs. |
-| Networking conversation | Networked with colleagues or friends. |
-| Interview or screen | Interviewed with a potential employer in person or by telephone. |
+| `application` | Completed a job application in person, by mail, or online with an employer who may reasonably be expected to have openings for suitable work. |
+| `listings_review` | Reviewed job listings on the internet, newspapers or professional journals. |
+| `registration` | Used online job matching systems, including Connecting Colorado, to submit applications/resumes, search for matches or request referrals, and/or apply for jobs. |
+| `registration_maintenance` | Used online job matching systems (the same option as `registration`). |
+| `resume_submission` | Used online job matching systems (the same option as `registration`). |
+| `networking` | Networked with colleagues or friends. |
+| `interview` | Interviewed with a potential employer in person or by telephone. |
+| `follow_up` | Not reportable on its own. It stays folded into the application it follows and never gets a form of its own. |
 
-Contact method is Online for the standard motion. Contact information takes the posting URL. Position title and platform go in Additional Information; the form has no position field.
+Contact method comes from the activity's `channel` (Online for the standard motion). Contact information takes the activity's `url`. Position and platform go in Additional Information; the form has no position field.

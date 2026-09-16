@@ -83,7 +83,7 @@ A tool doc's named method wins. Absent one, connect to outside apps by an offici
 
 ### gws Profiles
 
-The `gws` CLI switches identity per directory subtree via `.account` marker files. Profiles: `personal` (<mattforni@gmail.com>, the ambient default), `atelic` (<matt@atelic.me>, the work identity), and `tpf` (<matt@theproductforge.com>, the TPF Vocation subtree). Use `gws-whoami` to confirm the active account before sending mail or modifying calendars; when ambiguous, ask. Mechanics live in `~/Eudaimonia/Admin/Tools/gws.md`.
+The profiles and the `.account` marker mechanics are the Account Profiles table in `~/CLAUDE.md`, depth in `~/Eudaimonia/Admin/Tools/gws.md`. Use `gws-whoami` to confirm the active account before sending mail or modifying calendars; when ambiguous, ask.
 
 ### Google Workspace (reading links, Docs, Gmail)
 

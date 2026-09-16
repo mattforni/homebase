@@ -286,6 +286,33 @@ install_npm_globals() {
       SUMMARY+=("$pkg installed")
     fi
   done
+
+  # Globals installed from a git tag rather than the registry, as
+  # name|spec|version. The loop above checks by package name, which a git spec
+  # is not, so these carry the name for the check, the spec for the install,
+  # and the tag's version so a bumped pin reinstalls instead of sitting behind
+  # an "already installed". pinole (the Pinole work API client, 2026-09-16) is
+  # not published to npm: the public repo is the package, dist/ is committed,
+  # and the tag is the release. The recruiter image pins the same tag in
+  # runners/recruiter/Dockerfile; bump both together.
+  local git_globals=(
+    "pinole|github:atelic-action/pinole-cli#v0.1.1|0.1.1"
+  )
+
+  local entry name spec want have
+  for entry in "${git_globals[@]}"; do
+    IFS='|' read -r name spec want <<<"$entry"
+    # `npm list -g <name> --depth=0` prints the tree line `name@version`; sed
+    # rather than --json and jq, since jq may not be on PATH in this phase.
+    have="$(npm list -g "$name" --depth=0 2>/dev/null | sed -n "s/.* $name@\\([^ ]*\\).*/\\1/p" | head -n 1)"
+    if [[ "$FORCE" != true && "$have" == "$want" ]]; then
+      info "$name $have already installed"
+    else
+      info "Installing $name from $spec..."
+      npm install -g "$spec" || return 1
+      SUMMARY+=("$name $want installed")
+    fi
+  done
 }
 
 update_claude_code() {
