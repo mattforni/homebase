@@ -84,3 +84,11 @@ When the dispatch brief carries a focus that the count 2 row does not serve, the
 **Why:** 2026-09-11. The `SubagentStop` gate on lander reached count 2 against a "something new" focus. socrates read the two phases as colliding; the resolution was to board it first, with the reason it was never grounded in a failure, and retire it. The count reset honestly and the focus was honored.
 
 **How to apply:** The sharpener writes the retirement reason into row 1 when the focus and the aged row disagree, so the pick is a yes or no and never a carry.
+
+## The Reduce Cut Fires Every Session, Anchor or Not
+
+Phase 5 says a cut is owed when an always on file is over the 200 line anchor; the Every Session Reduces rule says one bounded cut per session. The rule wins: the cut is taken every session a bounded one exists, and "no cut owed" is written only when the sharpener's Scan names none.
+
+**Why:** 2026-09-16. socrates read the two as contradicting each other, and the last three entries had logged "no cut owed; all four files under the anchor" while a named 500 byte duplicate sat in GC for two sessions. The cut was taken today (GC 20084 to 19909 bytes) and the anchor kept as the trigger for a larger move, not the gate on a small one.
+
+**How to apply:** The sharpener's Load line always names the best single cut; the main session takes it before Implement unless the Scan found nothing bounded. The anchor decides whether a path scoped rule or tool doc move is due; it never excuses a session from the cut.
