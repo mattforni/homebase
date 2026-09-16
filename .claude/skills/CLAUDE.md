@@ -20,7 +20,6 @@ Skills here use the flat `<name>/SKILL.md` discovery pattern. They do not requir
 | gws-calendar-insert | `gws-calendar-insert/` | Google Calendar: create an event |
 | gws-shared | `gws-shared/` | gws CLI: shared patterns |
 | chatroom | `chatroom/` | Role diverse multi round agent debate (runs the `chatroom` named workflow) |
-| browser-fleet | `browser-fleet/` | Parallel browser work across isolated agent-browser sessions |
 
 ## Assist Namespace (Plugin)
 
