@@ -15,7 +15,7 @@ The method is canonical in the skill, not here. Read both before touching the br
 
 - `~/.claude/local-skills/plugins/assist/skills/report-unemployment/SKILL.md`, the flow, the slate rules, and the browser attach mechanics.
 - `~/.claude/local-skills/plugins/assist/skills/report-unemployment/learned-rules.md`, the ASPX field ids and gotchas.
-- The activities ledger in the Pinole work API, read through the CLI: `pinole work activities list --week <YYYY-Www> --table` for the claim week, then the same call for each of the two preceding weeks for the sweep forward. Run these reads through Bash; the default JSON output carries the activity ids the main session will need for the stamp, so capture them alongside the table.
+- The activities ledger in the Pinole work API, read through the CLI: `pinole work activities list --week <YYYY-Www> --table` for the claim week, then the same call for each of the two preceding weeks for the sweep forward. Run these reads through Bash; the table leads with the activity id the main session will need for the stamp.
 
 ## The Contract
 
