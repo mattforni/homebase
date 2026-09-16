@@ -391,6 +391,24 @@ ALLOWED_TOOLS=(
     "Bash(date:*)"
     "Bash(cat:*)"
     "Bash(ls:*)"
+    # The text toolkit the agent pipes a fetched posting through. A pipeline
+    # is allowed only when every stage is, and the 2026-09-16 rehearsal spent
+    # turns on denials of `curl | jq | sed | grep | head` chains (Forni: allow
+    # them all). Every one of these reads and transforms; none writes.
+    "Bash(sed:*)"
+    "Bash(grep:*)"
+    "Bash(head:*)"
+    "Bash(tail:*)"
+    "Bash(tr:*)"
+    "Bash(sort:*)"
+    "Bash(uniq:*)"
+    "Bash(wc:*)"
+    "Bash(cut:*)"
+    "Bash(awk:*)"
+    "Bash(echo:*)"
+    "Bash(printf:*)"
+    "Bash(python3:*)"
+    "Bash(node:*)"
     # Bare: a path scoped Write rule is denied by `claude -p` in every form
     # (runners/outreach/entrypoint.sh has the test); the container's checkout
     # is a read only mount, so the work directory is the only place a write
