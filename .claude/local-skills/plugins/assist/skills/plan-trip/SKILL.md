@@ -4,7 +4,6 @@ description: Group trip and getaway planning. Scope the trip, pull live lodging 
 argument-hint: "[scope | search | present | verify | book | doc]"
 allowed-tools:
   - Bash
-  - mcp__playwright__*
   - WebSearch
   - WebFetch
   - Read
@@ -22,7 +21,7 @@ The whole point is to be a real planning partner, not a search box. The lodging 
 ## Before Every Invocation
 
 1. Read [learned-rules.md](learned-rules.md) in this directory. It holds the calibrated gotchas from real trips, and it is the part most likely to save a misstep.
-2. Read `~/Eudaimonia/Craft/Adventure/CLAUDE.md`, especially the **Checking real availability for specific dates** section. The live availability mechanics (VRBO dated search, the Guesty calendar API, Airbnb dated search via Playwright) live there. This skill references them rather than restating them, so the two stay in sync.
+2. Read `~/Eudaimonia/Craft/Adventure/CLAUDE.md`, especially the **Checking real availability for specific dates** section. The live availability mechanics (VRBO dated search, the Guesty calendar API, Airbnb dated search via agent-browser) live there. This skill references them rather than restating them, so the two stay in sync.
 3. Skim the existing trip docs under `~/Eudaimonia/Craft/Adventure/` for the house style. `2026 Four Pass Loop/README.md` and `2026 Summer Camp/README.md` are the two worked examples this skill is built from.
 
 ## Source of Truth
