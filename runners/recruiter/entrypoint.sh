@@ -407,8 +407,6 @@ ALLOWED_TOOLS=(
     "Bash(awk:*)"
     "Bash(echo:*)"
     "Bash(printf:*)"
-    "Bash(python3:*)"
-    "Bash(node:*)"
     # Bare: a path scoped Write rule is denied by `claude -p` in every form
     # (runners/outreach/entrypoint.sh has the test); the container's checkout
     # is a read only mount, so the work directory is the only place a write
