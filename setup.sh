@@ -1026,11 +1026,25 @@ install_mcp_servers() {
     PINOLE_API_TOKEN="$(security find-generic-password -s pinole-mcp-token -w)" || PINOLE_API_TOKEN=""
   fi
 
-  local desired=(
-    "playwright|stdio|npx -y @playwright/mcp@latest"
-  )
+  # playwright left on 2026-09-16: agent-browser attached to the everyday Brave
+  # on port 9222 is the one browser tool now, so a registration left from an
+  # earlier run is removed here rather than silently kept.
+  local retired=(playwright)
+  for name in "${retired[@]}"; do
+    if claude mcp get "$name" &>/dev/null; then
+      if claude mcp remove "$name" --scope user &>/dev/null; then
+        SUMMARY+=("MCP server removed: $name")
+      else
+        warn "Failed to remove retired MCP server: $name"
+      fi
+    fi
+  done
 
-  for entry in "${desired[@]}"; do
+  # Empty for now. The guarded expansion keeps bash 3.2 under `set -u` from
+  # failing on an empty array.
+  local desired=()
+
+  for entry in ${desired[@]+"${desired[@]}"}; do
     local name="${entry%%|*}"
     local rest="${entry#*|}"
     local transport="${rest%%|*}"
