@@ -71,8 +71,8 @@ their customer label instead.
 
 Work arriving for Forni himself rather than for the practice: job boards,
 applications, recruiters, and their confirmations at the practice address
-(Wellfound, Fractional Jobs). The log of record is
-`Craft/Vocation/FY27-work-search.md`; this label is retrieval only.
+(Wellfound, Fractional Jobs). The ledger of record is the Pinole work API
+(`pinole work postings`, `pinole work activities`); this label is retrieval only.
 
 ### TPF (⚒️)
 
