@@ -138,6 +138,14 @@ runner_local_credentials() {
         [[ -n "$RESEND_API_KEY" ]] && export RESEND_API_KEY || unset RESEND_API_KEY
     fi
 
+    # The Pinole work API token, under the Keychain service the pinole CLI
+    # itself reads on this machine. It still has to be exported: a container
+    # has no Keychain, so the CLI inside it reads PINOLE_API_TOKEN or nothing.
+    if [[ -z "${PINOLE_API_TOKEN:-}" ]]; then
+        PINOLE_API_TOKEN="$(security find-generic-password -s pinole-mcp-token -w)" || true
+        [[ -n "$PINOLE_API_TOKEN" ]] && export PINOLE_API_TOKEN || unset PINOLE_API_TOKEN
+    fi
+
     # Who a runner reports to is a property of the runner, not of the machine:
     # the retro is personal and the outreach roster is Atelic work, and they go
     # to different mailboxes. So a runner may name its own recipient in
@@ -176,7 +184,7 @@ runner_env_names() {
     local envfile="$1/.env.local"
     {
         [[ -r "$envfile" ]] && sed -n "s/^export \\([A-Za-z_][A-Za-z0-9_]*\\)=.*/\\1/p" "$envfile"
-        printf '%s\n' CLAUDE_CODE_OAUTH_TOKEN RESEND_API_KEY REPORT_RECIPIENT REPORT_SENDER TZ RUNNER_MODEL
+        printf '%s\n' CLAUDE_CODE_OAUTH_TOKEN RESEND_API_KEY PINOLE_API_TOKEN REPORT_RECIPIENT REPORT_SENDER TZ RUNNER_MODEL
     } | awk 'NF && !seen[$0]++'
 }
 
