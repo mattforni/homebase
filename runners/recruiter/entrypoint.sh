@@ -11,10 +11,13 @@
 # checkout and the pulled files from the work directory, verifies what
 # survives on the employers' own ATS APIs, and returns the board as JSON;
 # render.jq turns that into the designed email and Resend delivers it as
-# "YYYY-Www Recruiter". Read only against the world: the agent writes nothing
-# outside its work directory, and the ledger rows come back as a markdown
-# file attached to the email (never in its body, Forni 2026-09-15) for the
-# Tuesday session to append to FY27-sweep-ledger.md.
+# "YYYY-Www Recruiter". The agent writes nothing outside its work directory;
+# the runner is what talks to the Pinole work API through the pinole CLI: it
+# pulls the postings ledger before the model starts (the seen set the sweep
+# dedupes against), upserts the judged rows as postings after the model
+# returns, and logs the sweep as one listings_review activity. The ledger rows
+# also ride beside the email as a markdown file (never in its body, Forni
+# 2026-09-15), the fallback until the first unattended Monday proves the POST.
 #
 # The brief is the agent definition; prompt.md adds only the week, the
 # checkout, the pulled files, the scratch directory and the JSON shape the
@@ -26,6 +29,9 @@
 # vault, or by bin/runner/run-local from this machine:
 #   CLAUDE_CODE_OAUTH_TOKEN   atelic-keys/claude-code-oauth
 #   RESEND_API_KEY            atelic-keys/resend-api-key
+#   PINOLE_API_TOKEN          atelic-keys/pinole-mcp-token; always required,
+#                             since the ledger pull is a read the dedupe
+#                             cannot run without, dry runs included
 #   EUDY_DEPLOY_KEY           forni-keys/github-deploy-key-eudy; needed only when
 #                             no checkout is present at $EUDY
 # Plain configuration:
@@ -35,10 +41,13 @@
 #   EUDY                      the Eudaimonia checkout; defaults to $HOME/Eudaimonia,
 #                             which is where the agent's own paths resolve
 #   WEEK                      optional YYYY-Www override; default is this week
-#   DRY_RUN                   1 renders the email and skips the send
+#   DRY_RUN                   1 renders the email and skips the send; the
+#                             ledger read and writes still happen, since a
+#                             rehearsal that skips them proves nothing
 #   SKIP_PULLS                1 skips the board pulls and runs the agent over
 #                             the files already in $WORK, so a prompt change
-#                             costs one model call and no fetches
+#                             costs one model call and no fetches; the ledger
+#                             is pulled fresh regardless, it is one API call
 # fail_reason, result, status and ATTACHMENT cross into the scaffold in
 # lib/runner.sh (its EXIT trap and runner_render read them), which static
 # analysis cannot see across files.
@@ -64,10 +73,10 @@ fi
 
 runner_init recruiter "Recruiter" current
 
-required=(CLAUDE_CODE_OAUTH_TOKEN)
+required=(CLAUDE_CODE_OAUTH_TOKEN PINOLE_API_TOKEN)
 [[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)
 require "${required[@]}" || exit 1
-require_tools claude jq curl node xargs timeout git || exit 1
+require_tools claude jq curl node xargs timeout git pinole || exit 1
 
 # The agent's definition names its sources as ~/Eudaimonia/... paths. Inside
 # the image HOME is /home/runner, so a checkout there makes every one of those
@@ -77,6 +86,17 @@ EUDY="${EUDY:-$HOME/Eudaimonia}"
 EUDY_REPO="${EUDY_REPO:-git@github.com:mattforni/Eudaimonia.git}"
 RUBRIC="Craft/Vocation/role-rubric.md"
 LEDGER_MD="$WORK/$WEEK-ledger.md"
+# The Pinole side: the seen set the model reads, the rows the runner writes
+# back, and what the API answered, all kept in the work directory so a failed
+# write can be looked at without another model call.
+LEDGER_SEEN="$WORK/ledger.md"
+# fill_prompt sets TODAY too, but inside a command substitution, where it
+# never reaches this shell; set here so the activity and the prompt agree.
+TODAY="${TODAY:-$(date +%F)}"
+POSTINGS_JSON="$WORK/postings.json"
+UPSERT_JSON="$WORK/upsert.json"
+ACTIVITY_JSON="$WORK/activity.json"
+PINOLE_ERR="$WORK/pinole-stderr.txt"
 
 # ---------- Eudaimonia ----------
 # A checkout that is already there is used as it is and never touched: on this
@@ -259,12 +279,96 @@ pulls_ready() {
     return 1
 }
 
+# ---------- the ledger ----------
+# Every posting ever judged, any status, as the table the model dedupes
+# against. A sweep without its seen set re verifies every posting at ATS cost
+# and reports last week's rejections as new, so a failed pull is a failed run,
+# never a skip. Pulled fresh on every run, SKIP_PULLS or not: it is one call.
+pull_ledger() {
+    local rows
+    if ! pinole work postings list --all --table > "$LEDGER_SEEN" 2>"$PINOLE_ERR"; then
+        fail_reason="could not pull the postings ledger: $(head -c 300 "$PINOLE_ERR")"
+        return 1
+    fi
+    # The table's pipe rows less its header and rule.
+    rows="$(awk '/^\|/ { n++ } END { print (n > 2 ? n - 2 : 0) }' "$LEDGER_SEEN")"
+    echo "ledger: $rows postings already judged, in $LEDGER_SEEN"
+}
+
+# The write back, after the model has returned and the draft has its shape.
+# Both are hard failures: the attachment already exists by then, so nothing
+# the model produced is lost, and an unattended run that silently kept its
+# rows out of the ledger would chase every one of them again next Monday.
+
+# The ledger rows as postings for the API: the prompt's row names map onto
+# the entity's (date to first_seen_on, role to title, fit to fit_score) and
+# the rest pass through. The API matches each row by key, then fuzzily on
+# company and title, and never lets a sweep status overwrite an applied one.
+upsert_postings() {
+    local count
+    count="$(jq -r '.ledger | length' "$DRAFT_JSON")"
+    if [[ "$count" == "0" ]]; then
+        echo "upsert: no ledger rows this sweep, nothing to write"
+        return 0
+    fi
+    if ! jq '{postings: [.ledger[] | {
+            company, key, board, track, status, verdict,
+            title: .role, fit_score: .fit, first_seen_on: .date}]}' "$DRAFT_JSON" > "$POSTINGS_JSON" 2>"$PINOLE_ERR"; then
+        fail_reason="could not build the postings from the ledger rows: $(head -c 300 "$PINOLE_ERR")"
+        return 1
+    fi
+    if ! pinole work postings upsert --file "$POSTINGS_JSON" > "$UPSERT_JSON" 2>"$PINOLE_ERR"; then
+        fail_reason="ledger upsert failed: $(head -c 300 "$PINOLE_ERR")"
+        return 1
+    fi
+    echo "upsert: $count rows sent; $(jq -r '.meta | "\(.created // 0) created, \(.updated // 0) updated, \(.matched // 0) matched"' "$UPSERT_JSON")"
+}
+
+# The sweep itself as one listings_review activity, in the wording the
+# backfilled rows use (the employer is the source list, the channel says what
+# the sweep did), so the weekly claim reads it like every earlier sweep. A
+# rerun on the same day (a --reuse loop, a run repeated after a failure) would
+# log the sweep twice and the claim would report it twice, so a row already
+# carrying this week's note is left alone.
+log_sweep_activity() {
+    local judged sources swept missed getro channel week_number existing
+    judged="$(jq -r '.ledger | length' "$DRAFT_JSON")"
+    week_number="$((10#${WEEK#*-W}))"
+
+    if ! existing="$(pinole work activities list --from "$TODAY" --to "$TODAY" --kind listings_review --all 2>"$PINOLE_ERR")"; then
+        fail_reason="could not read today's activities before logging the sweep: $(head -c 300 "$PINOLE_ERR")"
+        return 1
+    fi
+    if jq -e --arg week "$WEEK" '.data.collection[] | select((.notes // "") | startswith($week + " sweep"))' <<<"$existing" >/dev/null 2>&1; then
+        echo "activity: a $WEEK sweep is already logged for $TODAY, not logging it again"
+        return 0
+    fi
+
+    sources="$(printf '%s\n' "${GETRO_BOARDS[@]}" | cut -d'|' -f1 | paste -sd ',' - | sed 's/,/, /g')"
+    sources="$sources, Tech Jobs for Good, Fractional Jobs, a16z Jobs"
+    getro="$(jq -r '"\(.counts.fetches_ok) of \(.counts.fetches) Getro fetches answered"' "$LISTINGS_JSON")"
+    swept="$(sed -n 's/^- \(.*\): pulled from.*/\1/p' "$PULLS_MD" | paste -sd ',' - | sed 's/,/, /g')"
+    missed="$(sed -n 's/^- \(.*\): NOT pulled.*/\1/p' "$PULLS_MD" | paste -sd ',' - | sed 's/,/, /g')"
+    channel="Recruiter sweep of the codified sources from the runner's pulls ($getro${swept:+; $swept pulled}${missed:+; not pulled: $missed}) plus WebSearch angles; $judged postings judged on the employer's own ATS"
+
+    if ! pinole work activities log --on "$TODAY" --kind listings_review \
+            --employer "$sources" \
+            --position "Week $week_number job board sweep and shortlist review" \
+            --url "https://jobs.climatedraft.org/jobs" \
+            --channel "$channel" \
+            --notes "$WEEK sweep: $judged postings judged" > "$ACTIVITY_JSON" 2>"$PINOLE_ERR"; then
+        fail_reason="could not log the sweep activity: $(head -c 300 "$PINOLE_ERR")"
+        return 1
+    fi
+    echo "activity: logged listings_review $(jq -r '.data.entity.id // "?"' "$ACTIVITY_JSON") for $TODAY"
+}
+
 # ---------- the agent ----------
 # Everything the recruiter's method needs and nothing it does not: the reads,
 # WebSearch for the search angles, curl for the ATS APIs the method names, and
 # a scratch directory. WebFetch is deliberately absent since the boards are
-# already pulled. No write reaches the checkout, so the ledger cannot be
-# appended from here; it travels back beside the report instead.
+# already pulled. No write reaches the checkout and the agent never calls the
+# API; the runner writes its ledger rows to Pinole after the model returns.
 ALLOWED_TOOLS=(
     "Read"
     "Grep"
@@ -288,6 +392,7 @@ if [[ "$SKIP_PULLS" == "1" ]]; then
 else
     pull_sources || exit 1
 fi
+pull_ledger || exit 1
 
 # The agent writes its scratch files, so the half cent write probe runs
 # first (runners/README.md, Adding a Runner).
@@ -300,7 +405,8 @@ runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.ledger | type == "array")' || exit 1
 
 # The ledger rows, as the table FY27-sweep-ledger.md is made of, ready to
-# append. They ride beside the email as an attachment rather than in it.
+# append. They ride beside the email as an attachment rather than in it, the
+# fallback that stays until the first unattended Monday proves the upsert.
 if ! jq -r '
     def cell: tostring | gsub("\\|"; "\\|") | gsub("\n"; " ");
     ["# \($week) sweep ledger",
@@ -316,6 +422,9 @@ if ! jq -r '
 fi
 echo "ledger: $(jq -r '.ledger | length' "$DRAFT_JSON") rows in $LEDGER_MD"
 ATTACHMENT="$LEDGER_MD"
+
+upsert_postings || exit 1
+log_sweep_activity || exit 1
 
 runner_render || exit 1
 status="success"

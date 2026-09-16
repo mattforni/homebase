@@ -16,6 +16,14 @@ RUN apt-get update \
 ARG CLAUDE_CODE_VERSION=2.1.247
 RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
+# The pinole CLI, the entrypoint's route to the Pinole work API (the postings
+# ledger it dedupes against and upserts into, the activity it logs). Nothing is
+# published to npm: the public repo is the package, dist/ is committed, and a
+# tag is a release, so the install is a git spec pinned to a tag for the same
+# reason Claude Code is pinned above. Public, so the build needs no token.
+ARG PINOLE_CLI_REF=v0.1.0
+RUN npm install -g "github:atelic-action/pinole-cli#${PINOLE_CLI_REF}"
+
 # Non root, its own home so Claude Code has a writable config dir.
 RUN useradd --create-home --shell /bin/bash runner
 USER runner
