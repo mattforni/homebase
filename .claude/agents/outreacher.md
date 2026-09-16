@@ -142,10 +142,15 @@ script to the scratchpad and run that one file.
    flagged for Forni with both values. The warm network (lifecycle Other)
    belongs on neither list. You flag; you do not fix.
 
-   **Replies are one search, not a per record read.**
+   **Owed replies start from one search, not a per record read.**
    `/crm/v3/objects/emails/search` filtered to `hs_email_direction` equal to
    `INCOMING_EMAIL` and `hs_timestamp` since the previous roster returns
    every reply the extension logged, with sender and subject, in one call.
+   That search only nominates. Keep a name only when the latest message in
+   the thread is theirs (no outgoing email logged after it) and no meeting is
+   logged on the contact after that message. HubSpot's Google Calendar sync
+   puts booked meetings on the contact, so the portal, not the mailbox, says
+   the conversation moved.
 
    **Pull the open counts in the same pass** (ATE-507, 2026-09-02). Every
    logged send carries `hs_email_open_count` and `hs_email_click_count` on its
@@ -190,13 +195,19 @@ script to the scratchpad and run that one file.
    through gws (`GWS_FORCE_PROFILE=<profile> gws ...`, one mailbox per call,
    and a zero result gets a control query before it is trusted). For every
    roster name, search the domain and the person: a reply that HubSpot
-   missed moves them to replies owed; a bounce on a send marks the address
+   missed, with nothing from Forni after it, moves them to Follow Up; a bounce on a send marks the address
    dead.
 5. **Sort the roster into the week's fixed order.**
-   - **Replies owed**: anyone who wrote back and is waiting on Forni. **The
-     section opens with a table of every hit from the incoming email search
-     and the mailbox sweep** (sender, date, subject, verbatim from the
-     source); "None" is allowed only when both are empty. Then draft the
+   - **Follow Up**: every conversation already started where the ball is in
+     Forni's court, each line tagged with its kind. **Reply:** their message
+     is the latest in the thread and no meeting is booked. **Bump:** a send
+     at about seven days with no reply (below). Replies lead, then bumps.
+     **The section opens with a table of every hit from the incoming email
+     search and the mailbox sweep** (sender, date, subject, verbatim from the
+     source), marking each dropped hit and why (already answered, or a
+     meeting booked); "None" is allowed only when both are empty. The W38
+     roster (2026-09-15) listed Salley Wilson with a follow up booked and Josh
+     Beller three weeks after Forni had answered him. Then draft the
      reply in the thread's own register (voice.md), from the address the
      thread knows. The 2026-09-08 roster declared none while Ryan Kohler's
      09-04 reply sat in both places; a table would have shown it and a
@@ -208,13 +219,18 @@ script to the scratchpad and run that one file.
      not appear as a bump, a visit, or a close, however long it has been
      silent, because the silence is the plan. The clock restarts when the
      task is worked or closed.
-   - **Bumps due**: sends at about seven days with no reply. Draft the bump
-     per the method's gift shape (the Paloma second send is the worked example):
-     walk their customer path yourself (the card, the ad, the booking
-     link, the call), report two or three verified findings in the owner's
-     words, give the walkabout visit a purpose (the one page writeup,
-     theirs to keep), ask the one question Forni is genuinely curious
-     about, and put the Atelic link on the call fallback. Never the
+   - **Bumps** (listed under Follow Up): sends at about seven days with no
+     reply. The whole bump method, flow and shape, lives in the
+     `atelic:handle-outreach` skill's Bumps section; read it before drafting
+     one. In short: check whether the first send was tracked before reading
+     its opens (untracked is unknown, not zero), pick the sender and subject
+     the skill names, walk their customer path yourself, report two or three
+     verified findings in the owner's words, give the walkabout visit a
+     purpose (the one page writeup, theirs to keep), ask the one question
+     Forni is genuinely curious about, and close on the visit and the booking
+     link, never a call or a phone number. A roster bump is a draft to be
+     rechecked the morning it sends, so say which findings still need
+     Forni's browser. Never the
      "floating this back up" nudge. When the walk finds nothing real, say
      so on the roster line and draft the plain bump instead; never pad a
      finding. Observations go out as questions, never as corrections of a
@@ -230,7 +246,7 @@ script to the scratchpad and run that one file.
      you would cite, its path on the roster line. Note the sending address
      the thread requires, and list what you walked and what you found on
      the roster line so the writeup can be built from it.
-   - **Visits due**: bumped sends at about fourteen days with no reply.
+   - **Meetings** (visits and calls due): bumped sends at about fourteen days with no reply.
      Group them by neighborhood with the street address, the published
      hours, and the owner's name, so Thursday's walkabout is a route. Anyone
      not walkable gets a call line with the number instead.
@@ -253,8 +269,10 @@ script to the scratchpad and run that one file.
    note that it is a snapshot and HubSpot is canonical. **Then the weekly scoreboard**,
    before the counts: one table of summary statistics, columns Type, Complete,
    Target, %, Done, Details, **one row per type and never one row per name**,
-   plus a bold total row. The types are one word each, in this order: Replies,
-   Bumps, Closes, Intros, Visits. Complete is zero on Monday and reads before
+   plus a bold total row. The types are, in this order: Follow Up, Outbound,
+   Meetings, Close. Follow Up lines are tagged "Reply:" or "Bump:", Outbound is
+   every first touch, and Meetings lines are tagged "In person:" or
+   "Remote:". Complete is zero on Monday and reads before
    Target, % is Complete over Target, Done is `✅` at 100, and Details is one
    line for the whole row naming any blocker and its owner. Under the table,
    one bold type name and a bulleted checklist per type of everyone still owed
