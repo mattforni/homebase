@@ -31,7 +31,7 @@ The meal plan now lives in the Pinole app, where Forni can actually look at it t
 1. Read [learned-rules.md](learned-rules.md) in this directory
 2. Read the canonical nutrition context:
    - `~/Eudaimonia/Constitution/Nutrition/README.md` — daily macro targets, meal budgets, supplement stack
-   - **Pantry inventory and staples live in the Pinole api db** (migrated from `pantry.md` and `staples.md` on 2026-05-15 in ATE-141), reached through the Pinole MCP tools (`mcp__pinole__list_pantry`, etc.) — see the Pantry Access section below.
+   - **Pantry inventory and staples live in the Pinole api db** (migrated from `pantry.md` and `staples.md` on 2026-05-15 in ATE-141), reached through the Pinole MCP tools (`mcp__pinole__list_pantry_items`, etc.) — see the Pantry Access section below.
 3. Read the most recent plan(s) from Pinole with `mcp__pinole__list_meal_plans` (and `mcp__pinole__get_meal_plan` for a week's detail) to see what we just ate and avoid repeating it
 4. Read [references/recipe-sources.md](references/recipe-sources.md) for the preferred recipe sites and what's worked in the past
 5. Determine the target week. Default to the current ISO week. Use `date +"%G-W%V"` for the week identifier.
@@ -40,7 +40,7 @@ The meal plan now lives in the Pinole app, where Forni can actually look at it t
 
 Pantry and staples live in the Pinole api db, reached through the Pinole MCP tools (no `rails runner`, no SQL). Each tool is typed and routes writes through the model, so store normalization and restock bookkeeping happen automatically.
 
-- **`mcp__pinole__list_pantry`** — read the pantry. Optional filters: `staple` (only staples), `needs_restock` (only items at or below their restock threshold), `store`. Returns a `collection` of items plus `distinct_stores`. Each item carries per-user state (`staple`, `level` 0 to 4, `restock_at`, `needs_restock`, `store`, `notes`) and delegated product fields (`name`, `brand`, `variant`, `organic`). Stock is quantitative: an item needs restocking when `needs_restock` is true (i.e. `level <= restock_at`), not a boolean in/out.
+- **`mcp__pinole__list_pantry_items`** — read the pantry. Optional filters: `staple` (only staples), `needs_restock` (only items at or below their restock threshold), `store`. Returns a `collection` of items plus `distinct_stores`. Each item carries per-user state (`staple`, `level` 0 to 4, `restock_at`, `needs_restock`, `store`, `notes`) and delegated product fields (`name`, `brand`, `variant`, `organic`). Stock is quantitative: an item needs restocking when `needs_restock` is true (i.e. `level <= restock_at`), not a boolean in/out.
 - **`mcp__pinole__add_pantry_item`** — add something new to the pantry. Identify the product by `name` (plus optional `brand`/`variant`/`organic`); the consumable is created in the catalog if it does not exist. Optional `staple`, `level` (0 to 4, default 4), `restock_at`, `store`, `notes`. Errors if the item is already in the pantry; use update for that.
 - **`mcp__pinole__update_pantry_item`** — change `staple`, `level`, `restock_at`, `store`, or `notes` on an existing item. Locate it by `name` (plus optional `brand`/`variant`/`organic` to disambiguate) or by `id`. If a name matches more than one item, the error lists the candidates with ids; retry with an id or a disambiguator. Only the fields you pass change.
 
@@ -50,8 +50,8 @@ A storeless item (no `store` set) surfaces under any `store` filter, so staples 
 
 | Source | Purpose |
 |--------|---------|
-| `Constitution/Nutrition/README.md` | Daily macros and meal slot budgets |
-| Pinole api db (`PantryItem`, `Consumable`) via MCP | What is already on hand + brand preferences. Read with `mcp__pinole__list_pantry`. See Pantry Access above |
+| `Constitution/Nutrition/README.md` | Daily macros and per meal budgets |
+| Pinole api db (`PantryItem`, `Consumable`) via MCP | What is already on hand + brand preferences. Read with `mcp__pinole__list_pantry_items`. See Pantry Access above |
 | Pinole api db (`MealPlan`) via MCP | Prior weekly plans. Read with `mcp__pinole__list_meal_plans` / `get_meal_plan`; author with `create_meal_plan` / `update_meal_plan` |
 | Pinole api db (`Recipe`) via MCP | Recipes meals link against. Discover with `mcp__pinole__list_recipes`; create new ones (import from a URL or author from scratch) with `mcp__pinole__create_recipe` |
 | `references/recipe-sources.md` | Approved recipe sites and historical ratings |
@@ -67,7 +67,7 @@ Meal plans live in Pinole, not in markdown. Author them through the MCP tools (s
 - **Macro anchored.** The daily target is 2,112 cal / 118g P / 257g C / 68g F. The shake handles ~32g of protein and ~225 cal. The remaining three meals should roughly split the rest as laid out in README.
 - **Realistic for the week.** Social events, travel, and team lunches eat meals. Do not prep for meals that will not happen.
 - **A couple of meal kinds, eaten repeatedly.** The whole point of prepping is a few meals eaten several times; one batch can rightly carry four days. Variety comes week to week, not within the week.
-- **Recipe backed, not hand waved.** Every real cooked meal links to a Recipe with actual ingredients, amounts, and directions, so Forni can open it and cook it and the macros are computed rather than guessed. If a recipe does not exist yet, create it (Phase 5). Reserve freeform text and estimated macros for genuinely uncooked slots (Social, Out, Leftovers).
+- **Recipe backed, not hand waved.** Every real cooked meal links to a Recipe with actual ingredients, amounts, and directions, so Forni can open it and cook it and the macros are computed rather than guessed. If a recipe does not exist yet, create it (Phase 5). Reserve freeform text and estimated macros for genuinely uncooked meals (Social, Out, Leftovers).
 
 ## The Plan Flow
 
@@ -81,13 +81,13 @@ Meal plans live in Pinole, not in markdown. Author them through the MCP tools (s
    - Any other eating-out anchors the calendar shows; confirm these against the calendar each run rather than assuming a weekly pattern
 4. Confirm the shopping day with Forni rather than assuming it. The Sprouts run after High Noon on Wednesday or Friday is a hint for reading the calendar, not a default; shop days move (2026-07-16's run was a Thursday afternoon).
 
-Present the week back as a simple list of planned vs skipped meal slots. Ask Forni if anything is missing before continuing.
+Present the week back as a simple list of planned vs skipped meals. Ask Forni if anything is missing before continuing.
 
 ### Phase 2: Reconcile the Pantry First
 
 **The pantry data drifts and must be reconciled against reality before drafting. Do not trust stock levels at face value, especially after a travel week.** Planning against a stale pantry means building meals around produce that is no longer there and buying duplicates of what is already on hand. This reconcile is the first real move of every weekly plan.
 
-1. Pull the full pantry with `mcp__pinole__list_pantry` (see Pantry Access above)
+1. Pull the full pantry with `mcp__pinole__list_pantry_items` (see Pantry Access above)
 2. **Reconcile the perishables first.** Produce, dairy, and fresh proteins are where the data rots. Present what is currently shown in stock (group hardy vs delicate so it is fast to answer) and have Forni confirm what actually survived; knock everything else to level 0. After a travel week, assume most fresh stock is gone unless he says otherwise. For a full reconcile, present the list and let him name the survivors rather than asking thirty one-at-a-time questions (that scales badly on a phone); reserve the one-at-a-time pattern (see Pantry Rules in learned-rules.md) for the smaller set of genuinely ambiguous staples.
 3. Write the reconciliation back immediately with `mcp__pinole__update_pantry_item` (level up survivors, 0 for gone), `mcp__pinole__add_pantry_item` for new items, and `mcp__pinole__remove_pantry_item` for ones no longer tracked, so the rest of the flow reads accurate data. When zeroing, route each out item to its store (or remove it); a storeless `needs_restock` item pollutes every store's shopping view (see Pantry Rules).
 4. Then surface restock candidates (staple + `needs_restock`, anything "low" in `notes`) for items used heavily week to week (tofu, soy milk, kimchi, hummus, greens, lentils, rice, oats) and confirm before adding to the shopping list
@@ -100,17 +100,17 @@ Present the week back as a simple list of planned vs skipped meal slots. Ask For
 2. **Source candidates on the picked anchors.** Check the library first with `mcp__pinole__list_recipes` (prefer rated repeats), then find 2 or 3 candidates per anchor on the preferred sites (WebSearch scoped to those domains). Verify each with WebFetch against the house rules (plant based, no alcohol, no corn, no pasta, no soups, everything in Food Preferences) before showing it; report casualties ("SVB's version has corn, it's out") so the vetting is visible.
 3. **Present the board with links** (hyperlink the recipe names) and let Forni pick the centerpieces. One or two centerpieces per week; the rest is batch variations and leftovers.
 4. **Audit the picks.** Protein and macro math on the chosen menu against the daily targets, with concrete boosts offered (extra lentils, TVP in the taco beans) rather than silently applied.
-5. **Slot the picks into the framed week.** Repeat lunches up to twice; breakfast mostly constant; social days get a freeform "Social" slot rather than being left out. Batch prep steps carry amounts (e.g. "Cook 1.5 cups dry quinoa", never "a big batch"). When Forni states a new like, dislike, avoid food, or allergy at any point, append it to Food Preferences in learned-rules.md with the Why / How to apply structure so the next plan inherits it.
+5. **Slot the picks into the framed week.** Repeat lunches up to twice; breakfast mostly constant; social days get a freeform "Social" meal rather than being left out. Batch prep steps carry amounts (e.g. "Cook 1.5 cups dry quinoa", never "a big batch"). When Forni states a new like, dislike, avoid food, or allergy at any point, append it to Food Preferences in learned-rules.md with the Why / How to apply structure so the next plan inherits it.
 
 ### Phase 4: Present the Full Plan in Plan Mode
 
 **No plan artifact writes to Pinole before this gate.** (The Phase 2 pantry reconcile is the deliberate exception: it records reality, not plan decisions.) Enter plan mode and write the complete plan in the three section format. The plan's one job is decision elimination: the tired mid week moment ("Wednesday 17:30, what happens next") must get its answer in one glance, already cooked.
 
 1. **The Meals.** Every meal and snack named, with Cal / P / C / F per serving. Clean numbers, no tildes or hedge marks (he knows they are estimates). A couple of meal kinds per week, period; snacks are one or two standing items, never per day engineering.
-2. **The Plan.** Every slot of every day explicit (breakfast, lunch, snacks, dinner; no "mornings are all the same" shorthand), each day totaled as actual / target for all four macros. Dinners out get an asterisk on the day and the event with a single footnote under the table; those days' totals count home food only.
+2. **The Plan.** Every meal of every day explicit (breakfast, lunch, snacks, dinner; no "mornings are all the same" shorthand), each day totaled as actual / target for all four macros. Dinners out get an asterisk on the day and the event with a single footnote under the table; those days' totals count home food only.
 3. **The Prep.** Numbered cook sessions with exact amounts, times, and temperatures. Fresh proteins and grains cook no more than 2 days ahead, so the back half of the week gets a midweek refresh session. Prep beyond the current week belongs to next week's planning session.
 
-After the three sections: every Pinole write to be made (recipes to create or reuse, authoring the plan, shopping list changes item by item) and the shopping day when there is one. Exit plan mode for approval and execute only on the green light. An AskUserQuestion answer about one slot is not plan approval; the approved plan document is.
+After the three sections: every Pinole write to be made (recipes to create or reuse, authoring the plan, shopping list changes item by item) and the shopping day when there is one. Exit plan mode for approval and execute only on the green light. An AskUserQuestion answer about one meal is not plan approval; the approved plan document is.
 
 ### Phase 5: Execute the Writes
 
@@ -123,7 +123,7 @@ After the three sections: every Pinole write to be made (recipes to create or re
    - `create_recipe` errors if the name exists. Before linking the existing record, confirm it is actually the same dish (check its ingredients via `list_recipes`); if a different recipe wears the name, use a distinguishing name rather than linking blind. New ingredients get USDA macros backfilled automatically; if nutrition comes back incomplete, tell Forni and give a hand-math estimate rather than papering over it.
 2. **Author the plan** with `mcp__pinole__create_meal_plan` (or `update_meal_plan` if the week exists; create errors and points you at update). `unmatched_recipes` must come back empty for cooked meals; a name landing there means the recipe was not created, so create it rather than leaving the meal freeform.
 3. **Record the recipes** in `references/recipe-sources.md` under "Recipes Used": week, site (or "Claude drafted"), rating left blank.
-4. **Build the shopping list as the merged view.** Tracked staples get on the list through their pantry row (`update_pantry_item`: level 0, `store` routed, quantity guidance in `notes`); `mcp__pinole__add_shopping_item` covers untracked one offs and tracked non staples (the list prints staple rows only), quantities in the item name (lb, oz, fl oz; never "1 bag"), brand and recipe hints in `notes`. Never add a shopping item for a staple the pantry already tracks; that prints it twice. Dropping a food means clearing its pantry flag, not saying so in chat. Final step: read back `list_shopping` for the store, reconcile it line by line against the intended basket, and print the reconciled list in chat as the backup copy. See the Shopping Rules in learned-rules.md for the 2026-08-04 duplicate incident behind all three rules.
+4. **Build the shopping list as the merged view.** Tracked staples get on the list through their pantry row (`update_pantry_item`: level 0, `store` routed, quantity guidance in `notes`); `mcp__pinole__add_shopping_item` covers untracked one offs and tracked non staples (the list prints staple rows only), quantities in the item name (lb, oz, fl oz; never "1 bag"), brand and recipe hints in `notes`. Never add a shopping item for a staple the pantry already tracks; that prints it twice. Dropping a food means clearing its pantry flag, not saying so in chat. Final step: read back `get_shopping_list` for the store, reconcile it line by line against the intended basket, and print the reconciled list in chat as the backup copy. See the Shopping Rules in learned-rules.md for the 2026-08-04 duplicate incident behind all three rules.
 
 ### Phase 6: Close the Loop After the Shop
 
@@ -135,21 +135,22 @@ When Forni reports the shop is done (same session or later), write reality back 
 
 ## Shopping List in Pinole
 
-**The list Forni sees in the app is a merged view**: `list_shopping` unions staple pantry rows flagged `needs_restock` with open ShoppingItems (non staple rows never print, since 2026-08-18). Both surfaces feed one list, so each food must live on exactly one of them:
+**The list Forni sees in the app is a merged view**: `get_shopping_list` unions staple pantry rows flagged `needs_restock` with open ShoppingItems (non staple rows never print, since 2026-08-18). Both surfaces feed one list, so each food must live on exactly one of them:
 
 - **Tracked staples ride their pantry row.** A tracked staple that is out is already on the list. Set its `level` to 0, route its `store`, and put quantity guidance in `notes` via `update_pantry_item`. Never also add a shopping item for it.
 - **`add_shopping_item` is for untracked one offs and tracked non staples** (a single bake's bread flour, a specialty ingredient, this week's seasonal produce; see the staple only rule in learned-rules.md). Keep item names concise but include quantity, e.g. `"Bread Flour, 5 Lb"` (lb, oz, fl oz; never "1 bag"). Brand hints and recipe associations go in `notes`. Set `store`; a storeless item surfaces under every store filter.
 - **Dropping a food from the list means clearing its flag** (raise `level`, reroute `store`, or `remove_pantry_item`), never just saying so in chat. A checked off ShoppingItem drops a one off.
-- **Always read back `list_shopping` for the store as the final step** and reconcile line by line against the intended basket before handing the list over. The authoring calls each look fine alone; only the merged read shows duplicates.
+- **Always read back `get_shopping_list` for the store as the final step** and reconcile line by line against the intended basket before handing the list over. The authoring calls each look fine alone; only the merged read shows duplicates.
 
 ## Meal Plan Shape
 
-`create_meal_plan` / `update_meal_plan` take a full week as one payload:
+`create_meal_plan` authors a full week as one payload, and `update_meal_plan` takes the same full payload or partial edits:
 
 - `week` (ISO, e.g. `"2026-W24"`), `starts_on`, `ends_on` (Monday and Sunday, `YYYY-MM-DD`)
 - `intro` — the short one-line summary of the week
 - `target_calories`, `target_protein`, `target_carbs`, `target_fat` — the daily macro target snapshot (from README)
-- `meals` — one entry per slot. Each has a `slot` (`breakfast` / `shake` / `lunch` / `dinner`), an optional `day` (`monday`..`sunday`; omit or null to mean every day, e.g. a constant breakfast), and a `recipe_name` linking the recipe created or reused in Phase 5 (macros and ingredients come through automatically). Only genuinely uncooked slots use a freeform `description` (leftovers, social, out) with optional per-slot `est_calories`/`est_protein`/`est_carbs`/`est_fat`. Optional `context` (e.g. `"lift, DRC"`).
+- `planned_meals` — one entry per planned meal. Each has a `kind` (`breakfast` / `lunch` / `dinner` / `snack`; the shake is a `snack`), a `day` (`monday`..`sunday`, or `daily` for a meal that repeats every day, e.g. a constant breakfast; always required), and a `recipe_name` linking the recipe created or reused in Phase 5 (macros and ingredients come through automatically). Only genuinely uncooked meals use a freeform `description` (leftovers, social, out) with optional per meal `est_calories`/`est_protein`/`est_carbs`/`est_fat`. Optional `context` (e.g. `"lift, DRC"`).
+- To change a few meals in an existing week, `update_meal_plan` takes `edit_planned_meals`, `add_planned_meals`, and `remove_planned_meals` instead of the full `planned_meals` array. Each locates a meal by `day` plus `kind` (or its `id`); an edit sends only what changes, moving a meal with `new_day` / `new_kind`. Never resend the whole week to change a few meals.
 - `batch_prep_steps` — the Sunday/midweek prep checklist. Each has a `description` and an optional `target_day` label (e.g. `"Sunday"`).
 
 Call out macro gaps to Forni in chat (e.g., "Fat is ~7g under target; add extra tahini or nuts"), the same way the old plan notes did.
