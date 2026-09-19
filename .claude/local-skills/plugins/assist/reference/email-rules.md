@@ -21,6 +21,8 @@ Email routing rules shared by the clerk agent, `assist:triage-inbox`, and `assis
 - `info@atlasptco.ccsend.com` (Atlas Physical Therapy newsletter, Constant Contact) -> unsubscribed 2026-07-24 + trash. Audited for Atelic prospect fit 2026-07-24: weak to medium (strong existing web presence, only narrow booking-funnel gaps); Forni chose not to add to HubSpot. Do not re-audit unless he asks.
 - `xcelenergy@email.opower.com` "Energy Action Day" (pre_peak_time opower stream, distinct from the Home Energy Report rule below in spirit) -> unsubscribe (URL only) + trash. Unsubscribed 2026-07-24.
 - `gustonoreply@gusto.com` severance installment paydays (Zero Home Corporation): file the paystub PDF (Forni downloads it to ~/Downloads) to Drive folder `Compensation` (id `16YgL6ZhzIwkIo7vMn2HLW0Rz3v6Go7L_`) as `YYYY-MM-DD - Severance Paystub.pdf`, link it in a comment on the MyUI+ severance reporting task, then label Vocation + Financial and archive. 2026-07-24.
+- Sale-payout / income mail (e.g. `support@buybackboss.com` order and payment notices for an item Forni sold) -> 📑 Admin/🛒 Purchases. Archive, mark read. Confirmed 2026-09-19: not a purchase in the literal sense, but Purchases is the transaction-record home Forni wants for it.
+- Colorado DOR "new device login" notices (Revenue Online security alerts, distinct from the `dor_taxreminder` withholding reminder above) and Denver eBiz Tax Center login/device-access confirmations (`do-not-reply@denvergov.org`, distinct from the "Tax Return(s)/Charge Form(s) Now Available" OPT notice above) -> trash on sight. Confirmed 2026-09-19.
 
 ## Topic Rules
 
