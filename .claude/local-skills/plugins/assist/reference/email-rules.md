@@ -53,7 +53,8 @@ Email routing rules shared by the clerk agent, `assist:triage-inbox`, and `assis
 ## Created Filters
 
 - `from:prime@amazon.com` -> label `📑 Admin/🛒 Purchases` (Label_36), skip inbox, mark read. Covers Prime membership change confirmations (renewal, cancellation). Created 2026-07-19 (filter id `ANe1BmgLdzmPdmLA1kKHrY5Ce3ATguMnHizDC8hwO5SrnA`). Supersedes the `prime@amazon.com` sender rule for future mail.
-- `from:invoice+statements+acct_1KZOA5IV1bWPnvOA@stripe.com` -> label `📑 Admin/🛒 Purchases` (Label_36), skip inbox, mark read. Mill Industries receipts (sent via Stripe; keyed on Mill's Stripe account id so other merchants' Stripe receipts are unaffected). Created 2026-07-19 (filter id `ANe1BmhzwjKUgvTRe6iUswZbobYCISVCcr2Tq6e5GQur1g`).
+- `from:invoice+statements+acct_1KZOA5IV1bWPnvOA@stripe.com` -> label `📑 Admin/🛒 Purchases` (Label_36), skip inbox, mark read. Mill Industries receipts (sent via Stripe; keyed on Mill's Stripe account id so other merchants' Stripe receipts are unaffected). Created 2026-07-19 (filter id `ANe1BmhzwjKUgvTRe6iUswZbobYCISVCcr2Tq6e5GQur1g`). Missed Mill's other senders, so widened by the filter below.
+- `from:(mill.com OR acct_1KZOA5IV1bWPnvOA) OR (from:rechargemail.com "Mill Industries")` -> label `📑 Admin/🛒 Purchases` (Label_36), skip inbox, mark read. All Mill Industries mail: order confirmations (`noreply@mill.com`), marketing domain, every Stripe receipt address on Mill's account id, and Recharge subscription receipts. Created 2026-09-19 (filter id `ANe1Bmg0IO3cuomglxo7ZGPmAjQSlhjLSChX-Vw-VGVDlw`).
 
 - `from:mcinfo@ups.com` -> label `📑 Admin/🛒 Purchases` (Label_36), skip inbox, **leave unread** (Forni wants them unread in the label so he can still notice deliveries). Created 2026-07-22 (filter id `ANe1BmhcvGLrUpeRN2yfGNvcjBy7tSEwy2Y4b8MJOg3icg`).
 
