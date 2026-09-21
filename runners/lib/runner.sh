@@ -125,12 +125,14 @@ html_escape() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
 
 # ---------- resend ----------
 
-# Usage: send_email <subject> <html-body> [attachment-path]
+# Usage: send_email <subject> <html-body> [attachment-path] [text-body]
+# Without a text body Resend derives one from the html, which runs a table's
+# labels and numbers together; a runner that renders its own passes it here.
 # Reads RESEND_API_KEY, REPORT_RECIPIENT, and REPORT_SENDER from the
 # environment. Prints what happened and returns non zero on any failure, so a
 # caller can treat a failed delivery as a failed run.
 send_email() {
-    local subject="$1" body="$2" attachment="${3:-}"
+    local subject="$1" body="$2" attachment="${3:-}" text="${4:-}"
     local sender="${REPORT_SENDER:-Claude <claude@atelic.me>}"
 
     if [[ -z "${RESEND_API_KEY:-}" || -z "${REPORT_RECIPIENT:-}" ]]; then
@@ -153,8 +155,9 @@ send_email() {
         }
     fi
     payload="$(jq -n --arg from "$sender" --arg to "$REPORT_RECIPIENT" \
-        --arg subject "$subject" --arg html "$body" --argjson attachments "$attachments" \
+        --arg subject "$subject" --arg html "$body" --arg text "$text" --argjson attachments "$attachments" \
         '{from: $from, to: [$to], subject: $subject, html: $html}
+         + (if $text != "" then {text: $text} else {} end)
          + (if ($attachments | length) > 0 then {attachments: $attachments} else {} end)')" || {
         echo "email: could not build the Resend payload"
         return 1
@@ -239,6 +242,8 @@ meta_line() {
 #   RESULT_JSON RESULT_RC       the whole claude -p result and its exit status
 #   DRAFT_JSON                  $WORK/<name>.json, the object the model returned
 #   REPORT_HTML                 $WORK/email.html, what run-local opens and mail sends
+#   REPORT_TEXT                 $WORK/email.txt, the plain text part when the
+#                               runner renders one (runner_render_text)
 #   ATTACHMENT                  empty; a runner sets it to a file to send along
 #   PROMPT_FILE RENDER          prompt.md and render.jq beside the entrypoint
 #   LIB_DIR JQ_LIB              the shared library (email.jq, hubspot.mjs,
@@ -282,6 +287,8 @@ runner_init() {
     RESULT_RC="$WORK/result.rc"
     DRAFT_JSON="$WORK/$RUNNER_NAME.json"
     REPORT_HTML="$WORK/email.html"
+    REPORT_TEXT="$WORK/email.txt"
+    rm -f "$REPORT_TEXT"
     ATTACHMENT=""
     PROMPT_FILE="${PROMPT_FILE:-$SELF_DIR/prompt.md}"
     RENDER="${RENDER:-$SELF_DIR/render.jq}"
@@ -319,25 +326,26 @@ runner_failure_html() {
 # let the tee behind stdout flush before a container exits, or the last lines
 # never reach the Cloud Run log.
 runner_finish() {
-    local body attachment=""
+    local body attachment="" text=""
     if [[ "$status" != "success" ]]; then
         echo "FAILED: ${fail_reason:-unknown failure}"
         body="$(runner_failure_html)"
         printf '%s' "$body" > "$REPORT_HTML"
     else
         body="$(cat "$REPORT_HTML")"
+        [[ -s "$REPORT_TEXT" ]] && text="$(cat "$REPORT_TEXT")"
         [[ -n "$ATTACHMENT" && -s "$ATTACHMENT" ]] && attachment="$ATTACHMENT"
     fi
 
     if [[ "$DRY_RUN" == "1" ]]; then
         echo "dry run: subject \"$SUBJECT\""
-        echo "dry run: rendered $REPORT_HTML${attachment:+, with $attachment attached}"
+        echo "dry run: rendered $REPORT_HTML${text:+ and $REPORT_TEXT}${attachment:+, with $attachment attached}"
         sleep 1
         [[ "$status" == "success" ]] || exit 1
         return
     fi
 
-    send_email "$SUBJECT" "$body" "$attachment" || {
+    send_email "$SUBJECT" "$body" "$attachment" "$text" || {
         echo "email: the report could not be delivered"
         sleep 1
         exit 1
@@ -528,4 +536,18 @@ runner_render() {
         return 1
     fi
     echo "render: $(wc -c < "$REPORT_HTML" | tr -d ' ') bytes of html"
+}
+
+# Usage: runner_render_text [extra jq arguments...]
+# The same render.jq with --arg format text, into REPORT_TEXT: the email's
+# plain text part. Optional; a runner that never calls it mails html alone.
+runner_render_text() {
+    local meta
+    meta="$(meta_line "$RESULT_JSON")"
+    if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" --arg format text "$@" \
+        -f "$RENDER" "$DRAFT_JSON" > "$REPORT_TEXT" 2>"$WORK/render-text-stderr.txt" || [[ ! -s "$REPORT_TEXT" ]]; then
+        fail_reason="plain text render failed: $(head -c 300 "$WORK/render-text-stderr.txt")"
+        return 1
+    fi
+    echo "render: $(wc -c < "$REPORT_TEXT" | tr -d ' ') bytes of text"
 }
