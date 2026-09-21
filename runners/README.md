@@ -119,6 +119,35 @@ The two steps stay separate because a pipeline reports only its last command's s
 
 A runner's `render.jq` starts with `include "email";` and composes: `page` (the shell and the inbox preheader), `masthead` (the wordmark and the runner's title), `title_card` (eyebrow, one to three headline lines, a lede, and a `stats_row` of `stat` cells), `eyebrow` between cards, `card` around rows, `item` (the workhorse row: name, the accent value on the right, a subline of facts, a body, an optional `fold`, an optional link), `note` (a short text under a small eyebrow), `row` for any block inside a card, `big_fold` inside a `fold_row` for the long tail, `list` with `lead_row`, `mono_table` for rows the reader copies, and `footer` for the run's one line of facts. `failure_page` mails a bad run in the same cream. The scaffold's `runner_render` passes `-L` pointing at the library (`runners/lib` in the repo, `/home/runner/lib` in an image) plus `$week`, `$monday`, `$sunday` and `$meta`, and `bin/runner/render-local` passes the same. A new kind of row is a new def in the library, so the next runner gets it too; a runner never carries a palette or a frame of its own. The library is written for the image's jq 1.6 (`label` is a keyword there). All three runners compose from it since 2026-09-15 (ATE-543): `runners/recruiter/render.jq` is the reference composition, `runners/retro/render.jq` shows a draft with several kinds of row, and `runners/outreach/render.jq` shows a board (a `mono_table` scoreboard with linked checklists under it) and the queue counts.
 
+## The Renderer
+
+**The page is rendered by `runners/email/`, a small node project that carries the three runner pages as React and bundles them into one CommonJS file.** The design itself is no longer written here: it is `@atelic-action/ui/email`, the shared component library every Atelic surface draws from, pinned to an exact version in `runners/email/package.json`. `render.jq` and `lib/email.jq` stay in the tree and in every image as the fallback, so a renderer that cannot start is a plainer email rather than a failed run, and so the two can be compared on the same draft whenever a doubt comes up.
+
+The build is one esbuild call, and it is CommonJS on purpose:
+
+```bash
+esbuild render.tsx --bundle --platform=node --format=cjs --target=node20 --jsx=automatic \
+    '--define:process.env.NODE_ENV="production"' --minify-syntax --outfile=dist/render.cjs
+```
+
+**Do not switch the format to ESM.** It was tried under `node:20-slim` on node 20.20.2 and the bundle dies at startup with `Dynamic require of util is not supported`: React's server renderer reaches for a CommonJS require that an ESM bundle cannot answer. CommonJS runs. Every image builds its own copy in a first stage (`FROM node:20-slim AS email`, `npm ci`, `npm run build`) and copies exactly one file forward to `/home/runner/lib/render.cjs`, so the final image gains no `node_modules`.
+
+**The switch and the fallback.** `RUNNER_RENDERER=jq` forces the old path for a whole run. Otherwise the scaffold looks for the bundle beside the shared library and then in the repo's own build, and when it is missing, exits non zero, or writes an empty file, it says so on one loud `RENDERER:` line and renders that page through jq instead. The html always has a fallback; the plain text part only has one for the retro, whose `render.jq` carries a text branch, and for the other two the part is skipped with a loud line rather than failing the run.
+
+**A layout change is three steps, in order.** Change the component in the `ui` repo and release it; bump the exact pin in `runners/email/package.json` and commit the lockfile that moves with it; then `bin/runner/promote <name>` for each runner, so the image carries the new bundle. Nothing about the email design is edited in this repo any more.
+
+**Parity, before any of that lands.** Render the same draft both ways and compare the parsed documents, since byte equality with jq is impossible by construction (React writes `&#x27;` where jq writes `&#39;`, `<br/>` where jq writes `<br>`, and an explicit `<tbody>`):
+
+```bash
+bin/runner/render-local retro --renderer jq --no-open && cp runners/retro/out/email.html /tmp/jq.html
+bin/runner/render-local retro --no-open
+node runners/email/parity.mjs runners/retro/out/email.html /tmp/jq.html
+```
+
+`parity.mjs` exits 0 only when the two parse to the same canonical tree and prints the first difference with its path otherwise. For a change where the pixels are the question, screenshot both files at 800 and at 390 wide and compare them with `magick compare -metric AE`; zero at both widths is the bar the port was held to. `npm --prefix runners/email test` is the standing version of the same check: six invented fixtures, html and text, each frozen as a golden that has to match byte for byte.
+
+**Nobody promotes a runner on a Sunday or a Monday.** The retro fires Monday at 05:00 Denver and the recruiter at 18:00, so an image pushed over the weekend or during Monday is the one that runs unattended, with nobody awake to read the failure. Promote Tuesday through Saturday.
+
 ## Adding a Runner
 
 A runner is three things of its own: its pulls, its prompt, and its renderer. Everything else comes from the scaffold in `runners/lib/runner.sh` and the pull scripts beside it (`hubspot.mjs`, one client and one set of joins with a command per runner that reads the portal; `gmail.mjs`, both mailboxes by term; `text.mjs`, a page to text with its links kept), which ship into every image as `lib/` and are reached from an entrypoint as `$LIB_DIR/<script>`, so a new runner directory is `entrypoint.sh` (executable), `prompt.md`, `render.jq`, and a `README.md`, plus a `Dockerfile` when it is meant for Cloud Run (copy `runners/recruiter/Dockerfile`: it installs the pinned Claude Code and copies `lib/` in), an `agents` file naming any agent definition it runs, and `mounts` for what a local container run needs from this machine.
