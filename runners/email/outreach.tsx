@@ -23,6 +23,7 @@ import {
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, jqToString, numberString, shortDate, unindent, weekNumber } from "./jq";
 import { DimLine, FaintSpan, GroupLabel, Link } from "./local";
+import { leadBlock } from "./text";
 import type { RenderContext } from "./types";
 
 /*
@@ -251,8 +252,19 @@ export function outreachHTML(input: unknown, context: RenderContext): string {
 function leadNotesText(rows: LeadNote[], empty: string): string {
 	if (rows.length === 0) return `  ${empty}\n`;
 	return `${rows
-		.map((row) => `  ${jqToString(row.lead)}\n${wrap(jqToString(alt(row.note, "")))}`)
+		.map((row) => leadBlock(jqToString(row.lead), jqToString(alt(row.note, ""))))
 		.join("\n\n")}\n`;
+}
+
+/*
+ * One name on the week's list: the person and the company on a line, the note
+ * wrapped beneath. A note is free text, so it never rides in a table column,
+ * where one long note would stretch every row of the table.
+ */
+function nameText(name: ChecklistName): string {
+	const person = jqToString(name.person);
+	const company = jqToString(alt(name.company, ""));
+	return leadBlock(company === "" ? person : `${person} · ${company}`, jqToString(alt(name.note, "")));
 }
 
 export function outreachText(input: unknown, context: RenderContext): string {
@@ -268,22 +280,25 @@ export function outreachText(input: unknown, context: RenderContext): string {
 	out += `${unindent(wrap(jqToString(alt(draft.lede, ""))))}\n`;
 
 	out += textSection("The Board");
-	out += `${textTable(BOARD_HEADERS, boardRows(draft), [1, 2, 3])}\n`;
+	// The numbers keep their table; Details is free text, so it leaves the grid
+	// and each row that has one says it beneath, under its own type.
+	const board = boardRows(draft);
+	out += `${textTable(
+		BOARD_HEADERS.slice(0, -1),
+		board.map((row) => row.slice(0, -1)),
+		[1, 2, 3],
+	)}\n`;
+	const detailed = board.filter((row) => row[row.length - 1] !== "");
+	if (detailed.length > 0) {
+		out += `\n${detailed.map((row) => leadBlock(row[0], row[row.length - 1])).join("\n\n")}\n`;
+	}
 	if (lists.length === 0) {
 		out += "\n  Nobody is owed a touch this week.\n";
 	} else {
 		out += lists
 			.map((list) => {
 				const names = alt(list.names, []);
-				return `\n${jqToString(list.type)} · ${names.length}\n${textTable(
-					["Person", "Company", "Note"],
-					names.map((name) => [
-						jqToString(name.person),
-						jqToString(name.company),
-						jqToString(alt(name.note, "")),
-					]),
-					[],
-				)}\n`;
+				return `\n${jqToString(list.type)} · ${names.length}\n${names.map(nameText).join("\n")}\n`;
 			})
 			.join("");
 	}

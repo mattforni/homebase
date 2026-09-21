@@ -31,6 +31,54 @@ for (const { runner, fixture } of CASES) {
 	});
 }
 
+/*
+ * The width gate on the two new text twins. The goldens only prove the text
+ * has not moved; they cannot say it was right to begin with, and the first
+ * recruiter twin was not: fixtures full of short invented strings froze a
+ * layout that ran to 172 columns on a real draft and butted a long company
+ * name straight into its reason. So the fixtures now carry long values, and
+ * this holds every line to the 68 columns prose wraps at. The one excuse is a
+ * line whose overflow is a single unbreakable last token (a url): take that
+ * token away and the rest has to fit. The retro is exempt on purpose: its twin
+ * is a byte for byte port of the jq one, wide session tables included.
+ */
+const TEXT_WIDTH = 68;
+const columns = (line) => [...line].length;
+const withoutLastToken = (line) => line.replace(/\S+$/, "");
+
+for (const { runner, fixture } of CASES) {
+	if (runner === "retro") continue;
+	test(`${fixture} keeps its text inside ${TEXT_WIDTH} columns`, () => {
+		const lines = render(runner, "text", fixture).stdout.split("\n");
+		const wide = lines.filter(
+			(line) => columns(line) > TEXT_WIDTH && columns(withoutLastToken(line)) > TEXT_WIDTH,
+		);
+		assert.deepEqual(wide, [], "lines past the wrap width for a reason other than one long token");
+	});
+
+	test(`${fixture} leaves no trailing whitespace in its text`, () => {
+		const lines = render(runner, "text", fixture).stdout.split("\n");
+		assert.deepEqual(
+			lines.filter((line) => /\s$/.test(line)),
+			[],
+		);
+	});
+}
+
+test("a long company name never runs into its reason", () => {
+	const out = render("recruiter", "text", "recruiter").stdout;
+	const draft = JSON.parse(readFileSync(new URL("../fixtures/recruiter.json", import.meta.url), "utf8"));
+	const long = draft.rejected.find((row) => [...row.company].length >= 28);
+	assert.ok(long, "the fixture carries a rejected company of 28 characters or more");
+	const lines = out.split("\n");
+	const lastCompanyWord = long.company.split(" ").at(-1);
+	const firstReasonWords = long.reason.split(" ").slice(0, 3).join(" ");
+	const reasonAt = lines.findIndex((line) => line === `  ${firstReasonWords}` || line.startsWith(`  ${firstReasonWords} `));
+	assert.ok(reasonAt > 0, "the reason opens a line of its own");
+	assert.ok(lines[reasonAt - 1].endsWith(lastCompanyWord), "and the company ends the line above it");
+	assert.ok(!lines[reasonAt].includes(lastCompanyWord), "with none of the company on the reason's line");
+});
+
 test("an unknown runner fails loudly", () => {
 	const result = render("nosuchrunner", "html", "retro");
 	assert.equal(result.status, 1);
