@@ -149,7 +149,7 @@ const WORDS = [
 
 /** The retro's `word`: nought to ten spelled out, anything else as its digits. */
 export function word(value: number): string {
-	return value >= 0 && value <= 10 ? WORDS[value] : numberString(value);
+	return value >= 0 && value <= 10 ? WORDS[Math.floor(value)] : numberString(value);
 }
 
 /** Strips the two space indent `wrap` lays down, the way the retro's headline does. */
