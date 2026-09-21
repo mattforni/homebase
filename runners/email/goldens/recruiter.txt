@@ -1,0 +1,116 @@
+ATELIC · RECRUITER · WEEK 5
+Week 5 · 01/26 to 02/01
+
+TWO CLEARED.
+TARGET WAS FIVE.
+
+The sweep covered every codified source and verified each
+shortlisted posting on the employer's own board. Two clearing the
+bar is a thin week rather than a bad one.
+
+
+================================================================
+SHORTLIST · 2
+================================================================
+
+Meadowlark Grid
+  Role           Staff Platform Engineer
+  Comp           $205 to 230K
+  Arrangement    Remote US
+  Fit            8.6
+  Posting        https://jobs.example.test/meadowlark/staff-platform
+
+  Clears every hard filter. Comp sits above the floor and the
+  posting is nine days old.
+
+  They run metering and settlement for community solar co-ops.
+  Verified on their own board, which lists the role as open and
+  remote in every US state.
+
+Tidewater Analytics
+  Role           Senior Site Reliability Engineer
+  Comp           $180 to 200K
+  Arrangement    Remote US, quarterly travel
+  Fit            7.4
+
+  Clears on scope and comp. The quarterly travel is the one thing to
+  weigh.
+
+  Flood modelling for county governments. The posting had no public
+  url, so it was verified on the careers page listing alone.
+
+
+================================================================
+FOR YOUR CALL · 1
+================================================================
+
+Crosswind Depot
+  Role           Growth Engineer
+  Comp           $110 to 130K
+  Arrangement    Remote US
+  Missed         Comp $110 to 130K
+  Posting        https://jobs.example.test/crosswind/growth-engineer
+
+  A growth engineering title under the comp floor, which is the
+  escape hatch that still earns a call.
+
+
+================================================================
+FRACTIONAL LANE · 2
+================================================================
+
+A Regional Waste Hauler
+  Role           Fractional CTO
+  Rate           $8 to 14K/mo
+  Hours          10 to 15 hrs/wk
+  Location       Remote US
+
+  A small ops team with no engineering leadership and a route
+  planning rebuild ahead of them.
+
+  Added on Thursday and confirmed open by a note on the listing. The
+  engagement is scoped at two quarters.
+
+An Independent Pharmacy Group
+  Role           Fractional Head of Data
+  Rate           Rate undisclosed
+  Hours          8 hrs/wk
+  Location       Remote US or CA
+
+  Rate is not posted, which usually means it is negotiable and
+  usually means it is low.
+
+  Listed twice in three weeks, which reads as a seat nobody has
+  taken.
+
+Prospects
+  The Lane B read stayed quiet: two issues, neither naming a company
+  that hires this shape.
+
+One tradeoff
+  The waste hauler seat sits at the practice band, so taking it is a
+  month the practice does not get.
+
+
+================================================================
+IF YOU WANT TO DIG IN
+================================================================
+
+Considered and rejected · 3
+  Quarry Road Auto            Hybrid three days on its own posting
+  Ember Pizza Tech            Manager role, not an IC seat
+  Lantern Hill Roofing        Comp band tops out under the floor
+  Another 14 were resurfaced dedupes and 6 were deny list hits,
+  neither individually verified.
+
+Source notes · 2
+  The co-op board is back.
+  The cert failure from the last two sweeps did not repeat.
+
+  One query hid roles.
+  The platform engineering query returned its full page, so anything
+  past twenty was not seen.
+
+
+12m 04s · $0.42 · 9 turns · claude-sonnet
+

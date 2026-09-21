@@ -24,6 +24,40 @@ jobs:
         with:
           globs: "**/*.{md,markdown}"
 
+  # The node renderer the three runners mail their page through. It stays green
+  # only once @atelic-action/ui is published and runners/email/package-lock.json
+  # is committed beside it, since `npm ci` refuses to run without a lockfile.
+  renderer:
+    name: Runner email renderer
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: runners/email
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      # Node 20, the version the runner images ship and the version the bundle
+      # targets, so the gate runs what production runs.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # Every fixture renders and has to match its frozen golden byte for byte,
+      # html and text alike.
+      - name: Test
+        run: npm test
+
   shell:
     name: Shell
     runs-on: ubuntu-latest

@@ -1,0 +1,71 @@
+{
+  "preheader": "Two cleared every filter, one earns a call, one fractional seat is open.",
+  "headline": ["Two cleared.", "Target was five."],
+  "lede": "The sweep covered every codified source and verified each shortlisted posting on the employer's own board. Two clearing the bar is a thin week rather than a bad one.",
+  "shortlist": [
+    {
+      "company": "Meadowlark Grid",
+      "role": "Staff Platform Engineer",
+      "comp": "$205 to 230K",
+      "arrangement": "Remote US",
+      "fit": 8.6,
+      "why": "Clears every hard filter. Comp sits above the floor and the posting is nine days old.",
+      "about": "They run metering and settlement for community solar co-ops. Verified on their own board, which lists the role as open and remote in every US state.",
+      "url": "https://jobs.example.test/meadowlark/staff-platform"
+    },
+    {
+      "company": "Tidewater Analytics",
+      "role": "Senior Site Reliability Engineer",
+      "comp": "$180 to 200K",
+      "arrangement": "Remote US, quarterly travel",
+      "fit": 7.4,
+      "why": "Clears on scope and comp. The quarterly travel is the one thing to weigh.",
+      "about": "Flood modelling for county governments. The posting had no public url, so it was verified on the careers page listing alone.",
+      "url": ""
+    }
+  ],
+  "flagged": [
+    {
+      "company": "Crosswind Depot",
+      "role": "Growth Engineer",
+      "missed": "Comp $110 to 130K",
+      "comp": "$110 to 130K",
+      "arrangement": "Remote US",
+      "why": "A growth engineering title under the comp floor, which is the escape hatch that still earns a call.",
+      "url": "https://jobs.example.test/crosswind/growth-engineer"
+    }
+  ],
+  "fractional": [
+    {
+      "company": "A Regional Waste Hauler",
+      "role": "Fractional CTO",
+      "rate": "$8 to 14K/mo",
+      "hours": "10 to 15 hrs/wk",
+      "location": "Remote US",
+      "why": "A small ops team with no engineering leadership and a route planning rebuild ahead of them.",
+      "detail": "Added on Thursday and confirmed open by a note on the listing. The engagement is scoped at two quarters."
+    },
+    {
+      "company": "An Independent Pharmacy Group",
+      "role": "Fractional Head of Data",
+      "rate": null,
+      "hours": "8 hrs/wk",
+      "location": "Remote US or CA",
+      "why": "Rate is not posted, which usually means it is negotiable and usually means it is low.",
+      "detail": "Listed twice in three weeks, which reads as a seat nobody has taken."
+    }
+  ],
+  "prospects": "The Lane B read stayed quiet: two issues, neither naming a company that hires this shape.",
+  "tradeoff": "The waste hauler seat sits at the practice band, so taking it is a month the practice does not get.",
+  "rejected": [
+    { "company": "Quarry Road Auto", "reason": "Hybrid three days on its own posting" },
+    { "company": "Ember Pizza Tech", "reason": "Manager role, not an IC seat" },
+    { "company": "Lantern Hill Roofing", "reason": "Comp band tops out under the floor" }
+  ],
+  "rejected_note": "Another 14 were resurfaced dedupes and 6 were deny list hits, neither individually verified.",
+  "sources": [
+    { "lead": "The co-op board is back.", "note": "The cert failure from the last two sweeps did not repeat." },
+    { "lead": "One query hid roles.", "note": "The platform engineering query returned its full page, so anything past twenty was not seen." }
+  ],
+  "ledger": []
+}

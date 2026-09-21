@@ -1,0 +1,83 @@
+ATELIC · OUTREACH · WEEK 5
+Week 5 · 01/26 to 02/01
+
+FOUR REPLIES OWED,
+FIVE BUMPS, TWO VISITS.
+
+The sweep found four names waiting on an answer and five sitting
+past their bump window. Open on Pinewood Cabinetry, which has read
+the last send seven times in twelve days.
+
+
+================================================================
+THE BOARD
+================================================================
+
+  Type     Complete  Target  %  Details
+  Replies         0       4  0  Two are waiting on a number, two on a date.
+  Bumps           0       5  0
+  Closes          0       0  0  Nothing is close enough to ask.
+  Intros          0       3  0
+  Visits          0       2  0  Both are walkable from the desk.
+  Total           0      14  0
+
+Replies · 2
+  Person         Company               Note
+  Salley Wilson  Pinewood Cabinetry    Owed a number since Tuesday, sending as Atelic, graded A.
+  Dov Marchetti  Harbor Line Plumbing
+
+Bumps · 1
+  Person           Company                  Note
+  Renata Oyelaran  Sable Creek Landscaping  Day 9 on the first send, no open yet.
+
+Visits · 1
+  Person           Company               Note
+  Marguerite Bell  Thistle Lane Florist  Walkable, open until 17:00.
+
+
+================================================================
+THE QUEUE
+================================================================
+
+  Measure    Count
+  Next Up       41
+  Still NEW     26
+  Unscored       5
+  Tasks due      2
+  Parked         1
+  Stale          0
+
+Hottest reader
+  Salley Wilson, Pinewood Cabinetry, 7 opens on day 12
+
+
+================================================================
+FLAGS FROM THE PORTAL DIFF
+================================================================
+
+  Harbor Line Plumbing reads NEW with a reply on the record.
+  The portal says NEW and the mailbox carries a reply from Thursday.
+  Move it to CONTACTED, or say why not.
+
+  Ridgeline Glass has a send that never logged.
+  The thread shows one send on Monday and the record shows none. The
+  extension was off that morning.
+
+
+================================================================
+IF YOU WANT TO DIG IN
+================================================================
+
+Could not verify today · 1
+  The One Pager pull failed.
+  The ICP statement could not be read this run, so nothing in the
+  drafts leans on it.
+
+Deliberately not in this block · 1
+  Copper Kettle Catering
+  Asked for a month of quiet on the last call, which runs to the end
+  of February.
+
+
+12m 04s · $0.42 · 9 turns · claude-sonnet
+

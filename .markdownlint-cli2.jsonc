@@ -21,6 +21,10 @@
     // A runner's work directory. It is gitignored, but markdownlint globs the
     // filesystem rather than the index, so an agent that writes a roster there
     // turns the markdown gate red on prose nobody wrote and nobody ships.
-    "runners/*/out/**"
+    "runners/*/out/**",
+    // The node renderer's install and its build, gitignored for the same
+    // reason: a dependency's own README is not this repo's prose.
+    "runners/email/node_modules/**",
+    "runners/email/dist/**"
   ]
 }

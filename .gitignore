@@ -27,3 +27,8 @@
 runners/*/.env.local
 runners/*/out/
 runners/*/.build/
+
+# The node renderer's install and its build. The image builds its own in the
+# Dockerfile's first stage, and bin/runner/lib.sh builds one on this machine.
+runners/email/node_modules/
+runners/email/dist/
