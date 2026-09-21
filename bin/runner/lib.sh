@@ -285,6 +285,13 @@ runner_build_context() {
     # The whole shared library: runner.sh for the entrypoint, email.jq for
     # the renderer, and whatever joins them.
     cp "$root/runners/lib/"* "$staged/lib/" || return 1
+    # The node renderer's sources, as a sibling of lib/ rather than a child,
+    # because the flat copy above carries files and not directories. Its
+    # node_modules and its build stay behind: the image's first stage installs
+    # and builds its own, so nothing here can ship a stale bundle.
+    mkdir -p "$staged/email" || return 1
+    (cd "$root/runners/email" && tar --exclude=./node_modules --exclude=./dist -cf - .) \
+        | (cd "$staged/email" && tar -xf -) || return 1
     if [[ -r "$dir/agents" ]]; then
         mkdir -p "$staged/agents" || return 1
         while read -r n; do
@@ -385,4 +392,26 @@ runner_email_artifact() {
     local work="$1"
     [[ -s "$work/email.html" ]] && { printf '%s' "$work/email.html"; return 0; }
     return 1
+}
+
+# Usage: runner_email_bundle
+# The node renderer's bundle, built first when it is missing or older than any
+# of its sources, and its path printed. This is the driver side, which is the
+# half allowed to know this machine has npm on it; the entrypoint side only
+# ever reads the file. An image builds its own copy in its first stage.
+runner_email_bundle() {
+    local root dir bundle newer=""
+    root="$(runner_repo_root)"
+    dir="$root/runners/email"
+    bundle="$dir/dist/render.cjs"
+    [[ -d "$dir" ]] || { echo "no runners/email under $root" >&2; return 1; }
+    if [[ -s "$bundle" ]]; then
+        newer="$(find "$dir" \( -name node_modules -o -name dist \) -prune -o \
+            -type f -newer "$bundle" -print -quit 2>/dev/null)"
+    fi
+    if [[ ! -s "$bundle" || -n "$newer" ]]; then
+        [[ -d "$dir/node_modules" ]] || npm --prefix "$dir" install --no-audit --no-fund >&2 || return 1
+        npm --prefix "$dir" run build >&2 || return 1
+    fi
+    printf '%s' "$bundle"
 }
