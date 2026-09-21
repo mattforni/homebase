@@ -295,15 +295,28 @@ const companies = new Map((await batch("companies", [...rows.keys()],
 // the deal and the lead columns are dropped for it entirely.
 const STAGES = Object.fromEntries((await api("crm/v3/pipelines/deals")).results
     .flatMap((pl) => pl.stages.map((st) => [st.id, st.label])));
+// Open deals, plus any deal that closed inside the week. Open only was how
+// SkySpec rendered with a blank stage and no money in the week it signed
+// (W38): its deal went Closed Won on 09-17 and dropped out of the query, when
+// a win is the one row the week most needs to show.
 const openDeals = (await searchAll("deals", {
-    filterGroups: [{ filters: [{ propertyName: "hs_is_closed", operator: "NEQ", value: "true" }] }],
-    properties: ["dealname", "dealstage", "amount", "build_price", "operate_price", "operate_length", "trade_credit"],
+    filterGroups: [
+        { filters: [{ propertyName: "hs_is_closed", operator: "NEQ", value: "true" }] },
+        { filters: [{ propertyName: "closedate", operator: "BETWEEN", value: AFTER_MS, highValue: BEFORE_MS }] },
+    ],
+    properties: ["dealname", "dealstage", "amount", "build_price", "operate_price", "operate_length", "trade_credit", "hs_is_closed", "hs_is_closed_won"],
 }));
 const dealCompanies = await assoc("deals", "companies", openDeals.map((d) => d.id));
+// One deal per company, ranked rather than first seen: a deal won inside the
+// week, then an open one, then one lost inside the week. Search order would
+// otherwise let a second open deal hide the win the query was widened to
+// catch, or a loss hide a deal still in play. Ties keep the first seen.
+const dealRank = (p) => (p.hs_is_closed_won === "true" ? 0 : p.hs_is_closed !== "true" ? 1 : 2);
 const dealByCompany = new Map();
 for (const d of openDeals) {
     for (const c of dealCompanies.get(d.id) || []) {
-        if (!dealByCompany.has(c)) dealByCompany.set(c, d.properties);
+        const held = dealByCompany.get(c);
+        if (!held || dealRank(d.properties) < dealRank(held)) dealByCompany.set(c, d.properties);
     }
 }
 
@@ -312,6 +325,7 @@ for (const d of openDeals) {
 // first time: Skylight Specialists showed CONNECTED/QUALIFIED because Bradley
 // had not caught up with Danny and Josh.
 const LADDER = ["NEW", "CONTACTED", "ENGAGED", "CONNECTED", "QUALIFIED"];
+const FUNNEL = new Set(["lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer"]);
 const CLOSED = new Set(["UNQUALIFIED", "NO_RESPONSE"]);
 const warmest = (ids) => {
     const seen = [...ids].map((c) => contacts.get(c)?.hs_lead_status).filter(Boolean);
@@ -325,21 +339,25 @@ const counted = new Map();
 for (const [cid, r] of rows) {
     const c = companies.get(cid) || {};
     const stage = c.lifecyclestage || "";
-    if (stage !== "lead" && stage !== "opportunity" && stage !== "customer") continue;
+    // Every funnel stage the operating model names, Lead through Customer, so
+    // the retro can show the whole pipeline; Other stays out, since it is the
+    // warm network rather than the funnel.
+    if (!FUNNEL.has(stage)) continue;
     const status = warmest(r.contacts);
+    const deal = dealByCompany.get(cid);
     // No lead status on any contact means the company is not in the motion,
     // which is exactly what clearing the status is for. It also keeps rows
     // that only ever received mail (Forni's PT, his lawyers) out of a table
     // about outreach.
-    if (!status) continue;
+    if (!status && !deal) continue;
     const kinds = [];
     if (r.first) kinds.push(r.first > 1 ? `${r.first} first` : "first");
     if (r.bump) kinds.push(r.bump > 1 ? `${r.bump} bumps` : "bump");
     if (r.reply) kinds.push(r.reply > 1 ? `${r.reply} replies` : "reply");
     counted.set(cid, r);
-    const deal = dealByCompany.get(cid);
     const entry = {
         company: c.name || `(company ${cid})`,
+        lifecycle: stage,
         status: status || "none",
         kind: kinds.join(", ") || "none",
         sends: r.sends,
@@ -389,6 +407,7 @@ for (const [cid, r] of rows) {
         const cash = total === null ? null : total - trade;
         tables.opportunities.push({
             company: entry.company,
+            lifecycle: stage,
             stage: deal ? (STAGES[deal.dealstage] || deal.dealstage) : "-",
             build: money(build),
             // The term rides with the operate figure rather than taking a

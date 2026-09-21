@@ -109,7 +109,7 @@ strava_pull() {
     fi
     curl -sS --max-time 60 -H "Authorization: Bearer $access" \
         "https://www.strava.com/api/v3/athlete/activities?after=$AFTER_EPOCH&before=$BEFORE_EPOCH&per_page=200" \
-        | jq '[.[] | {name, sport_type, start_date_local, distance_mi: ((.distance // 0) / 1609.344 * 100 | round / 100), elevation_ft: ((.total_elevation_gain // 0) * 3.28084 | round), moving_min: ((.moving_time // 0) / 60 | round), elapsed_min: ((.elapsed_time // 0) / 60 | round), average_heartrate, max_heartrate, relative_effort: .suffer_score, average_speed}]' \
+        | jq '[.[] | {name, sport_type, start_date_local, distance_mi: ((.distance // 0) / 1609.344 * 100 | round / 100), elevation_ft: ((.total_elevation_gain // 0) * 3.28084 | round), moving_min: ((.moving_time // 0) / 60 | round), elapsed_min: ((.elapsed_time // 0) / 60 | round), average_heartrate, max_heartrate, relative_effort: .suffer_score, average_speed, athlete_count}]' \
         > "$WORK/strava.json" || { fail_reason="Strava activities pull failed"; return 1; }
     echo "strava: $(jq length "$WORK/strava.json") activities"
 }
@@ -247,17 +247,19 @@ fi
 # Naming it here makes the two places agree by construction.
 ATTEMPT_TIMEOUT="${ATTEMPT_TIMEOUT:-20m}"
 runner_claude "$(fill_prompt "$PROMPT_FILE")" --model sonnet --allowedTools "Read" || exit 1
-runner_draft '(.headline | type == "string") and (.movement | type == "array") and (.coverage | type == "array")
+runner_draft '(.headline | type == "string") and (.coverage | type == "array") and (.what_moved | type == "array")
     and (.movement_read | type == "string") and (.takeout | type == "array") and (.takeout_read | type == "string")
     and (.atelic_read | type == "string") and (.blind_spots | type == "string")' || exit 1
 
-# The Atelic tables are data, not draft: they go in after the model, so nothing
-# it writes can move a number.
-if ! jq -s '.[0] * {atelic: .[1]}' "$DRAFT_JSON" "$WORK/atelic.json" > "$DRAFT_JSON.merged" 2>"$WORK/merge-stderr.txt"; then
-    fail_reason="could not merge the Atelic tables into the retro: $(head -c 300 "$WORK/merge-stderr.txt")"
+# The Atelic tables and the Strava sessions are data, not draft: they go in
+# after the model, so nothing it writes can move a number, and the renderer
+# builds the session list and the day strip from them directly.
+if ! jq -s '.[0] * {atelic: .[1], strava: .[2]}' "$DRAFT_JSON" "$WORK/atelic.json" "$WORK/strava.json" > "$DRAFT_JSON.merged" 2>"$WORK/merge-stderr.txt"; then
+    fail_reason="could not merge the Atelic and Strava data into the retro: $(head -c 300 "$WORK/merge-stderr.txt")"
     exit 1
 fi
 mv "$DRAFT_JSON.merged" "$DRAFT_JSON"
 
 runner_render || exit 1
+runner_render_text || exit 1
 status="success"

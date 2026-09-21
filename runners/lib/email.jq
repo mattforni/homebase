@@ -122,6 +122,145 @@ def mono_table($headers; $rows):
   + ($rows | map("<tr>" + (map("<td style=\"padding:4px 6px;border-top:1px solid " + hair + ";vertical-align:top\">" + esc + "</td>") | join("")) + "</tr>") | join(""))
   + "</table>";
 
+# ---------- scoreboard pieces ----------
+#
+# Source: "W38 Retro Email" in the same Claude Design project (2026-09-21),
+# whose README in email-components/ names these partials. The accent marks a
+# shortfall and nothing else a row says.
+
+# A segmented bar, one segment per unit of the target, filled up to what was
+# logged. Wider segments for small targets so three reads as three.
+def bar($logged; $target):
+  (if $target <= 3 then 18 else 10 end) as $w
+  | ([$logged, $target] | min) as $filled
+  | "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr>"
+    + ([range(0; $target)]
+       | map((if . > 0 then "<td width=\"3\" style=\"font-size:0\">&nbsp;</td>" else "" end)
+             + "<td width=\"" + ($w | tostring) + "\" height=\"6\" style=\"background:" + (if . < $filled then ink else line end) + ";font-size:0;line-height:0\">&nbsp;</td>")
+       | join(""))
+    + "</tr></table>";
+
+# A small eyebrow row spanning a table: the scoreboard's group names.
+def group_row($text; $first):
+  "<tr><td colspan=\"4\" style=\"padding:" + (if $first then "0" else "18px" end) + " 0 6px;" + eyebrow_style + "color:" + accent + ";border-bottom:1px solid " + line + "\">" + ($text | esc) + "</td></tr>";
+
+# One target: label, logged over target (accent when short), the bar, a note.
+# A null target is a count with nothing to measure it against (takeout).
+def target_row($text; $logged; $target; $note; $last):
+  (if $last then "" else "border-bottom:1px solid " + hair + ";" end) as $rule
+  | ($target != null and $logged < $target) as $short
+  | "<tr><td style=\"padding:10px 0;" + $rule + "font-weight:500\">" + ($text | esc) + "</td>"
+    + "<td width=\"52\" align=\"right\" style=\"padding:10px 0;" + $rule + mono + "font-size:13px;color:" + (if $short then accent else ink end) + ";white-space:nowrap\">"
+    + ($logged | tostring) + (if $target == null then "" else " / " + ($target | tostring) end) + "</td>"
+    + "<td width=\"84\" style=\"padding:10px 0 10px 16px;" + $rule + "\">" + (if $target == null or $target == 0 then "" else bar($logged; $target) end) + "</td>"
+    + "<td align=\"right\" style=\"padding:10px 0;" + $rule + "font-size:13px;color:" + faint + "\">" + ($note | esc) + "</td></tr>";
+
+def scoreboard($rows_html):
+  "<tr><td style=\"padding:22px 26px 0\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"" + sans + "font-size:14px;color:" + ink + "\">" + $rows_html + "</table></td></tr>";
+
+# The note bar on the cream ground under the scoreboard: $items a list of
+# {subject, event}, then one dim line.
+def what_moved($items; $note):
+  "<tr><td style=\"padding:22px 26px 26px\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"background:" + ground + ";border-radius:10px\">"
+  + "<tr><td style=\"padding:16px 18px;" + sans + "font-size:14px;line-height:1.6;color:" + ink + "\">"
+  + "<span style=\"" + eyebrow_style + "color:" + faint + "\">What Moved</span><br>"
+  + ($items | map("<b style=\"font-weight:600\">" + (.subject | esc) + "</b> " + (.event | esc) + "<br>") | join(""))
+  + (if ($note // "") != "" then "<span style=\"color:" + dim + "\">" + ($note | esc) + "</span>" else "" end)
+  + "</td></tr></table></td></tr>";
+
+# A model written read at the top of a section card.
+def read_block($text; $divider):
+  "<tr><td style=\"padding:22px 24px 20px;" + sans + (if $divider then "border-bottom:1px solid " + line + ";" else "" end) + "\">"
+  + "<span style=\"" + eyebrow_style + "color:" + accent + "\">The Read</span>"
+  + "<div style=\"font-size:15px;line-height:1.6;color:" + ink + ";margin-top:6px\">" + ($text | esc) + "</div></td></tr>";
+
+# A faint eyebrow inside a card, over a block.
+def sub_eyebrow($text):
+  "<tr><td style=\"padding:18px 24px 6px;" + eyebrow_style + "color:" + faint + "\">" + ($text | esc) + "</td></tr>";
+
+# A single letter in a hairline box after the word it tags (S for social).
+def badge($letter):
+  "<span style=\"display:inline-block;" + mono + "font-size:9px;line-height:12px;width:12px;text-align:center;border:1px solid " + accent + ";border-radius:3px;color:" + accent + ";vertical-align:1px;margin-left:3px\">" + ($letter | esc) + "</span>";
+
+# Monday to Sunday, entries top aligned. $days a list of {label, entries},
+# each entry {name, strong, badge}.
+def day_strip($days; $last):
+  "<tr><td style=\"padding:0 24px 18px" + (if $last then "" else ";border-bottom:1px solid " + line end) + "\">"
+  + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"" + sans + "font-size:12px;line-height:1.5;color:" + dim + ";text-align:center\">"
+  + "<tr style=\"" + mono + "font-size:11px;color:" + faint + "\">" + ($days | map("<td style=\"padding:6px 2px\">" + (.label | esc) + "</td>") | join("")) + "</tr><tr>"
+  + ($days | map("<td width=\"14%\" style=\"padding:8px 2px;border-top:2px solid " + ink + ";vertical-align:top\">"
+      + (.entries | map((if .strong then "<b style=\"color:" + ink + ";font-weight:600\">" else "" end)
+          + (.name | esc) + (if (.badge // "") != "" then badge(.badge) else "" end)
+          + (if .strong then "</b>" else "" end)) | join("<br>"))
+      + "</td>") | join(""))
+  + "</tr></table></td></tr>";
+
+# A row of big numbers over eyebrow labels. $stats a list of {n, label}.
+def stat_strip($stats):
+  "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr>"
+  + ($stats | map("<td style=\"padding:12px 6px 10px;border-top:2px solid " + ink + ";text-align:center;vertical-align:top\">"
+      + "<span style=\"" + sans + "font-size:22px;font-weight:600;letter-spacing:-0.02em;color:" + ink + "\">" + (.n | tostring) + "</span><br>"
+      + "<span style=\"" + eyebrow_style + "color:" + faint + "\">" + (.label | esc) + "</span></td>") | join(""))
+  + "</tr></table>";
+
+# A table with a header row. $columns a list of {label, right}; $rows a list of
+# lists of cells, each {value, mono, muted, hot, html}; an html cell is already
+# escaped. A column every row leaves empty is dropped, so a table never shows
+# a column of nothing.
+def records($columns; $rows):
+  ([range(0; $columns | length)] | map(. as $i | select([$rows[] | .[$i].value // ""] | map(select(. != "")) | length > 0))) as $keep
+  | ($rows | length) as $n
+  | "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"" + sans + "font-size:13px;line-height:1.4;color:" + ink + "\"><tr>"
+    + ($keep | map($columns[.] as $c | "<td align=\"" + (if $c.right then "right" else "left" end) + "\" style=\"padding:0 8px 6px 0;" + mono + "font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:" + faint + ";border-bottom:1px solid " + line + ";white-space:nowrap\">" + ($c.label | esc) + "</td>") | join(""))
+    + "</tr>"
+    + ([range(0; $n)] | map(. as $r | ($rows[$r]) as $cells
+        | "<tr>" + ($keep | map(. as $i | $columns[$i] as $c | $cells[$i] as $cell
+            | "<td align=\"" + (if $c.right then "right" else "left" end) + "\" style=\"padding:8px 8px 8px 0;border-bottom:1px solid " + (if $r == $n - 1 then line else hair end) + ";"
+              + (if $cell.mono then mono + "font-size:12px;" else "" end)
+              + "color:" + (if $cell.hot then accent elif $cell.muted then faint elif $cell.mono then dim else ink end)
+              + (if $c.right then ";white-space:nowrap" else "" end) + "\">"
+              + (if ($cell.html // "") != "" then $cell.html else (($cell.value // "") | esc) end) + "</td>") | join("")) + "</tr>") | join(""))
+    + "</table>";
+
+# ---------- plain text ----------
+#
+# The alternative part, the same pieces in text. Every label and number sits in
+# its own padded column or on its own line; nothing is ever concatenated,
+# which is what a mail service's own html to text conversion does to a table.
+
+def spaces($n): [range(0; ([$n, 0] | max))] | map(" ") | join("");
+def rpad($w): tostring | . + spaces($w - length);
+def lpad($w): tostring | spaces($w - length) + .;
+
+# Prose wrapped at 68 columns under a two space indent.
+def wrap:
+  (tostring | split(" ")) | reduce .[] as $word ([""];
+    if (.[-1] | length) == 0 then .[-1] = $word
+    elif ((.[-1] | length) + 1 + ($word | length)) > 66 then . + [$word]
+    else .[-1] += " " + $word end)
+  | map("  " + .) | join("\n");
+
+def text_rule: [range(0; 64)] | map("=") | join("");
+def text_section($t): "\n\n" + text_rule + "\n" + ($t | ascii_upcase) + "\n" + text_rule + "\n\n";
+def text_read($t): "The Read\n" + ($t | wrap) + "\n";
+
+def text_bar($logged; $target):
+  if $target == null or $target == 0 then "" else
+    ([range(0; $target)] | map(if . < ([$logged, $target] | min) then "#" else "." end) | join("")) end;
+
+# One scoreboard line from {label, logged, target, note}.
+def text_target: "  " + (.label | rpad(15)) + ((.logged | tostring) + (if .target == null then "" else " / " + (.target | tostring) end) | rpad(8))
+  + (text_bar(.logged; .target) | rpad(7)) + .note;
+
+# A column table: $cols a list of labels, $rows a list of lists of strings,
+# $right the indexes that align right. Empty columns drop, as records does.
+def text_table($cols; $rows; $right):
+  ([range(0; $cols | length)] | map(. as $i | select([$rows[] | .[$i]] | map(select(. != "")) | length > 0))) as $keep
+  | ($keep | map(. as $i | ([$cols[$i]] + [$rows[] | .[$i]] | map(length) | max))) as $w
+  | ([$cols] + $rows) | map(. as $r | "  " + ([range(0; $keep | length)] | map(. as $k | $keep[$k] as $i
+      | if any($right[]; . == $i) then ($r[$i] | lpad($w[$k])) else ($r[$i] | rpad($w[$k])) end) | join("  ") | sub(" +$"; "")))
+  | join("\n");
+
 # ---------- the frame ----------
 
 # The wordmark and one orange rule at the top left, the email's title beside
