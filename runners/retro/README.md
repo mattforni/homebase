@@ -1,6 +1,6 @@
 # The Retro Runner
 
-A Cloud Run Job (`retro`, project `atelic`, region `us-central1`) that fires every Monday at 05:00 Denver, pulls the ISO week from Strava, Gmail, and HubSpot with curl, has headless Claude Code draft the retrospective as JSON, renders it into the branded email through the node renderer in [../email/](../email/), and sends it through Resend as `YYYY-Www Retro`. Read only against the world except the rotated Strava refresh token, which it writes back to the vault. Tracked as ATE-471.
+A Cloud Run Job (`retro`, project `atelic`, region `us-central1`) that fires every Sunday at 23:00 Denver, pulls the ISO week from Strava, Gmail, and HubSpot with curl, has headless Claude Code draft the retrospective as JSON, renders it into the branded email through the node renderer in [../email/](../email/), and sends it through Resend as `YYYY-Www Retro`. Read only against the world except the rotated Strava refresh token, which it writes back to the vault. Tracked as ATE-471.
 
 The runtime one pager (why Cloud Run over Routines and launchd, the service account and its secrets, the schedule, the traps) lives in Eudy at `Admin/Tools/cloud-run.md`.
 
