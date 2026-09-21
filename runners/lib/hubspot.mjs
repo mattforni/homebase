@@ -304,18 +304,19 @@ const openDeals = (await searchAll("deals", {
         { filters: [{ propertyName: "hs_is_closed", operator: "NEQ", value: "true" }] },
         { filters: [{ propertyName: "closedate", operator: "BETWEEN", value: AFTER_MS, highValue: BEFORE_MS }] },
     ],
-    properties: ["dealname", "dealstage", "amount", "build_price", "operate_price", "operate_length", "trade_credit", "hs_is_closed_won"],
+    properties: ["dealname", "dealstage", "amount", "build_price", "operate_price", "operate_length", "trade_credit", "hs_is_closed", "hs_is_closed_won"],
 }));
 const dealCompanies = await assoc("deals", "companies", openDeals.map((d) => d.id));
-// First seen wins, except that a deal won inside the week outranks any other
-// deal on the same company: a company with a second deal still open would
-// otherwise hide the win the query was widened to catch.
+// One deal per company, ranked rather than first seen: a deal won inside the
+// week, then an open one, then one lost inside the week. Search order would
+// otherwise let a second open deal hide the win the query was widened to
+// catch, or a loss hide a deal still in play. Ties keep the first seen.
+const dealRank = (p) => (p.hs_is_closed_won === "true" ? 0 : p.hs_is_closed !== "true" ? 1 : 2);
 const dealByCompany = new Map();
 for (const d of openDeals) {
-    const won = d.properties.hs_is_closed_won === "true";
     for (const c of dealCompanies.get(d.id) || []) {
         const held = dealByCompany.get(c);
-        if (!held || (won && held.hs_is_closed_won !== "true")) dealByCompany.set(c, d.properties);
+        if (!held || dealRank(d.properties) < dealRank(held)) dealByCompany.set(c, d.properties);
     }
 }
 

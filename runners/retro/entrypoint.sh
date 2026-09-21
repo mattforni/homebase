@@ -255,7 +255,7 @@ runner_draft '(.headline | type == "string") and (.coverage | type == "array") a
 # after the model, so nothing it writes can move a number, and the renderer
 # builds the session list and the day strip from them directly.
 if ! jq -s '.[0] * {atelic: .[1], strava: .[2]}' "$DRAFT_JSON" "$WORK/atelic.json" "$WORK/strava.json" > "$DRAFT_JSON.merged" 2>"$WORK/merge-stderr.txt"; then
-    fail_reason="could not merge the Atelic tables into the retro: $(head -c 300 "$WORK/merge-stderr.txt")"
+    fail_reason="could not merge the Atelic and Strava data into the retro: $(head -c 300 "$WORK/merge-stderr.txt")"
     exit 1
 fi
 mv "$DRAFT_JSON.merged" "$DRAFT_JSON"
