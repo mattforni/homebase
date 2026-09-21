@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Retro Runner. Fires Monday 05:00 Denver from Cloud Scheduler.
+# The Retro Runner. Fires Sunday 23:00 Denver from Cloud Scheduler.
 #
 # Shape: deterministic pulls first (curl, into $WORK/*.json), then one headless
 # Claude Code call that reads those files and writes the retrospective, then
@@ -48,9 +48,10 @@ if [[ -z "${RUNNER_LIB:-}" ]]; then
     exit 1
 fi
 
-# The retro is for the previous week, the ISO week that closed most recently.
-# The job fires Monday 05:00 Denver, by which hour that week is over, so the
-# default is read off yesterday's date rather than today's.
+# The retro is for the ISO week that is closing. The job fires Sunday 23:00
+# Denver, in that week's last hour, and the default is read off yesterday's
+# date rather than today's: Saturday names the same week, and a retry that
+# slips past midnight into Monday still reads Sunday and gets it right.
 runner_init retro "Retro" previous
 
 STRAVA_SECRET_RESOURCE="${STRAVA_SECRET_RESOURCE:-projects/forni-keys/secrets/strava-refresh-token}"

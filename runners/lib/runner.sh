@@ -230,8 +230,8 @@ meta_line() {
 # its directory says nothing. Title is how the runner names itself everywhere
 # a reader sees it: the subject ("2026-W38 Retro"), the masthead, the failure
 # page. The third argument says which week is the default when WEEK is not
-# set: the week in progress, or the one that closed most recently (the retro
-# fires Monday morning about the week just ended). Reads DRY_RUN, SKIP_PULLS, WORK, WEEK
+# set: the week in progress, or the week yesterday belonged to (the retro
+# fires Sunday night about the week that is closing). Reads DRY_RUN, SKIP_PULLS, WORK, WEEK
 # and RUNNER_RENDERER from the environment, and needs SELF_DIR (the entrypoint's
 # own directory) and RUNNER_LIB (this file's path) set by the entrypoint's
 # bootstrap. Sets:

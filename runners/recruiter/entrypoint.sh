@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The Recruiter Runner. Meant for Monday 18:00 Denver from Cloud Scheduler, so the
+# The Recruiter Runner. Meant for Monday 23:00 Denver from Cloud Scheduler, so the
 # Tuesday 07:00 work search block opens on a scored slate rather than a sweep.
 #
 # Shape: Eudaimonia first (the checkout already present, or a shallow clone over

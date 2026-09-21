@@ -4,8 +4,8 @@ Headless Claude routines that run on a schedule. One directory per runner, each 
 
 | Runner | Runs On | What It Does |
 |---|---|---|
-| [retro/](retro/README.md) | Cloud Run | Monday 05:00 Denver. Pulls the ISO week from Strava, Gmail, and HubSpot, has Claude write the retrospective, and emails it as `YYYY-Www Retro`. |
-| [recruiter/](recruiter/README.md) | Cloud Run | Monday 18:00 Denver. Pulls the job boards with curl, runs the `recruiter` agent over the pulled listings so the week's sweep is done before the Tuesday work search block, upserts the judged rows into the Pinole work ledger and logs the sweep as an activity, and emails the board as `YYYY-Www Recruiter` with the ledger rows also attached as a file. Promoted 2026-09-11. |
+| [retro/](retro/README.md) | Cloud Run | Sunday 23:00 Denver. Pulls the ISO week from Strava, Gmail, and HubSpot, has Claude write the retrospective, and emails it as `YYYY-Www Retro`. |
+| [recruiter/](recruiter/README.md) | Cloud Run | Monday 23:00 Denver. Pulls the job boards with curl, runs the `recruiter` agent over the pulled listings so the week's sweep is done before the Tuesday work search block, upserts the judged rows into the Pinole work ledger and logs the sweep as an activity, and emails the board as `YYYY-Www Recruiter` with the ledger rows also attached as a file. Promoted 2026-09-11. |
 | [outreach/](outreach/README.md) | by hand | Pulls the portal, both mailboxes, the One Pager and the candidate sites, runs the `outreacher` agent over the pulled files so the week's roster is built and drafted before the Tuesday desk block, and emails a report as `YYYY-Www Outreach` with the roster attached for Forni to place in the Atelic repo. Rebuilt on the recruiter's shape 2026-09-15 (ATE-551); not scheduled until the cost is measured. |
 
 The runtime one pager (why Cloud Run over Routines, the service accounts and their secrets, the schedules, the traps) lives in Eudy at `Admin/Tools/cloud-run.md`.
@@ -145,8 +145,6 @@ node runners/email/parity.mjs runners/retro/out/email.html /tmp/jq.html
 ```
 
 `parity.mjs` exits 0 only when the two parse to the same canonical tree and prints the first difference with its path otherwise. For a change where the pixels are the question, screenshot both files at 800 and at 390 wide and compare them with `magick compare -metric AE`; zero at both widths is the bar the port was held to. `npm --prefix runners/email test` is the standing version of the same check: six invented fixtures, html and text, each frozen as a golden that has to match byte for byte.
-
-**Nobody promotes a runner on a Sunday or a Monday.** The retro fires Monday at 05:00 Denver and the recruiter at 18:00, so an image pushed over the weekend or during Monday is the one that runs unattended, with nobody awake to read the failure. Promote Tuesday through Saturday.
 
 ## Adding a Runner
 
