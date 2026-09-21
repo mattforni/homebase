@@ -1,0 +1,89 @@
+{
+  "preheader": "Four replies owed, five bumps, two visits, and one name running hot.",
+  "headline": ["Four replies owed,", "five bumps, two visits."],
+  "lede": "The sweep found four names waiting on an answer and five sitting past their bump window. Open on Pinewood Cabinetry, which has read the last send seven times in twelve days.",
+  "scoreboard": [
+    { "type": "Replies", "target": 4, "details": "Two are waiting on a number, two on a date." },
+    { "type": "Bumps", "target": 5, "details": "" },
+    { "type": "Closes", "target": 0, "details": "Nothing is close enough to ask." },
+    { "type": "Intros", "target": 3, "details": "" },
+    { "type": "Visits", "target": 2, "details": "Both are walkable from the desk." }
+  ],
+  "checklist": [
+    {
+      "type": "Replies",
+      "names": [
+        {
+          "person": "Salley Wilson",
+          "company": "Pinewood Cabinetry",
+          "contact_url": "https://app.example.test/contacts/1/record/0-1/101",
+          "company_url": "https://app.example.test/contacts/1/record/0-2/201",
+          "note": "Owed a number since Tuesday, sending as Atelic, graded A."
+        },
+        {
+          "person": "Dov Marchetti",
+          "company": "Harbor Line Plumbing",
+          "contact_url": null,
+          "company_url": null,
+          "note": ""
+        }
+      ]
+    },
+    {
+      "type": "Bumps",
+      "names": [
+        {
+          "person": "Renata Oyelaran",
+          "company": "Sable Creek Landscaping",
+          "contact_url": "https://app.example.test/contacts/1/record/0-1/102",
+          "company_url": "",
+          "note": "Day 9 on the first send, no open yet."
+        }
+      ]
+    },
+    { "type": "Closes", "names": [] },
+    {
+      "type": "Visits",
+      "names": [
+        {
+          "person": "Marguerite Bell",
+          "company": "Thistle Lane Florist",
+          "contact_url": "https://app.example.test/contacts/1/record/0-1/103",
+          "company_url": "https://app.example.test/contacts/1/record/0-2/203",
+          "note": "Walkable, open until 17:00."
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "next_up": 41,
+    "next_up_new": 26,
+    "unscored": 5,
+    "tasks_due": 2,
+    "tasks_parked": 1,
+    "tasks_stale": 0,
+    "top_opened": "Salley Wilson, Pinewood Cabinetry, 7 opens on day 12"
+  },
+  "flags": [
+    {
+      "lead": "Harbor Line Plumbing reads NEW with a reply on the record.",
+      "note": "The portal says NEW and the mailbox carries a reply from Thursday. Move it to CONTACTED, or say why not."
+    },
+    {
+      "lead": "Ridgeline Glass has a send that never logged.",
+      "note": "The thread shows one send on Monday and the record shows none. The extension was off that morning."
+    }
+  ],
+  "unverified": [
+    {
+      "lead": "The One Pager pull failed.",
+      "note": "The ICP statement could not be read this run, so nothing in the drafts leans on it."
+    }
+  ],
+  "not_in_block": [
+    {
+      "lead": "Copper Kettle Catering",
+      "note": "Asked for a month of quiet on the last call, which runs to the end of February."
+    }
+  ]
+}

@@ -346,4 +346,5 @@ echo "roster: $(wc -w < "$ROSTER_MD" | tr -d ' ') words in $ROSTER_MD"
 ATTACHMENT="$ROSTER_MD"
 
 runner_render || exit 1
+runner_render_text || exit 1
 status="success"

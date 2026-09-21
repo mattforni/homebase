@@ -1,0 +1,126 @@
+ATELIC · RETRO · WEEK 5
+Mon, 2026-01-26 to Sun, 2026-02-01
+
+THREE OF FIVE TARGETS HIT.
+
+An invented week, written so every branch of the renderer has
+something to render.
+
+
+SCOREBOARD
+
+Movement
+  Lifts          3 / 3   ###    Mon Push · Wed Pull
+  Social Runs    1 / 3   #..    Tue Kestrel
+  Yoga           0 / 0          
+  Takeout        2              Tue 01-27 Crosstown Noodle · Sat 01-31 Ember Pizza
+
+Atelic
+  First Sends    5 / 5   #####  Target met
+  Bumps          3 / 5   ###..  Two short
+
+What Moved
+  Pinewood Cabinetry sits at Proposal, $12,000 cash.
+  Harbor Line Plumbing closed won at $4,500.
+  Everything else held its stage.
+
+
+================================================================
+MOVEMENT
+================================================================
+
+The Read
+  Three lifts landed and one social run did, which is the shape of a
+  week that trained alone. The long walk on Sunday is the only thing
+  outside the plan, and it earned its place.
+
+By Day
+  Mon  Run · Lift
+  Tue  Run (S)
+  Wed  Lift · Yoga
+  Thu  Run (S)
+  Fri  Lift · Climb
+  Sat  Rest
+  Sun  Walk · Rowing
+
+Sessions · 10
+  Day  Session                     Type     Min     Mi
+  Mon  Solo shakeout               Run       18   2.02
+  Mon  Push day                    Lift      55
+  Tue  Kestrel Loop with the club  Run (S)   47   5.08
+  Wed  Pull day                    Lift      61
+  Wed  Slow flow                   Yoga      40
+  Thu  Easy miles with Diego       Run (S)   33   3.50
+  Fri  Legs                        Lift      48
+  Fri  Bouldering session          Climb     75
+  Sun  Long walk to the reservoir  Walk      82   4.37
+  Sun  Rowing intervals            Rowing    24
+       Total                                483  14.97
+
+
+================================================================
+TAKEOUT
+================================================================
+
+The Read
+  Two confirmed orders, both late in the evening, both on days with
+  a session earlier.
+
+
+================================================================
+ATELIC
+================================================================
+
+The Read
+  Five first sends went out against a target of five and three bumps
+  against five. Pinewood Cabinetry is the name worth attention on
+  Monday.
+
+The Funnel
+  Lead      2
+  MQL       1
+  SQL       1
+  Oppty     2
+  Customer  1
+  Closed    3
+
+Lead · 2
+  Company                  Status           Last Touch           Touches  Opens  Replied
+  Sable Creek Landscaping  New              Walk in                           1
+  Ridgeline Glass          New              Email Send                 1      0
+
+MQL · 1
+  Company                  Status           Last Touch           Touches  Opens  Replied
+  Harbor Line Plumbing     Contacted        Notes From the Call        2      -
+
+SQL · 1
+  Company                  Status           Last Touch           Touches  Opens  Replied
+  Pinewood Cabinetry       In Conversation  Email Send                 4      7  Yes
+
+Opportunity · 2
+  Company                 Stage              Cash
+  Alder Court Dental      Proposal        $12,000
+  Fernwood Bakery         No stage set
+
+Customer · 1
+  Company                 Stage              Cash
+  Copper Kettle Catering  Closed Won       $4,500
+
+Closed · 3
+  Company                 Outcome       Reason
+  Quarry Road Auto        Closed Lost
+  Lantern Hill Roofing    Unqualified   Not a Fit
+  Thistle Lane Florist    Unqualified
+
+
+================================================================
+BLIND SPOTS
+================================================================
+
+The Read
+  This draft cannot see the weigh in, how the body felt, or anything
+  the sources do not carry.
+
+
+12m 04s · $0.42 · 9 turns · claude-sonnet
+

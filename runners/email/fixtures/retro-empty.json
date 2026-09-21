@@ -1,0 +1,19 @@
+{
+  "headline": "",
+  "coverage": [],
+  "what_moved": [],
+  "what_moved_note": "",
+  "movement_read": "",
+  "takeout": [],
+  "takeout_read": "",
+  "atelic_read": "",
+  "blind_spots": "",
+  "strava": [],
+  "atelic": {
+    "coverage": [],
+    "open_leads": [],
+    "opportunities": [],
+    "closed_leads": [],
+    "totals": {}
+  }
+}

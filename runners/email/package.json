@@ -1,0 +1,27 @@
+{
+  "name": "@homebase/runner-email",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The runner email renderer: the three runner pages as React, bundled to one CommonJS file the entrypoints call",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "esbuild render.tsx --bundle --platform=node --format=cjs --target=node20 --jsx=automatic '--define:process.env.NODE_ENV=\"production\"' --minify-syntax --outfile=dist/render.cjs",
+    "typecheck": "tsc --noEmit",
+    "goldens": "node tst/update-goldens.mjs",
+    "pretest": "npm run build",
+    "test": "node --test tst/render.test.mjs"
+  },
+  "dependencies": {
+    "@atelic-action/ui": "0.2.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "esbuild": "0.28.2",
+    "parse5": "8.0.1",
+    "typescript": "5.9.3"
+  }
+}

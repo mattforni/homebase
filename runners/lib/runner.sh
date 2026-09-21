@@ -231,9 +231,10 @@ meta_line() {
 # a reader sees it: the subject ("2026-W38 Retro"), the masthead, the failure
 # page. The third argument says which week is the default when WEEK is not
 # set: the week in progress, or the one that closed most recently (the retro
-# fires Monday morning about the week just ended). Reads DRY_RUN, SKIP_PULLS, WORK and WEEK
-# from the environment, and needs SELF_DIR (the entrypoint's own directory)
-# and RUNNER_LIB (this file's path) set by the entrypoint's bootstrap. Sets:
+# fires Monday morning about the week just ended). Reads DRY_RUN, SKIP_PULLS, WORK, WEEK
+# and RUNNER_RENDERER from the environment, and needs SELF_DIR (the entrypoint's
+# own directory) and RUNNER_LIB (this file's path) set by the entrypoint's
+# bootstrap. Sets:
 #   RUNNER_NAME RUNNER_TITLE    the name and the title
 #   WORK LOG                    the work directory and its log; stdout and
 #                               stderr are tee'd into the log from here on
@@ -523,13 +524,73 @@ runner_draft() {
     fi
 }
 
+# ---------- the renderer ----------
+# The page is rendered by the bundled node renderer (runners/email), which is
+# the same email design as one React component library shared with every other
+# surface the practice builds. render.jq stays in the tree and in every image
+# as the fallback, so a renderer that cannot start is a plainer email rather
+# than a failed run, and RUNNER_RENDERER=jq forces it for a comparison.
+
+# Where the node bundle is: beside the shared library in an image, in the
+# repo's own build on this machine. The same two places, in the same order,
+# that an entrypoint looks for runner.sh itself.
+runner_renderer_bundle() {
+    local candidate
+    for candidate in "$LIB_DIR/render.cjs" "$LIB_DIR/../email/dist/render.cjs"; do
+        if [[ -r "$candidate" ]]; then
+            printf '%s' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# True unless RUNNER_RENDERER names jq.
+runner_renderer_is_node() { [[ "${RUNNER_RENDERER:-node}" != "jq" ]]; }
+
+# A runner's render.jq has a plain text branch when it reads the format
+# argument; the retro's does and the other two never had one. Without it the jq
+# fallback would write the html page into the text part, which reads worse in a
+# mail client than no text part at all.
+runner_render_jq_has_text() { grep -q 'ARGS.named.format' "$RENDER" 2>/dev/null; }
+
+# Usage: runner_render_node <html|text> <out-file> <stderr-file> <meta>
+# One pass of the node renderer. Prints a loud line and returns non zero on
+# anything short of a non empty file, so the caller can say so and fall back.
+runner_render_node() {
+    local format="$1" out="$2" errors="$3" meta="$4" bundle
+    if ! bundle="$(runner_renderer_bundle)"; then
+        echo "RENDERER: no node bundle at $LIB_DIR/render.cjs or $LIB_DIR/../email/dist/render.cjs"
+        return 1
+    fi
+    if ! node "$bundle" "$RUNNER_NAME" "$format" \
+        --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
+        < "$DRAFT_JSON" > "$out" 2>"$errors"; then
+        echo "RENDERER: the node $format render failed: $(head -c 300 "$errors" 2>/dev/null)"
+        return 1
+    fi
+    if [[ ! -s "$out" ]]; then
+        echo "RENDERER: the node $format render wrote nothing to $out"
+        return 1
+    fi
+}
+
 # Usage: runner_render [extra jq arguments...]
-# DRAFT_JSON through render.jq with the shared design on the include path, the
-# week, and the footer line, into REPORT_HTML. Extra arguments (--arg pairs)
-# pass straight to jq for a renderer that needs more than the draft.
+# DRAFT_JSON into REPORT_HTML, through the node renderer and, when that cannot
+# run, through render.jq with the shared design on the include path, the week,
+# and the footer line. Extra arguments (--arg pairs) pass straight to jq for a
+# renderer that needs more than the draft; the node renderer takes the draft
+# alone.
 runner_render() {
     local meta
     meta="$(meta_line "$RESULT_JSON")"
+    if runner_renderer_is_node; then
+        if runner_render_node html "$REPORT_HTML" "$WORK/render-stderr.txt" "$meta"; then
+            echo "render: $(wc -c < "$REPORT_HTML" | tr -d ' ') bytes of html"
+            return 0
+        fi
+        echo "RENDERER: falling back to jq for the html"
+    fi
     if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" "$@" \
         -f "$RENDER" "$DRAFT_JSON" > "$REPORT_HTML" 2>"$WORK/render-stderr.txt" || [[ ! -s "$REPORT_HTML" ]]; then
         fail_reason="render failed: $(head -c 300 "$WORK/render-stderr.txt")"
@@ -539,11 +600,25 @@ runner_render() {
 }
 
 # Usage: runner_render_text [extra jq arguments...]
-# The same render.jq with --arg format text, into REPORT_TEXT: the email's
-# plain text part. Optional; a runner that never calls it mails html alone.
+# The email's plain text part, into REPORT_TEXT. The node renderer writes one
+# for every runner. The jq fallback writes one only for a render.jq that has a
+# text branch; for the other two the part is skipped loudly and the email goes
+# out as html alone, which is where they were before the node renderer.
 runner_render_text() {
     local meta
     meta="$(meta_line "$RESULT_JSON")"
+    if runner_renderer_is_node; then
+        if runner_render_node text "$REPORT_TEXT" "$WORK/render-text-stderr.txt" "$meta"; then
+            echo "render: $(wc -c < "$REPORT_TEXT" | tr -d ' ') bytes of text"
+            return 0
+        fi
+        echo "RENDERER: falling back to jq for the plain text"
+    fi
+    if ! runner_render_jq_has_text; then
+        rm -f "$REPORT_TEXT"
+        echo "RENDERER: $RUNNER_NAME has no jq text branch, so this email goes out as html alone"
+        return 0
+    fi
     if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" --arg format text "$@" \
         -f "$RENDER" "$DRAFT_JSON" > "$REPORT_TEXT" 2>"$WORK/render-text-stderr.txt" || [[ ! -s "$REPORT_TEXT" ]]; then
         fail_reason="plain text render failed: $(head -c 300 "$WORK/render-text-stderr.txt")"

@@ -1,0 +1,51 @@
+ATELIC · OUTREACH · WEEK 5
+Week 5 · 01/26 to 02/01
+
+NOTHING IS OWED.
+
+
+
+
+================================================================
+THE BOARD
+================================================================
+
+  Type   Complete  Target  %
+  Total         0       0  0
+
+  Nobody is owed a touch this week.
+
+
+================================================================
+THE QUEUE
+================================================================
+
+  Measure    Count
+  Next Up        ?
+  Still NEW      ?
+  Unscored       ?
+  Tasks due      ?
+  Parked         ?
+  Stale          ?
+
+
+================================================================
+FLAGS FROM THE PORTAL DIFF
+================================================================
+
+  The roster and the portal agree.
+
+
+================================================================
+IF YOU WANT TO DIG IN
+================================================================
+
+Could not verify today · 0
+  Everything on the roster was verified.
+
+Deliberately not in this block · 0
+  Nothing was left off on purpose.
+
+
+12m 04s · $0.42 · 9 turns · claude-sonnet
+

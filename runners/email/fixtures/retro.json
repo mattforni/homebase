@@ -1,0 +1,206 @@
+{
+  "headline": "An invented week, written so every branch of the renderer has something to render.",
+  "coverage": [
+    { "modality": "Lifts", "logged": "3", "target": "3", "note": "Mon Push · Wed Pull" },
+    { "modality": "Social runs", "logged": "1", "target": "3", "note": "Tue Kestrel" },
+    { "modality": "Yoga", "logged": "0", "target": "0", "note": "" }
+  ],
+  "what_moved": [
+    { "subject": "Pinewood Cabinetry", "event": "sits at Proposal, $12,000 cash." },
+    { "subject": "Harbor Line Plumbing", "event": "closed won at $4,500." }
+  ],
+  "what_moved_note": "Everything else held its stage.",
+  "movement_read": "Three lifts landed and one social run did, which is the shape of a week that trained alone. The long walk on Sunday is the only thing outside the plan, and it earned its place.",
+  "takeout": [
+    { "day": "Tue 01-27", "vehicle": "Crosstown Noodle" },
+    { "day": "Sat 01-31", "vehicle": "Ember Pizza" }
+  ],
+  "takeout_read": "Two confirmed orders, both late in the evening, both on days with a session earlier.",
+  "atelic_read": "Five first sends went out against a target of five and three bumps against five. Pinewood Cabinetry is the name worth attention on Monday.",
+  "blind_spots": "This draft cannot see the weigh in, how the body felt, or anything the sources do not carry.",
+  "strava": [
+    {
+      "name": "Kestrel Loop with the club",
+      "sport_type": "Run",
+      "start_date_local": "2026-01-27T06:40:00Z",
+      "distance_mi": 5.08,
+      "moving_min": 47,
+      "athlete_count": 4
+    },
+    {
+      "name": "Easy miles with Diego",
+      "sport_type": "TrailRun",
+      "start_date_local": "2026-01-29T07:05:00Z",
+      "distance_mi": 3.5,
+      "moving_min": 33,
+      "athlete_count": 1
+    },
+    {
+      "name": "Solo shakeout",
+      "sport_type": "Run",
+      "start_date_local": "2026-01-26T06:15:00Z",
+      "distance_mi": 2.02,
+      "moving_min": 18,
+      "athlete_count": 1
+    },
+    {
+      "name": "» Push day",
+      "sport_type": "WeightTraining",
+      "start_date_local": "2026-01-26T17:30:00Z",
+      "distance_mi": 0,
+      "moving_min": 55,
+      "athlete_count": 1
+    },
+    {
+      "name": "Pull day",
+      "sport_type": "WeightTraining",
+      "start_date_local": "2026-01-28T17:20:00Z",
+      "distance_mi": 0,
+      "moving_min": 61,
+      "athlete_count": 1
+    },
+    {
+      "name": "Legs",
+      "sport_type": "WeightTraining",
+      "start_date_local": "2026-01-30T17:10:00Z",
+      "distance_mi": 0,
+      "moving_min": 48,
+      "athlete_count": 1
+    },
+    {
+      "name": "Slow flow",
+      "sport_type": "Yoga",
+      "start_date_local": "2026-01-28T20:00:00Z",
+      "distance_mi": 0,
+      "moving_min": 40,
+      "athlete_count": 1
+    },
+    {
+      "name": "Bouldering session",
+      "sport_type": "RockClimbing",
+      "start_date_local": "2026-01-30T19:00:00Z",
+      "distance_mi": 0,
+      "moving_min": 75,
+      "athlete_count": 2
+    },
+    {
+      "name": "Long walk to the reservoir",
+      "sport_type": "Walk",
+      "start_date_local": "2026-02-01T10:00:00Z",
+      "distance_mi": 4.365,
+      "moving_min": 82,
+      "athlete_count": 1
+    },
+    {
+      "name": "Rowing intervals",
+      "sport_type": "Rowing",
+      "start_date_local": "2026-02-01T16:00:00Z",
+      "distance_mi": 0,
+      "moving_min": 24,
+      "athlete_count": 1
+    }
+  ],
+  "atelic": {
+    "coverage": [
+      { "measure": "first_sends", "logged": "5", "target": "5" },
+      { "measure": "bumps", "logged": "3", "target": "5" }
+    ],
+    "open_leads": [
+      {
+        "company": "Pinewood Cabinetry",
+        "lifecycle": "salesqualifiedlead",
+        "status": "IN_CONVERSATION",
+        "kind": "email_send",
+        "touches": 4,
+        "opens": "7",
+        "replied": "yes",
+        "last_send": "2026-01-27"
+      },
+      {
+        "company": "Harbor Line Plumbing",
+        "lifecycle": "marketingqualifiedlead",
+        "status": "CONTACTED",
+        "kind": "notes_from_the_call",
+        "touches": 2,
+        "opens": null,
+        "replied": "no",
+        "last_send": "2026-01-28"
+      },
+      {
+        "company": "Sable Creek Landscaping",
+        "lifecycle": "lead",
+        "status": "NEW",
+        "kind": "walk_in",
+        "touches": null,
+        "opens": "1",
+        "replied": "no",
+        "last_send": "2026-01-29"
+      },
+      {
+        "company": "Ridgeline Glass",
+        "lifecycle": null,
+        "status": "NEW",
+        "kind": "email_send",
+        "touches": 1,
+        "opens": "0",
+        "replied": "no",
+        "last_send": "2026-01-30"
+      }
+    ],
+    "opportunities": [
+      {
+        "company": "Alder Court Dental",
+        "lifecycle": "opportunity",
+        "stage": "Proposal",
+        "cash": "$12,000",
+        "last_send": "2026-01-29"
+      },
+      {
+        "company": "Fernwood Bakery",
+        "lifecycle": "opportunity",
+        "stage": null,
+        "cash": "-",
+        "last_send": "2026-01-30"
+      },
+      {
+        "company": "Copper Kettle Catering",
+        "lifecycle": "opportunity",
+        "stage": "Closed Won",
+        "cash": "$4,500",
+        "last_send": "2026-01-31"
+      },
+      {
+        "company": "Quarry Road Auto",
+        "lifecycle": "opportunity",
+        "stage": "Closed Lost",
+        "cash": "-",
+        "last_send": "2026-01-31"
+      }
+    ],
+    "closed_leads": [
+      {
+        "company": "Lantern Hill Roofing",
+        "lifecycle": "other",
+        "status": "UNQUALIFIED",
+        "kind": "email_send",
+        "touches": 3,
+        "opens": "2",
+        "replied": "no",
+        "reason": "NOT_A_FIT",
+        "last_send": "2026-01-26"
+      },
+      {
+        "company": "Thistle Lane Florist",
+        "lifecycle": "other",
+        "status": "UNQUALIFIED",
+        "kind": "email_send",
+        "touches": 1,
+        "opens": "0",
+        "replied": "no",
+        "reason": "-",
+        "last_send": "2026-01-27"
+      }
+    ],
+    "totals": { "sends": 5, "bumps": 3 }
+  }
+}

@@ -7,6 +7,17 @@
 # Built from the staged context bin/runner/lib.sh assembles, which is this
 # directory plus lib/ and agents/outreacher.md copied in from the repo, since
 # a Docker context cannot reach above its own root.
+
+# The email renderer, built in its own stage: the three runner pages as React
+# over the shared @atelic-action/ui component library, bundled by esbuild into
+# one CommonJS file. CommonJS and not ESM on purpose, because the ESM bundle
+# dies here at runtime on "Dynamic require of util is not supported". Only that
+# one file is copied forward, so the final image gains no node_modules.
+FROM node:20-slim AS email
+WORKDIR /email
+COPY email/ /email/
+RUN npm ci && npm run build
+
 FROM node:20-slim
 
 RUN apt-get update \
@@ -28,6 +39,9 @@ COPY --chown=runner:runner render.jq /home/runner/render.jq
 # The shared library: runner.sh for the entrypoint, email.jq for the renderer,
 # hubspot.mjs, gmail.mjs and text.mjs for the pulls.
 COPY --chown=runner:runner lib/ /home/runner/lib/
+# The bundled renderer, at the first place runner.sh looks for it. render.jq
+# and lib/email.jq stay in the image as the fallback.
+COPY --from=email --chown=runner:runner /email/dist/render.cjs /home/runner/lib/render.cjs
 # The brief: the same agent definition the laptop runs, found where Claude Code
 # looks for user level agents.
 COPY --chown=runner:runner agents/outreacher.md /home/runner/.claude/agents/outreacher.md
