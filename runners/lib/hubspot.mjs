@@ -319,6 +319,7 @@ for (const d of openDeals) {
 // first time: Skylight Specialists showed CONNECTED/QUALIFIED because Bradley
 // had not caught up with Danny and Josh.
 const LADDER = ["NEW", "CONTACTED", "ENGAGED", "CONNECTED", "QUALIFIED"];
+const FUNNEL = new Set(["lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer"]);
 const CLOSED = new Set(["UNQUALIFIED", "NO_RESPONSE"]);
 const warmest = (ids) => {
     const seen = [...ids].map((c) => contacts.get(c)?.hs_lead_status).filter(Boolean);
@@ -332,21 +333,25 @@ const counted = new Map();
 for (const [cid, r] of rows) {
     const c = companies.get(cid) || {};
     const stage = c.lifecyclestage || "";
-    if (stage !== "lead" && stage !== "opportunity" && stage !== "customer") continue;
+    // Every funnel stage the operating model names, Lead through Customer, so
+    // the retro can show the whole pipeline; Other stays out, since it is the
+    // warm network rather than the funnel.
+    if (!FUNNEL.has(stage)) continue;
     const status = warmest(r.contacts);
+    const deal = dealByCompany.get(cid);
     // No lead status on any contact means the company is not in the motion,
     // which is exactly what clearing the status is for. It also keeps rows
     // that only ever received mail (Forni's PT, his lawyers) out of a table
     // about outreach.
-    if (!status) continue;
+    if (!status && !deal) continue;
     const kinds = [];
     if (r.first) kinds.push(r.first > 1 ? `${r.first} first` : "first");
     if (r.bump) kinds.push(r.bump > 1 ? `${r.bump} bumps` : "bump");
     if (r.reply) kinds.push(r.reply > 1 ? `${r.reply} replies` : "reply");
     counted.set(cid, r);
-    const deal = dealByCompany.get(cid);
     const entry = {
         company: c.name || `(company ${cid})`,
+        lifecycle: stage,
         status: status || "none",
         kind: kinds.join(", ") || "none",
         sends: r.sends,
@@ -396,6 +401,7 @@ for (const [cid, r] of rows) {
         const cash = total === null ? null : total - trade;
         tables.opportunities.push({
             company: entry.company,
+            lifecycle: stage,
             stage: deal ? (STAGES[deal.dealstage] || deal.dealstage) : "-",
             build: money(build),
             // The term rides with the operate figure rather than taking a

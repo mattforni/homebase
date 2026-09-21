@@ -86,21 +86,43 @@ def graded: movement_targets + atelic_targets;
 def verdict: (graded | length) as $n | ([graded[] | select(.logged >= .target)] | length) as $hit
   | if $n == 0 then "No targets graded." else ($hit | word) + " of " + ($n | word | ascii_downcase) + " targets hit." end;
 
-# ---------- atelic rows ----------
+# ---------- the funnel ----------
+#
+# Six stages, the operating model's own (Atelic Tools/hubspot.md): Lead, MQL,
+# SQL, Opportunity, Customer, Closed. Lifecycle places a company, a closed
+# lead status or a Closed Lost deal overrides it, and a Closed Won deal reads
+# as Customer even before the lifecycle catches up.
 
-def opp_rows: (.atelic.opportunities // []) | map([
-  {value: .company},
-  (if (.stage // "-") == "-" then {value: "No stage set", muted: true} else {value: .stage, hot: (.stage == "Closed Lost")} end),
-  {value: (if (.cash // "-") == "-" then "" else .cash end), mono: true}]);
-def lead_rows: (.atelic.open_leads // []) | map([
-  {value: .company}, {value: (.status | titlecase)}, {value: (.kind | titlecase)},
-  {value: (.touches | tostring), mono: true}, {value: (if .replied == "yes" then "Yes" else "" end)}]);
-def closed_rows: (.atelic.closed_leads // []) | map([
-  {value: .company}, {value: (.status | titlecase), hot: true}, {value: ((.reason // "-") | if . == "-" then "" else titlecase end)}]);
+def lead_stage: {"lead": "Lead", "marketingqualifiedlead": "MQL", "salesqualifiedlead": "SQL"}[.lifecycle // "lead"] // "Lead";
+def deal_stage: if .stage == "Closed Lost" then "Closed" elif .stage == "Closed Won" or .lifecycle == "customer" then "Customer" else "Opportunity" end;
 
-def opp_cols: [{label: "Company"}, {label: "Stage", right: true}, {label: "Cash", right: true}];
+def funnel:
+  ((.atelic.open_leads // []) | map(. + {funnel: lead_stage}))
+  + ((.atelic.opportunities // []) | map(. + {funnel: deal_stage}))
+  + ((.atelic.closed_leads // []) | map(. + {funnel: "Closed"}));
+
 def lead_cols: [{label: "Company"}, {label: "Status", right: true}, {label: "Last Touch", right: true}, {label: "Touches", right: true}, {label: "Replied", right: true}];
+def lead_cells: [{value: .company}, {value: (.status | titlecase)}, {value: (.kind | titlecase)},
+  {value: ((.touches // "") | tostring), mono: true}, {value: (if .replied == "yes" then "Yes" else "" end)}];
+def deal_cols: [{label: "Company"}, {label: "Stage", right: true}, {label: "Cash", right: true}];
+def deal_cells: [{value: .company},
+  (if (.stage // "-") == "-" then {value: "No stage set", muted: true} else {value: .stage} end),
+  {value: (if (.cash // "-") == "-" then "" else .cash end), mono: true}];
 def closed_cols: [{label: "Company"}, {label: "Outcome", right: true}, {label: "Reason", right: true}];
+def closed_cells: [{value: .company},
+  {value: (if .stage == "Closed Lost" then "Closed Lost" else (.status | titlecase) end), hot: true},
+  {value: ((.reason // "-") | if . == "-" then "" else titlecase end)}];
+
+# Each stage with its rows, its columns, and the columns plain text aligns right.
+def stages: funnel as $f | [
+  {name: "Lead", label: "Lead", cols: lead_cols, cell: "lead", right: [3]},
+  {name: "MQL", label: "MQL", cols: lead_cols, cell: "lead", right: [3]},
+  {name: "SQL", label: "SQL", cols: lead_cols, cell: "lead", right: [3]},
+  {name: "Opportunity", label: "Oppty", cols: deal_cols, cell: "deal", right: [2]},
+  {name: "Customer", label: "Customer", cols: deal_cols, cell: "deal", right: [2]},
+  {name: "Closed", label: "Closed", cols: closed_cols, cell: "closed", right: []}]
+  | map(.name as $n | . + {rows: [$f[] | select(.funnel == $n)]})
+  | map(. + {cells: (.cell as $c | .rows | map(if $c == "lead" then lead_cells elif $c == "deal" then deal_cells else closed_cells end))});
 
 # ---------- html ----------
 
@@ -145,12 +167,11 @@ def html_page:
     + eyebrow("Atelic")
     + card(
         read_block(.atelic_read // ""; true)
-        + row(stat_strip([{n: ((.atelic.opportunities // []) | length), label: "Deals"},
-                          {n: ((.atelic.open_leads // []) | length), label: "Open Leads"},
-                          {n: ((.atelic.closed_leads // []) | length), label: "Closed"}]); false)
-        + html_records_block("Deals · " + ((.atelic.opportunities // []) | length | tostring); opp_cols; opp_rows; false)
-        + html_records_block("Open Leads · " + ((.atelic.open_leads // []) | length | tostring); lead_cols; lead_rows; false)
-        + html_records_block("Closed · " + ((.atelic.closed_leads // []) | length | tostring); closed_cols; closed_rows; true))
+        + row(stat_strip(stages | map({n: (.rows | length), label: .label})); false)
+        + (stages | map(select((.rows | length) > 0)) as $st
+           | [range(0; $st | length)] | map($st[.] as $g
+               | html_records_block($g.name + " · " + ($g.rows | length | tostring); $g.cols; $g.cells; . == ($st | length) - 1))
+           | join("")))
 
     + eyebrow("Blind Spots")
     + card(read_block(.blind_spots // ""; false))
@@ -182,9 +203,9 @@ def text_page:
   + text_section("Takeout") + text_read(.takeout_read // "")
 
   + text_section("Atelic") + text_read(.atelic_read // "")
-  + (opp_rows | if length == 0 then "" else "\nDeals · " + (length | tostring) + "\n" + text_table(opp_cols | map(.label); cells; [2]) + "\n" end)
-  + (lead_rows | if length == 0 then "" else "\nOpen Leads · " + (length | tostring) + "\n" + text_table(lead_cols | map(.label); cells; [3]) + "\n" end)
-  + (closed_rows | if length == 0 then "" else "\nClosed · " + (length | tostring) + "\n" + text_table(closed_cols | map(.label); cells; []) + "\n" end)
+  + "\nThe Funnel\n" + (stages | map("  " + (.label | rpad(10)) + (.rows | length | tostring)) | join("\n")) + "\n"
+  + (stages | map(select((.rows | length) > 0)
+      | "\n" + .name + " · " + (.rows | length | tostring) + "\n" + text_table(.cols | map(.label); .cells | cells; .right) + "\n") | join(""))
 
   + text_section("Blind Spots") + text_read(.blind_spots // "")
   + "\n\n" + ($ARGS.named.meta // "") + "\n";
