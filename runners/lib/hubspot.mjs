@@ -71,7 +71,7 @@ async function api(path, body) {
 
 const EMAIL_PROPS = [
     "hs_timestamp", "hs_email_subject", "hs_email_direction",
-    "hs_email_click_count", "hs_not_tracking_opens_or_clicks", "hs_email_thread_id",
+    "hs_email_click_count", "hs_email_open_count", "hs_not_tracking_opens_or_clicks", "hs_email_thread_id",
 ];
 
 // Calendar traffic and auto responders land on the timeline as ordinary email
@@ -208,6 +208,10 @@ const companiesFor = (eid, aCo, aCt) => {
 
 const priorSeen = new Set();
 const priorTouches = new Map();
+// Opens span every touch the Touches column counts, prior weeks included, so
+// the two columns describe the same sends. Keyed like the touches, a copy of
+// a touch keeps its best count, and a key with no tracked copy stays unread.
+const priorOpens = new Map();
 for (const e of prior) {
     // A touch is something Forni sent. Inbound rides along in `prior` only so
     // that `answered` can see it.
@@ -217,6 +221,9 @@ for (const e of prior) {
     // undercounts exactly the sends the fallback exists to find.
     for (const c of companiesFor(e.id, aCoPrior, aCtPrior)) {
         const key = `${c}|${normSubject(e.properties.hs_email_subject)}`;
+        if (e.properties.hs_not_tracking_opens_or_clicks !== "true") {
+            priorOpens.set(key, Math.max(priorOpens.get(key) ?? 0, Number(e.properties.hs_email_open_count || 0)));
+        }
         if (priorSeen.has(key)) continue;
         priorSeen.add(key);
         priorTouches.set(c, (priorTouches.get(c) || 0) + 1);
@@ -261,12 +268,13 @@ for (const e of week) {
         if (touchIndex.has(key)) {
             const t = touchIndex.get(key);
             t.clicks = Math.max(t.clicks, Number(p.hs_email_click_count || 0));
+            if (tracked) t.opens = Math.max(t.opens ?? 0, Number(p.hs_email_open_count || 0));
             t.tracked = t.tracked || tracked;
             r.lastSend = denverDate(p.hs_timestamp) > r.lastSend
                 ? denverDate(p.hs_timestamp) : r.lastSend;
             continue;
         }
-        const t = { clicks: Number(p.hs_email_click_count || 0), tracked };
+        const t = { clicks: Number(p.hs_email_click_count || 0), opens: tracked ? Number(p.hs_email_open_count || 0) : null, tracked };
         touchIndex.set(key, t);
         r.touchRefs.push(t);
         r.sends += 1;
@@ -285,6 +293,11 @@ for (const e of week) {
 for (const r of rows.values()) {
     r.clicks = r.touchRefs.reduce((n, t) => n + t.clicks, 0);
     r.tracked = r.touchRefs.filter((t) => t.tracked).length;
+}
+for (const [cid, r] of rows) {
+    const prior = [...priorOpens].filter(([k]) => k.startsWith(`${cid}|`)).map(([, n]) => n);
+    const week = r.touchRefs.filter((t) => t.opens !== null && t.opens !== undefined).map((t) => t.opens);
+    r.opens = prior.length + week.length ? [...prior, ...week].reduce((n, x) => n + x, 0) : null;
 }
 
 const companies = new Map((await batch("companies", [...rows.keys()],
@@ -366,6 +379,7 @@ for (const [cid, r] of rows) {
         // same as a zero. It reports as a dash, the record's own way of saying
         // the question does not apply here.
         clicks: r.tracked ? String(r.clicks) : "-",
+        opens: r.opens === null ? "-" : String(r.opens),
         tracked: `${r.tracked}/${r.sends}`,
         replied: r.replied ? "yes" : "no",
         last_send: r.lastSend,
@@ -482,7 +496,7 @@ const CONTACT_PROPS = [
     "hs_email_last_open_date", "hs_email_last_reply_date",
 ];
 const SWEEP_EMAIL_PROPS = [
-    ...EMAIL_PROPS, "hs_email_open_count", "hs_email_status", "hs_email_text",
+    ...EMAIL_PROPS, "hs_email_status", "hs_email_text",
     "hs_email_from_email", "hs_email_to_email", "hs_email_sender_email",
 ];
 const TASK_PROPS = ["hs_task_subject", "hs_task_body", "hs_timestamp", "hs_task_status", "hs_task_type", "hs_task_priority"];
