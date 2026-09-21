@@ -455,4 +455,5 @@ upsert_postings || exit 1
 log_sweep_activity || exit 1
 
 runner_render || exit 1
+runner_render_text || exit 1
 status="success"
