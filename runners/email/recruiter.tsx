@@ -12,7 +12,6 @@ import {
 	ListRow,
 	Masthead,
 	Note,
-	rpad,
 	Stat,
 	StatsRow,
 	textSection,
@@ -22,6 +21,7 @@ import {
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, jqToString, shortDate, unindent, weekNumber } from "./jq";
 import { FaintSpan, FractionalEmptyRow } from "./local";
+import { hang, leadBlock } from "./text";
 import type { RenderContext } from "./types";
 
 /*
@@ -241,7 +241,7 @@ export function recruiterHTML(input: unknown, context: RenderContext): string {
 const LABEL_WIDTH = 15;
 
 function field(label: string, value: string): string {
-	return `  ${rpad(label, LABEL_WIDTH)}${value}\n`;
+	return hang(label, value, LABEL_WIDTH);
 }
 
 function prose(text: string): string {
@@ -317,16 +317,17 @@ export function recruiterText(input: unknown, context: RenderContext): string {
 		rejected.length === 0
 			? "  Nothing was rejected this week.\n"
 			: `${rejected
-					.map((row) => `  ${rpad(jqToString(row.company), 28)}${jqToString(row.reason)}`)
-					.join("\n")}\n`;
-	if (rejectedNote !== "") out += `${wrap(rejectedNote)}\n`;
+					.map((row) => leadBlock(jqToString(row.company), jqToString(alt(row.reason, ""))))
+					.join("\n\n")}\n`;
+	// A blank line first, or the note reads as the tail of the last reason.
+	if (rejectedNote !== "") out += `${rejected.length > 0 ? "\n" : ""}${wrap(rejectedNote)}\n`;
 
 	out += `\nSource notes · ${sources.length}\n`;
 	out +=
 		sources.length === 0
 			? "  Nothing would change the source list.\n"
 			: `${sources
-					.map((row) => `  ${jqToString(row.lead)}\n${wrap(jqToString(alt(row.note, "")))}`)
+					.map((row) => leadBlock(jqToString(row.lead), jqToString(alt(row.note, ""))))
 					.join("\n\n")}\n`;
 
 	out += `\n\n${context.meta}\n`;

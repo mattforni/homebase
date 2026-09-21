@@ -5,9 +5,9 @@
   "shortlist": [
     {
       "company": "Meadowlark Grid",
-      "role": "Staff Platform Engineer",
+      "role": "Senior or Staff Software Engineer, Cloud Platform Reliability and Developer Experience",
       "comp": "$205 to 230K",
-      "arrangement": "Remote US",
+      "arrangement": "Remote across the United States with two planning weeks a year held in person at the head office",
       "fit": 8.6,
       "why": "Clears every hard filter. Comp sits above the floor and the posting is nine days old.",
       "about": "They run metering and settlement for community solar co-ops. Verified on their own board, which lists the role as open and remote in every US state.",
@@ -60,7 +60,8 @@
   "rejected": [
     { "company": "Quarry Road Auto", "reason": "Hybrid three days on its own posting" },
     { "company": "Ember Pizza Tech", "reason": "Manager role, not an IC seat" },
-    { "company": "Lantern Hill Roofing", "reason": "Comp band tops out under the floor" }
+    { "company": "Lantern Hill Roofing", "reason": "Comp band tops out under the floor" },
+    { "company": "Thornfield Ridge Energy Cooperative, Principal Platform Reliability Engineer", "reason": "Onsite four days in a city the posting never names, relocation expected inside ninety days, and the listed band tops out well under the floor even at the principal level." }
   ],
   "rejected_note": "Another 14 were resurfaced dedupes and 6 were deny list hits, neither individually verified.",
   "sources": [

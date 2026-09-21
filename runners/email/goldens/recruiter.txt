@@ -14,9 +14,11 @@ SHORTLIST · 2
 ================================================================
 
 Meadowlark Grid
-  Role           Staff Platform Engineer
+  Role           Senior or Staff Software Engineer, Cloud Platform
+                 Reliability and Developer Experience
   Comp           $205 to 230K
-  Arrangement    Remote US
+  Arrangement    Remote across the United States with two planning
+                 weeks a year held in person at the head office
   Fit            8.6
   Posting        https://jobs.example.test/meadowlark/staff-platform
 
@@ -96,10 +98,22 @@ One tradeoff
 IF YOU WANT TO DIG IN
 ================================================================
 
-Considered and rejected · 3
-  Quarry Road Auto            Hybrid three days on its own posting
-  Ember Pizza Tech            Manager role, not an IC seat
-  Lantern Hill Roofing        Comp band tops out under the floor
+Considered and rejected · 4
+  Quarry Road Auto
+  Hybrid three days on its own posting
+
+  Ember Pizza Tech
+  Manager role, not an IC seat
+
+  Lantern Hill Roofing
+  Comp band tops out under the floor
+
+  Thornfield Ridge Energy Cooperative, Principal Platform
+  Reliability Engineer
+  Onsite four days in a city the posting never names, relocation
+  expected inside ninety days, and the listed band tops out well
+  under the floor even at the principal level.
+
   Another 14 were resurfaced dedupes and 6 were deny list hits,
   neither individually verified.
 
