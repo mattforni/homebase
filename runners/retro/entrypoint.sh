@@ -109,7 +109,7 @@ strava_pull() {
     fi
     curl -sS --max-time 60 -H "Authorization: Bearer $access" \
         "https://www.strava.com/api/v3/athlete/activities?after=$AFTER_EPOCH&before=$BEFORE_EPOCH&per_page=200" \
-        | jq '[.[] | {name, sport_type, start_date_local, distance_mi: ((.distance // 0) / 1609.344 * 100 | round / 100), elevation_ft: ((.total_elevation_gain // 0) * 3.28084 | round), moving_min: ((.moving_time // 0) / 60 | round), elapsed_min: ((.elapsed_time // 0) / 60 | round), average_heartrate, max_heartrate, relative_effort: .suffer_score, average_speed}]' \
+        | jq '[.[] | {name, sport_type, start_date_local, distance_mi: ((.distance // 0) / 1609.344 * 100 | round / 100), elevation_ft: ((.total_elevation_gain // 0) * 3.28084 | round), moving_min: ((.moving_time // 0) / 60 | round), elapsed_min: ((.elapsed_time // 0) / 60 | round), average_heartrate, max_heartrate, relative_effort: .suffer_score, average_speed, athlete_count}]' \
         > "$WORK/strava.json" || { fail_reason="Strava activities pull failed"; return 1; }
     echo "strava: $(jq length "$WORK/strava.json") activities"
 }
