@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 # Re-render a runner's saved draft through its renderer.
 #
-# Usage: render-local <runner-name> [--week YYYY-Www] [--json <file>] [--no-open]
+# Usage: render-local <runner-name> [--week YYYY-Www] [--json <file>] [--renderer node|jq] [--no-open]
 #
 # No network, no model, no credentials: this reads the JSON a previous run left
-# in out/ and pushes it back through render.jq exactly the way the scaffold's
-# runner_render does (the shared design on the include path, the week, the
-# footer line from the saved result). It is the loop to use while iterating on
-# how the email looks, and it turns a two minute round trip into an instant
-# one. Editing what the email says is the other loop, run-local --reuse, which
-# re-asks Claude over the same cached pulls.
+# in out/ and pushes it back through the renderer exactly the way the scaffold's
+# runner_render does (the week and the footer line from the saved result). It is
+# the loop to use while iterating on how the email looks, and it turns a two
+# minute round trip into an instant one. Editing what the email says is the
+# other loop, run-local --reuse, which re-asks Claude over the same cached
+# pulls.
+#
+# The node renderer in runners/email is the default, rebuilt first whenever it
+# is older than its sources, and it writes the plain text part beside the page.
+# --renderer jq pushes the same draft through render.jq instead, which is how
+# the two are compared.
 #
 # The draft is out/<name>.json, the object the model returned; a runner whose
 # email renders from the claude result itself (the outreach report) has no
@@ -25,17 +30,23 @@ LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 # shellcheck source=../../runners/lib/runner.sh
 . "$(runner_entrypoint_lib)"
 
-name=""; week=""; json=""; open_it=1
+name=""; week=""; json=""; open_it=1; renderer="node"
 while (( $# )); do
     case "$1" in
-        --week)    week="${2:-}"; shift 2 ;;
-        --json)    json="${2:-}"; shift 2 ;;
-        --no-open) open_it=0; shift ;;
-        -h|--help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        -*)        die "unknown option $1" ;;
-        *)         [[ -z "$name" ]] || die "unexpected argument $1"; name="$1"; shift ;;
+        --week)     week="${2:-}"; shift 2 ;;
+        --json)     json="${2:-}"; shift 2 ;;
+        --renderer) renderer="${2:-}"; shift 2 ;;
+        --no-open)  open_it=0; shift ;;
+        -h|--help)  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -*)         die "unknown option $1" ;;
+        *)          [[ -z "$name" ]] || die "unexpected argument $1"; name="$1"; shift ;;
     esac
 done
+
+case "$renderer" in
+    node|jq) ;;
+    *)       die "--renderer takes node or jq, got \"$renderer\"" ;;
+esac
 
 dir="$(runner_dir "$name")"
 render="$dir/render.jq"
@@ -57,10 +68,35 @@ WEEK="${week:-$(current_week)}"
 week_bounds "$WEEK" || exit 1
 
 html="$work/email.html"
+text="$work/email.txt"
 meta="$(meta_line "$work/result.json")"
-jq -r -L "$(dirname "$(runner_entrypoint_lib)")" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" -f "$render" "$json" > "$html"
+rm -f "$text"
+
+if [[ "$renderer" == "node" ]]; then
+    bundle="$(runner_email_bundle)" || die "could not build the node renderer in runners/email"
+    node "$bundle" "$name" html --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
+        < "$json" > "$html" || die "the node html render failed"
+    # Every runner has a plain text part under the node renderer, so a failure
+    # here is worth saying out loud rather than leaving the file behind empty.
+    if ! node "$bundle" "$name" text --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
+        < "$json" > "$text"; then
+        rm -f "$text"
+        echo "the node text render failed; the page above is html only" >&2
+    fi
+else
+    jq -r -L "$(dirname "$(runner_entrypoint_lib)")" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" -f "$render" "$json" > "$html"
+    # Only the retro's render.jq has a text branch; for the other two the jq
+    # path would write the html page into the text part, so it writes none.
+    if grep -q 'ARGS.named.format' "$render"; then
+        jq -r -L "$(dirname "$(runner_entrypoint_lib)")" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" --arg format text -f "$render" "$json" > "$text"
+    fi
+fi
+
 [[ -s "$html" ]] || die "render produced nothing"
 echo "$WEEK ($MONDAY to $SUNDAY): $(wc -c < "$html" | tr -d ' ') bytes -> $html"
+if [[ -s "$text" ]]; then
+    echo "$(wc -c < "$text" | tr -d ' ') bytes of plain text -> $text"
+fi
 if (( open_it )) && command -v open >/dev/null 2>&1; then
     open "$html"
 fi

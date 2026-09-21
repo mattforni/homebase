@@ -31,6 +31,13 @@ dir="$(runner_dir "$name")"
 work="$dir/out"
 html="$(runner_email_artifact "$work")" \
     || die "nothing rendered in $work; run 'bin/runner/run-local $name' first"
+# The plain text part rides along when one was rendered, because a preview that
+# leaves it out is not the artifact either: without it Resend derives its own
+# from the html and runs a table's labels and numbers together.
+text=""
+if [[ -s "$work/email.txt" ]]; then
+    text="$(cat "$work/email.txt")"
+fi
 
 week=""
 [[ -r "$work/week.env" ]] && week="$(sed -n 's/^WEEK=//p' "$work/week.env" | head -1)"
@@ -55,4 +62,4 @@ LIB_ENTRY="$(runner_entrypoint_lib)"
 . "$LIB_ENTRY"
 runner_local_credentials "$name"
 
-send_email "$subject" "$(cat "$html")"
+send_email "$subject" "$(cat "$html")" "" "$text"
