@@ -101,26 +101,32 @@ def funnel:
   + ((.atelic.opportunities // []) | map(. + {funnel: deal_stage}))
   + ((.atelic.closed_leads // []) | map(. + {funnel: "Closed"}));
 
-def lead_cols: [{label: "Company"}, {label: "Status", right: true}, {label: "Last Touch", right: true}, {label: "Touches", right: true}, {label: "Replied", right: true}];
+# Two families of tables, each on one fixed grid so Lead, MQL, and SQL line up
+# with each other, and Opportunity, Customer, and Closed with each other; the
+# Company column takes whatever width is left.
+def lead_cols: [{label: "Company", keep: true}, {label: "Status", right: true, width: 92, keep: true},
+  {label: "Last Touch", right: true, width: 92, keep: true}, {label: "Touches", right: true, width: 66, keep: true},
+  {label: "Opens", right: true, width: 56, keep: true}, {label: "Replied", right: true, width: 62, keep: true}];
 def lead_cells: [{value: .company}, {value: (.status | titlecase)}, {value: (.kind | titlecase)},
-  {value: ((.touches // "") | tostring), mono: true}, {value: (if .replied == "yes" then "Yes" else "" end)}];
-def deal_cols: [{label: "Company"}, {label: "Stage", right: true}, {label: "Cash", right: true}];
+  {value: ((.touches // "") | tostring), mono: true}, {value: ((.opens // "-") | tostring), mono: true},
+  {value: (if .replied == "yes" then "Yes" else "" end)}];
+def deal_cols: [{label: "Company", keep: true}, {label: "Stage", right: true, width: 130, keep: true}, {label: "Cash", right: true, width: 110, keep: true}];
 def deal_cells: [{value: .company},
   (if (.stage // "-") == "-" then {value: "No stage set", muted: true} else {value: .stage} end),
   {value: (if (.cash // "-") == "-" then "" else .cash end), mono: true}];
-def closed_cols: [{label: "Company"}, {label: "Outcome", right: true}, {label: "Reason", right: true}];
+def closed_cols: [{label: "Company", keep: true}, {label: "Outcome", right: true, width: 130, keep: true}, {label: "Reason", right: true, width: 110, keep: true}];
 def closed_cells: [{value: .company},
   {value: (if .stage == "Closed Lost" then "Closed Lost" else (.status | titlecase) end), hot: true},
   {value: ((.reason // "-") | if . == "-" then "" else titlecase end)}];
 
 # Each stage with its rows, its columns, and the columns plain text aligns right.
 def stages: funnel as $f | [
-  {name: "Lead", label: "Lead", cols: lead_cols, cell: "lead", right: [3]},
-  {name: "MQL", label: "MQL", cols: lead_cols, cell: "lead", right: [3]},
-  {name: "SQL", label: "SQL", cols: lead_cols, cell: "lead", right: [3]},
-  {name: "Opportunity", label: "Oppty", cols: deal_cols, cell: "deal", right: [2]},
-  {name: "Customer", label: "Customer", cols: deal_cols, cell: "deal", right: [2]},
-  {name: "Closed", label: "Closed", cols: closed_cols, cell: "closed", right: []}]
+  {name: "Lead", label: "Lead", cols: lead_cols, cell: "lead", family: "lead", right: [3, 4]},
+  {name: "MQL", label: "MQL", cols: lead_cols, cell: "lead", family: "lead", right: [3, 4]},
+  {name: "SQL", label: "SQL", cols: lead_cols, cell: "lead", family: "lead", right: [3, 4]},
+  {name: "Opportunity", label: "Oppty", cols: deal_cols, cell: "deal", family: "deal", right: [2]},
+  {name: "Customer", label: "Customer", cols: deal_cols, cell: "deal", family: "deal", right: [2]},
+  {name: "Closed", label: "Closed", cols: closed_cols, cell: "closed", family: "deal", right: []}]
   | map(.name as $n | . + {rows: [$f[] | select(.funnel == $n)]})
   | map(. + {cells: (.cell as $c | .rows | map(if $c == "lead" then lead_cells elif $c == "deal" then deal_cells else closed_cells end))});
 
@@ -204,8 +210,14 @@ def text_page:
 
   + text_section("Atelic") + text_read(.atelic_read // "")
   + "\nThe Funnel\n" + (stages | map("  " + (.label | rpad(10)) + (.rows | length | tostring)) | join("\n")) + "\n"
-  + (stages | map(select((.rows | length) > 0)
-      | "\n" + .name + " · " + (.rows | length | tostring) + "\n" + text_table(.cols | map(.label); .cells | cells; .right) + "\n") | join(""))
+  + (stages as $all
+     # One width per column per family, the widest header or cell across every
+     # table in it, so the plain text tables line up the way the html ones do.
+     | ($all | group_by(.family) | map({key: .[0].family, value:
+         ([range(0; .[0].cols | length)] as $ix | . as $fam
+          | $ix | map(. as $i | [$fam[] | (.cols[$i].label), (.cells | cells | .[][$i])] | map(length) | max))}) | from_entries) as $grid
+     | $all | map(select((.rows | length) > 0)
+       | "\n" + .name + " · " + (.rows | length | tostring) + "\n" + text_table_grid(.cols | map(.label); .cells | cells; .right; $grid[.family]) + "\n") | join(""))
 
   + text_section("Blind Spots") + text_read(.blind_spots // "")
   + "\n\n" + ($ARGS.named.meta // "") + "\n";

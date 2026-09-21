@@ -198,7 +198,7 @@ def day_strip($days; $last):
 # A row of big numbers over eyebrow labels. $stats a list of {n, label}.
 def stat_strip($stats):
   "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\"><tr>"
-  + ($stats | map("<td style=\"padding:12px 6px 10px;border-top:2px solid " + ink + ";text-align:center;vertical-align:top\">"
+  + (($stats | length) as $n | $stats | map("<td width=\"" + ((100 / $n) | floor | tostring) + "%\" style=\"padding:12px 6px 10px;border-top:2px solid " + ink + ";text-align:center;vertical-align:top\">"
       + "<span style=\"" + sans + "font-size:22px;font-weight:600;letter-spacing:-0.02em;color:" + ink + "\">" + (.n | tostring) + "</span><br>"
       + "<span style=\"" + eyebrow_style + "color:" + faint + "\">" + (.label | esc) + "</span></td>") | join(""))
   + "</tr></table>";
@@ -206,12 +206,14 @@ def stat_strip($stats):
 # A table with a header row. $columns a list of {label, right}; $rows a list of
 # lists of cells, each {value, mono, muted, hot, html}; an html cell is already
 # escaped. A column every row leaves empty is dropped, so a table never shows
-# a column of nothing.
+# a column of nothing, unless the column says keep: tables meant to line up
+# with each other keep every column. A column's width (pixels) fixes it, so
+# sibling tables share their grid; a column without one takes the rest.
 def records($columns; $rows):
-  ([range(0; $columns | length)] | map(. as $i | select([$rows[] | .[$i].value // ""] | map(select(. != "")) | length > 0))) as $keep
+  ([range(0; $columns | length)] | map(. as $i | select($columns[$i].keep or ([$rows[] | .[$i].value // ""] | map(select(. != "")) | length > 0)))) as $keep
   | ($rows | length) as $n
-  | "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"" + sans + "font-size:13px;line-height:1.4;color:" + ink + "\"><tr>"
-    + ($keep | map($columns[.] as $c | "<td align=\"" + (if $c.right then "right" else "left" end) + "\" style=\"padding:0 8px 6px 0;" + mono + "font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:" + faint + ";border-bottom:1px solid " + line + ";white-space:nowrap\">" + ($c.label | esc) + "</td>") | join(""))
+  | "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" style=\"" + (if any($columns[]; .width) then "table-layout:fixed;" else "" end) + sans + "font-size:13px;line-height:1.4;color:" + ink + "\"><tr>"
+    + ($keep | map($columns[.] as $c | "<td align=\"" + (if $c.right then "right" else "left" end) + "\"" + (if $c.width then " width=\"" + ($c.width | tostring) + "\"" else "" end) + " style=\"" + (if $c.width then "width:" + ($c.width | tostring) + "px;" else "" end) + "padding:0 8px 6px 0;" + mono + "font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:" + faint + ";border-bottom:1px solid " + line + ";white-space:nowrap\">" + ($c.label | esc) + "</td>") | join(""))
     + "</tr>"
     + ([range(0; $n)] | map(. as $r | ($rows[$r]) as $cells
         | "<tr>" + ($keep | map(. as $i | $columns[$i] as $c | $cells[$i] as $cell
@@ -254,12 +256,16 @@ def text_target: "  " + (.label | rpad(15)) + ((.logged | tostring) + (if .targe
 
 # A column table: $cols a list of labels, $rows a list of lists of strings,
 # $right the indexes that align right. Empty columns drop, as records does.
-def text_table($cols; $rows; $right):
-  ([range(0; $cols | length)] | map(. as $i | select([$rows[] | .[$i]] | map(select(. != "")) | length > 0))) as $keep
-  | ($keep | map(. as $i | ([$cols[$i]] + [$rows[] | .[$i]] | map(length) | max))) as $w
+# $widths, when given, fixes every column's width and keeps every column, so
+# sibling tables line up; null sizes each column to its content.
+def text_table_grid($cols; $rows; $right; $widths):
+  ([range(0; $cols | length)] | map(. as $i | select($widths != null or ([$rows[] | .[$i]] | map(select(. != "")) | length > 0)))) as $keep
+  | ($keep | map(. as $i | if $widths != null then $widths[$i] else ([$cols[$i]] + [$rows[] | .[$i]] | map(length) | max) end)) as $w
   | ([$cols] + $rows) | map(. as $r | "  " + ([range(0; $keep | length)] | map(. as $k | $keep[$k] as $i
       | if any($right[]; . == $i) then ($r[$i] | lpad($w[$k])) else ($r[$i] | rpad($w[$k])) end) | join("  ") | sub(" +$"; "")))
   | join("\n");
+
+def text_table($cols; $rows; $right): text_table_grid($cols; $rows; $right; null);
 
 # ---------- the frame ----------
 
