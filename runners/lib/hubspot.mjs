@@ -295,8 +295,15 @@ const companies = new Map((await batch("companies", [...rows.keys()],
 // the deal and the lead columns are dropped for it entirely.
 const STAGES = Object.fromEntries((await api("crm/v3/pipelines/deals")).results
     .flatMap((pl) => pl.stages.map((st) => [st.id, st.label])));
+// Open deals, plus any deal that closed inside the week. Open only was how
+// SkySpec rendered with a blank stage and no money in the week it signed
+// (W38): its deal went Closed Won on 09-17 and dropped out of the query, when
+// a win is the one row the week most needs to show.
 const openDeals = (await searchAll("deals", {
-    filterGroups: [{ filters: [{ propertyName: "hs_is_closed", operator: "NEQ", value: "true" }] }],
+    filterGroups: [
+        { filters: [{ propertyName: "hs_is_closed", operator: "NEQ", value: "true" }] },
+        { filters: [{ propertyName: "closedate", operator: "BETWEEN", value: AFTER_MS, highValue: BEFORE_MS }] },
+    ],
     properties: ["dealname", "dealstage", "amount", "build_price", "operate_price", "operate_length", "trade_credit"],
 }));
 const dealCompanies = await assoc("deals", "companies", openDeals.map((d) => d.id));
