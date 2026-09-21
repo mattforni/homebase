@@ -304,13 +304,18 @@ const openDeals = (await searchAll("deals", {
         { filters: [{ propertyName: "hs_is_closed", operator: "NEQ", value: "true" }] },
         { filters: [{ propertyName: "closedate", operator: "BETWEEN", value: AFTER_MS, highValue: BEFORE_MS }] },
     ],
-    properties: ["dealname", "dealstage", "amount", "build_price", "operate_price", "operate_length", "trade_credit"],
+    properties: ["dealname", "dealstage", "amount", "build_price", "operate_price", "operate_length", "trade_credit", "hs_is_closed_won"],
 }));
 const dealCompanies = await assoc("deals", "companies", openDeals.map((d) => d.id));
+// First seen wins, except that a deal won inside the week outranks any other
+// deal on the same company: a company with a second deal still open would
+// otherwise hide the win the query was widened to catch.
 const dealByCompany = new Map();
 for (const d of openDeals) {
+    const won = d.properties.hs_is_closed_won === "true";
     for (const c of dealCompanies.get(d.id) || []) {
-        if (!dealByCompany.has(c)) dealByCompany.set(c, d.properties);
+        const held = dealByCompany.get(c);
+        if (!held || (won && held.hs_is_closed_won !== "true")) dealByCompany.set(c, d.properties);
     }
 }
 
