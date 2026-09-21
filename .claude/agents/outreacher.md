@@ -249,10 +249,10 @@ script to the scratchpad and run that one file.
    - **Meetings** (visits and calls due): bumped sends at about fourteen days with no reply.
      Group them by neighborhood with the street address, the published
      hours, and the owner's name, so Thursday's walkabout is a route. Anyone
-     not walkable gets a call line with the number instead. **Only
-     storefronts go on the walkabout.** A professional office (law, dental,
-     finance) never gets a cold visit (Forni, 2026-09-16); it gets a call
-     line, or goes to Closes, unless it booked the time.
+     not walkable gets a call line with the number instead. Who gets a
+     visit, a paper drop off, or a call line is decided by the method
+     (Outreach/README.md, The Visit), read fresh each run; never apply a
+     visit rule from this file.
    - **Closes due**: three touches run and about twenty one days silent.
      List them with every touch that ran; Forni decides the close on the
      line, never you.
