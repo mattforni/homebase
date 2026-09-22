@@ -296,7 +296,7 @@ install_npm_globals() {
   # and the tag is the release. The recruiter image pins the same tag in
   # runners/recruiter/Dockerfile; bump both together.
   local git_globals=(
-    "pinole|github:atelic-action/pinole-cli#v0.1.1|0.1.1"
+    "pinole|github:atelic-action/pinole-cli#v0.1.2|0.1.2"
   )
 
   local entry name spec want have
