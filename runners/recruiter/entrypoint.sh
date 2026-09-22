@@ -407,11 +407,8 @@ ALLOWED_TOOLS=(
     "Bash(awk:*)"
     "Bash(echo:*)"
     "Bash(printf:*)"
-    # Bare: a path scoped Write rule is denied by `claude -p` in every form
-    # (runners/outreach/entrypoint.sh has the test); the container's checkout
-    # is a read only mount, so the work directory is the only place a write
-    # can land.
-    "Write"
+    # No Write: the agent's own `tools:` list never offers it under `--agent`,
+    # and the agent never writes files (its ledger rows ride in the result).
 )
 
 eudy_ready || exit 1
@@ -422,9 +419,9 @@ else
 fi
 pull_ledger || exit 1
 
-# The agent writes its scratch files, so the half cent write probe runs
-# first (runners/README.md, Adding a Runner).
-runner_probe_write --agent recruiter --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
+# No write probe: it is only for an agent that writes files, and this one does
+# not. It ran here from 2026-09-15 and passed only when Haiku happened to reach
+# for a bare `echo >`; the W39 fire (2026-09-21) died on it before the sweep.
 runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent recruiter --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.shortlist | type == "array") and (.flagged | type == "array")
