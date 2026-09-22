@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The mailbox pull the outreach runner reads: every message in the last sixty
+// The mailbox pull the pipeline runner reads: every message in the last sixty
 // days that touches a funnel domain or a funnel contact's address, from both
 // of Forni's mailboxes, so a reply the HubSpot extension missed and a bounce on
 // a send are already on disk when the model starts. No dependencies, node 20.

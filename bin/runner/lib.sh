@@ -99,7 +99,7 @@ runner_entrypoint_lib() { printf '%s/runners/lib/runner.sh' "$(runner_repo_root)
 # the brew build, which has no plugin context and answers every skill with
 # "Unknown skill".
 #
-# The Outreacher shipped without the first two and every Monday run died in
+# The Plumber shipped without the first two and every Monday run died in
 # preflight on "hs not on PATH" (2026-08-31). launchd starts a job with an
 # empty environment and never sources a shell, so this cannot be inherited and
 # has to be stated. Keep it identical in launchagents/*.plist, which cannot

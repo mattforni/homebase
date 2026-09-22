@@ -205,7 +205,7 @@ gmail_pull() {
 # get wrong quietly, so the arithmetic is done here and the prompt is handed
 # three finished tables to write one sentence about. See the shared
 # lib/hubspot.mjs, whose `week` command is this pull (it moved there from this
-# directory on 2026-09-15, ATE-551, so the outreach sweep could share it).
+# directory on 2026-09-15, ATE-551, so the pipeline sweep could share it).
 atelic_pull() {
     # The same Denver midnight epochs the Strava pull uses, so both weeks close
     # at the same instant; hubspot.mjs says why a date string would not do.

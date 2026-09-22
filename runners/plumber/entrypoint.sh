@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# The Outreach Runner. Fired by hand before the Tuesday desk block (and by
+# The Pipeline Runner. Fired by hand before the Tuesday desk block (and by
 # Cloud Scheduler once the cost earns a timer), so the week's outreach roster
 # is rebuilt and drafted before the block opens.
 #
 # Shape, the recruiter's (ATE-543): the repos first (the checkouts already
 # present, or shallow clones over read only deploy keys), then the pulls (the
 # portal sweep, both mailboxes, the One Pager, and the candidate sites as
-# text), then one headless Claude Code call running the `outreacher` agent,
+# text), then one headless Claude Code call running the `plumber` agent,
 # which reads the method and the samples from the Atelic checkout and the
 # pulled files from the work directory, sorts the week, drafts every touch,
 # writes the roster into the work directory and returns a summary as JSON;
 # render.jq turns that into the designed email and Resend delivers it as
-# "YYYY-Www Outreach" with the roster attached. Read only against the world:
+# "YYYY-Www Pipeline" with the roster attached. Read only against the world:
 # the agent writes nothing outside its work directory, and Forni places the
 # roster in the repo himself, the way he already commits it.
 #
@@ -64,7 +64,7 @@ if [[ -z "${RUNNER_LIB:-}" ]]; then
     exit 1
 fi
 
-runner_init outreach "Outreach" current
+runner_init plumber "Pipeline" current
 
 required=(CLAUDE_CODE_OAUTH_TOKEN)
 [[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)
@@ -285,7 +285,7 @@ pulls_ready() {
 }
 
 # ---------- the agent ----------
-# Everything the outreacher's method needs from here and nothing it does not:
+# Everything the plumber's method needs from here and nothing it does not:
 # the reads, WebSearch for a verification angle, WebFetch for the Granola
 # links the meeting bodies carry, a scratch directory, and the few commands a
 # one file script needs. No hs, no gws, no browser, no git: the pulls replaced
@@ -314,9 +314,9 @@ ALLOWED_TOOLS=(
 )
 
 checkout_ready "$EUDY" "$EUDY_REPO" "VOICE.md" EUDY_DEPLOY_KEY eudy_deploy_key || exit 1
-checkout_ready "$ATELIC" "$ATELIC_REPO" "Outreach/README.md" ATELIC_DEPLOY_KEY atelic_deploy_key || exit 1
-if [[ ! -f "$ATELIC/Outreach/$WEEK-roster.md" ]]; then
-    fail_reason="the Atelic repo has no skeleton at Outreach/$WEEK-roster.md; cut one first"
+checkout_ready "$ATELIC" "$ATELIC_REPO" "Pipeline/README.md" ATELIC_DEPLOY_KEY atelic_deploy_key || exit 1
+if [[ ! -f "$ATELIC/Pipeline/$WEEK-roster.md" ]]; then
+    fail_reason="the Atelic repo has no skeleton at Pipeline/$WEEK-roster.md; cut one first"
     exit 1
 fi
 if [[ "$SKIP_PULLS" == "1" ]]; then
@@ -328,10 +328,10 @@ rm -f "$ROSTER_MD"
 
 # The model is the agent's own unless RUNNER_MODEL says otherwise, which is
 # how a side by side on the same pulls is run (Opus against Sonnet, W38).
-runner_probe_write --agent outreacher --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
+runner_probe_write --agent plumber --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 model_args=()
 [[ -z "${RUNNER_MODEL:-}" ]] || model_args=(--model "$RUNNER_MODEL")
-runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent outreacher "${model_args[@]}" --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
+runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent plumber "${model_args[@]}" --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.scoreboard | type == "array") and (.checklist | type == "array")
     and (.counts | type == "object") and (.flags | type == "array")

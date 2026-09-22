@@ -43,7 +43,7 @@ require() {
 
 # Usage: require_tools NAME [NAME...]
 # The same shape for commands on PATH. A missing tool is a failed run and not a
-# degraded one; the 2026-08-31 outreach outage was this check firing correctly
+# degraded one; the 2026-08-31 pipeline outage was this check firing correctly
 # on a PATH that lacked $HOME/bin.
 require_tools() {
     local missing=() t
@@ -225,7 +225,7 @@ meta_line() {
 # prompt, and the arguments to claude; the scaffold handles the rest.
 
 # Usage: runner_init <name> <Title> [current|previous]
-# The name is the runner's directory name (retro, recruiter, outreach), named
+# The name is the runner's directory name (retro, recruiter, pipeline), named
 # explicitly because inside an image the entrypoint lives at /home/runner and
 # its directory says nothing. Title is how the runner names itself everywhere
 # a reader sees it: the subject ("2026-W38 Retro"), the masthead, the failure
@@ -442,7 +442,7 @@ runner_claude() {
 # A one line Haiku call with the same agent and allowlist the real call will
 # get, asked only to write a marker file into the work directory. Seconds and
 # about a cent, run before the expensive call, so an agent that cannot write
-# fails here rather than after drafting a whole week (the first outreach run
+# fails here rather than after drafting a whole week (the first pipeline run
 # in its image, 2026-09-15: the agent's definition listed no Write tool, the
 # allowlist's Write($WORK/*) granted nothing, and the roster check failed
 # after 18 minutes and 11 USD). Sets fail_reason and returns non zero when
@@ -462,7 +462,7 @@ runner_probe_write() {
 
 # Usage: runner_replay
 # The saved result and its saved exit status, back through the same checks, so
-# a runner whose only "pull" is the agent itself (the outreach roster) can
+# a runner whose only "pull" is the agent itself (the pipeline runner) can
 # render again without paying for the agent. Both halves come back, so a saved
 # failure replays as that failure rather than as a success that fails a
 # predicate a moment later.

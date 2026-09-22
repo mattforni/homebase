@@ -1,7 +1,7 @@
 import { rpad, spaces, wrap } from "@atelic-action/ui/email";
 
 /*
- * Plain text shapes the outreach and recruiter pages share. Both twins are new
+ * Plain text shapes the pipeline and recruiter pages share. Both twins are new
  * (neither page had a jq text branch), so unlike the retro's they answer to no
  * baseline, only to the rule the twins exist for: every label and value sits
  * in its own column or on its own line, nothing is ever concatenated, and no

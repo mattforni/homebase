@@ -57,7 +57,7 @@ export function SpacerRow() {
 	);
 }
 
-/* ---------- outreach ---------- */
+/* ---------- pipeline ---------- */
 
 export type LinkProps = { text: string; url?: string | null };
 
@@ -110,7 +110,7 @@ export function GroupLabel({ text }: GroupLabelProps) {
 	);
 }
 
-/* ---------- outreach and recruiter ---------- */
+/* ---------- pipeline and recruiter ---------- */
 
 export type FaintSpanProps = { children?: ReactNode };
 

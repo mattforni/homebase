@@ -8,11 +8,11 @@ L7 mise; see Eudy's `LEVELS.md` for the story.
 is executed.** `runners/README.md` owns the pattern itself and is the place to
 start; this one carries what is specific to launchd, the Keychain, and
 `claude -p`. The worked example is
-[`runners/outreach/`](../../runners/outreach/README.md), which is run by hand
+[`runners/plumber/`](../../runners/plumber/README.md), which is run by hand
 through `bin/runner/run-local`.
 
 **Nothing is on a LaunchAgent right now and `launchagents/` is empty.** The
-outreach runner was scheduled for one morning and unscheduled the same day
+pipeline runner was scheduled for one morning and unscheduled the same day
 (2026-08-31), because a pass is about $7.50 and a weekly timer spends that
 whether or not the week needs it. The machinery below is intact and a plist is
 all it takes to schedule something; the point is that a schedule is a cost
@@ -116,7 +116,7 @@ and the plist's own `EnvironmentVariables`. Keep them identical.
 `.zshrc` finalizes with. `$HOME/.local/share/mise/shims` is how a non
 interactive shell reaches what `mise activate` wires for an interactive one, and
 the real `hs` lives there as an npm global under mise managed node. The
-Outreacher shipped with neither and every Monday run died in preflight on `hs
+Plumber shipped with neither and every Monday run died in preflight on `hs
 not on PATH` (2026-08-31); fixing only the first would have found the shim and
 then failed one layer down. launchd starts a job with an empty environment and
 never sources a shell, so none of this can be inherited.
@@ -244,7 +244,7 @@ whether it is on this Mac or in a container:
 Output:
 
 - **A weekly runner subjects its email `YYYY-Www <Name>`**, which is what both
-  live runners do: `2026-W36 Retro` and `2026-W36 Outreach`. A weekly briefing
+  live runners do: `2026-W36 Retro` and `2026-W36 Pipeline`. A weekly briefing
   is read on the morning it lands, so the week is the handle worth carrying and
   the send date is noise.
 - **A daily status routine uses `[<Routine>] YYYY-MM-DD` instead**, and the
@@ -268,7 +268,7 @@ considered, and pricing. JSON payload assembled via `jq -n --arg ...` to
 dodge bash escaping pitfalls; HTML escaping via `sed`.
 
 Adding a new headless routine: read `runners/README.md`, copy the shape of
-`runners/outreach/entrypoint.sh`, and add a plist pointing at
+`runners/plumber/entrypoint.sh`, and add a plist pointing at
 `bin/runner/run-scheduled <name>`. Swap the subject, the success predicate, the
 `--allowedTools` set, and what the runner actually does. Everything else,
 including the whole email path, comes from `runners/lib/runner.sh`.

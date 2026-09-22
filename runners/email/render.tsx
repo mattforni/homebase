@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { outreachHTML, outreachText } from "./outreach";
+import { pipelineHTML, pipelineText } from "./plumber";
 import { recruiterHTML, recruiterText } from "./recruiter";
 import { retroHTML, retroText } from "./retro";
 import type { Page, RenderContext } from "./types";
@@ -7,7 +7,7 @@ import type { Page, RenderContext } from "./types";
 /*
  * The renderer the runners call, bundled by esbuild into one CommonJS file:
  *
- *   node render.cjs <retro|outreach|recruiter> <html|text> \
+ *   node render.cjs <retro|plumber|recruiter> <html|text> \
  *       --week 2026-W38 --monday 2026-09-14 --sunday 2026-09-20 --meta "42s · $0.31"
  *
  * The draft JSON arrives on stdin and the page leaves on stdout with exactly
@@ -19,7 +19,7 @@ import type { Page, RenderContext } from "./types";
 
 const PAGES: Record<string, Page> = {
 	retro: { html: retroHTML, text: retroText },
-	outreach: { html: outreachHTML, text: outreachText },
+	plumber: { html: pipelineHTML, text: pipelineText },
 	recruiter: { html: recruiterHTML, text: recruiterText },
 };
 

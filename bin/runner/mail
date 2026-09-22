@@ -42,7 +42,7 @@ fi
 week=""
 [[ -r "$work/week.env" ]] && week="$(sed -n 's/^WEEK=//p' "$work/week.env" | head -1)"
 # The subject wears the title the runner names itself with in runner_init
-# ("Outreach"), the same one a real run sends under, never the directory name.
+# ("Pipeline"), the same one a real run sends under, never the directory name.
 title="$(sed -n 's/^runner_init [^ ]* "\([^"]*\)".*/\1/p' "$dir/entrypoint.sh" | head -1)"
 title="${title:-$name}"
 # Every draft gets its own subject. Gmail threads messages that share one and

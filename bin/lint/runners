@@ -2,7 +2,7 @@
 # Checks the two things about a runner that no other gate can see and that
 # drift silently when they go wrong.
 #
-# Both exist because of the 2026-08-31 Outreacher outage, where the Monday job
+# Both exist because of the 2026-08-31 Plumber outage, where the Monday job
 # had never once reached its agent. A rule written in a comment is the weakest
 # form of a rule; this is the same rule, enforced.
 set -uo pipefail
