@@ -339,7 +339,7 @@ for (const d of openDeals) {
 // had not caught up with Danny and Josh.
 const LADDER = ["NEW", "CONTACTED", "ENGAGED", "CONNECTED", "QUALIFIED"];
 const FUNNEL = new Set(["lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer"]);
-const CLOSED = new Set(["UNQUALIFIED", "NO_RESPONSE"]);
+const CLOSED = new Set(["UNQUALIFIED"]);
 const warmest = (ids) => {
     const seen = [...ids].map((c) => contacts.get(c)?.hs_lead_status).filter(Boolean);
     const open = seen.filter((s) => !CLOSED.has(s));
@@ -483,8 +483,8 @@ console.log(JSON.stringify({ ...tables, coverage, totals }, null, 2));
 
 const MS_DAY = 86400000;
 const LADDER_OPEN = ["NEW", "CONTACTED", "ENGAGED", "CONNECTED", "QUALIFIED"];
-const CLOSED_STATUSES = new Set(["UNQUALIFIED", "NO_RESPONSE"]);
-const FUNNEL = new Set(["lead", "opportunity", "customer"]);
+const CLOSED_STATUSES = new Set(["UNQUALIFIED"]);
+const FUNNEL = new Set(["lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer"]);
 const COMPANY_PROPS = [
     "name", "domain", "website", "lifecyclestage", "fit", "gravity", "refresh", "owner", "wiring",
     "vertical", "segment", "source", "door", "niche", "tags", "disqualification_reason",
@@ -713,8 +713,11 @@ async function sweep(argv) {
         const parked = ownTasks.filter((t) => t.reading === "parked");
 
         let section, why;
-        if (!status) { section = "not_in_motion"; why = "no Lead Status"; }
-        else if (CLOSED_STATUSES.has(status)) { section = "closed"; why = status; }
+        // The company's Disqualification Reason is the whole closed test (Closing a
+        // Prospect in Atelic's Tools/hubspot.md); a contact's status alone never closes.
+        if (co.disqualification_reason) { section = "closed"; why = co.disqualification_reason; }
+        else if (!status) { section = "not_in_motion"; why = "no Lead Status"; }
+        else if (CLOSED_STATUSES.has(status)) { section = "closed"; why = `${status} with no reason on the company; set one`; }
         else if (lastReply && (!lastTouch || lastReply.ts >= lastTouch.ts)) { section = "replies_owed"; why = `their ${lastReplyDay} reply is the last message on the record`; }
         else if (due.length) { section = "tasks_due"; why = `task due ${due[0].due}: ${due[0].subject}`; }
         else if (parked.length) { section = "parked"; why = `task parked to ${parked[0].due}; silent until then`; }

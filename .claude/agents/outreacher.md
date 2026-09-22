@@ -61,7 +61,9 @@ judgment.
   interaction with the portal is read only, and neither write ever moves a
   record that already existed. Lifecycle stages, Lead Status
   vocabulary
-  (NEW, CONTACTED, ENGAGED, CONNECTED, QUALIFIED, UNQUALIFIED, NO_RESPONSE),
+  (NEW, CONTACTED, ENGAGED, CONNECTED, QUALIFIED, UNQUALIFIED; a company
+  carrying a Disqualification Reason is closed and off every board, per
+  Closing a Prospect in `Tools/hubspot.md`),
   the GROW
   scores summing to `fit`, the `tags` vocabulary (`warm`, `whale`, `trade`,
   `nonprofit`; untagged means cold; `bench` retired 2026-08-26, unscored is
@@ -430,7 +432,7 @@ the only other write you make.**
    phrase it as "reach out to this person on this date," it is not a task.
 2. **Only on Forni's instruction, and only with a real date and a real
    reason.** "Maybe someday" is not a park; it is a close, and the honest
-   move is `NO_RESPONSE` or `UNQUALIFIED` with a reason on the company. A
+   move is a Disqualification Reason on the company, then `UNQUALIFIED`. A
    parking lot is where a funnel goes to look busy.
 3. **Preflight, then create.** Verify `portalId` 246648548 before the write,
    and read the contact's existing tasks first so a second copy is never
