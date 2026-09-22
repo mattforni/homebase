@@ -23,7 +23,7 @@ Name the event that makes the rule needed. Where that event is detectable, the r
 | A rule that matters only when a particular file or path is touched | `.claude/rules/<topic>.md` with `paths:` frontmatter, project or user level |
 | A procedure, checklist, or multi step workflow | a skill; corrections to it in that skill's `learned-rules.md` |
 | Something that must happen every time, or must never happen | a hook; prose is a request, a hook is a guarantee |
-| A tool's mechanics, gotchas, costs, or the reason we picked it | `~/Eudaimonia/Admin/Tools/<tool>.md` |
+| A tool's mechanics, gotchas, or the reason we picked it (never its pricing) | `~/Eudaimonia/Admin/Tools/<tool>.md` |
 | A learning Claude discovered that need not survive a machine swap | auto memory |
 | Anything derivable from the code, git history, or the tool's own help | nowhere; delete it |
 
