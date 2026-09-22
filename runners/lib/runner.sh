@@ -562,20 +562,30 @@ runner_renderer_bundle() {
 # Usage: runner_render_node <html|text> <out-file> <stderr-file> <meta>
 # One pass of the node renderer. Prints a loud line and returns non zero on
 # anything short of a non empty file, so the caller can say so and stop.
+#
+# renderer_error is this function's out parameter, deliberately not `local`:
+# the reason has to reach the caller's fail_reason and so the failure email,
+# and the stderr file cannot carry it, since a missing bundle returns before
+# anything is ever redirected into that file.
+# shellcheck disable=SC2034
 runner_render_node() {
     local format="$1" out="$2" errors="$3" meta="$4" bundle
+    renderer_error=""
     if ! bundle="$(runner_renderer_bundle)"; then
-        echo "RENDERER: no node bundle at $LIB_DIR/render.cjs or $LIB_DIR/../email/dist/render.cjs"
+        renderer_error="no node bundle at $LIB_DIR/render.cjs or $LIB_DIR/../email/dist/render.cjs"
+        echo "RENDERER: $renderer_error"
         return 1
     fi
     if ! node "$bundle" "$RUNNER_NAME" "$format" \
         --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
         < "$DRAFT_JSON" > "$out" 2>"$errors"; then
-        echo "RENDERER: the node $format render failed: $(head -c 300 "$errors" 2>/dev/null)"
+        renderer_error="the node $format render failed: $(head -c 300 "$errors" 2>/dev/null)"
+        echo "RENDERER: $renderer_error"
         return 1
     fi
     if [[ ! -s "$out" ]]; then
-        echo "RENDERER: the node $format render wrote nothing to $out"
+        renderer_error="the node $format render wrote nothing to $out"
+        echo "RENDERER: $renderer_error"
         return 1
     fi
 }
@@ -588,7 +598,7 @@ runner_render() {
     local meta
     meta="$(meta_line "$RESULT_JSON")"
     if ! runner_render_node html "$REPORT_HTML" "$WORK/render-stderr.txt" "$meta"; then
-        fail_reason="render failed: $(head -c 300 "$WORK/render-stderr.txt")"
+        fail_reason="render failed: $renderer_error"
         return 1
     fi
     echo "render: $(wc -c < "$REPORT_HTML" | tr -d ' ') bytes of html"
@@ -602,7 +612,7 @@ runner_render_text() {
     local meta
     meta="$(meta_line "$RESULT_JSON")"
     if ! runner_render_node text "$REPORT_TEXT" "$WORK/render-text-stderr.txt" "$meta"; then
-        fail_reason="plain text render failed: $(head -c 300 "$WORK/render-text-stderr.txt")"
+        fail_reason="plain text render failed: $renderer_error"
         return 1
     fi
     echo "render: $(wc -c < "$REPORT_TEXT" | tr -d ' ') bytes of text"
