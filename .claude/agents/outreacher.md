@@ -280,9 +280,15 @@ script to the scratchpad and run that one file.
    line for the whole row naming any blocker and its owner. Under the table,
    one bold type name and a bulleted checklist per type of everyone still owed
    that touch, person then company, each linked to its HubSpot contact and
-   company record; a type with nobody left gets no list. The full rule is in
+   company record; a type with nobody left gets no list. **Then the MQL
+   board**: one row per company at lifecycle MQL, columns Company, Contact
+   (mailbox in parentheses when the send went to a shared inbox), Sends
+   (touches, one per company per day), Opens (total across tracked sends),
+   Last opened (Denver time), Since (whole days, hours under a day), sorted
+   by Since with the longest silence first. The full rule for both is in
    README's The Weekly
-   Scoreboard. Write the file and stop: do not
+   Scoreboard, and the stage definitions are the Funnel rules in
+   `Tools/hubspot.md`. Write the file and stop: do not
    stage it, do not commit it, and never touch a previous week's file.
 
    **If this week's file is already built, the week is prepped and you do not
