@@ -282,8 +282,8 @@ runner_build_context() {
     (cd "$dir" && tar --exclude=./out --exclude=./.build --exclude=./.env.local \
         --exclude=./agents --exclude=./mounts -cf - .) \
         | (cd "$staged" && tar -xf -) || return 1
-    # The whole shared library: runner.sh for the entrypoint, email.jq for
-    # the renderer, and whatever joins them.
+    # The whole shared library: runner.sh for the entrypoint, the pull
+    # scripts, and whatever joins them.
     cp "$root/runners/lib/"* "$staged/lib/" || return 1
     # The node renderer's sources, as a sibling of lib/ rather than a child,
     # because the flat copy above carries files and not directories. Its

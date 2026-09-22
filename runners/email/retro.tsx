@@ -52,15 +52,16 @@ import { RecordsRow, SessionsRow, SpacerRow } from "./local";
 import type { RenderContext } from "./types";
 
 /*
- * The Retro email, ported from runners/retro/render.jq. An overview card
+ * The Retro email, ported from the jq renderer it replaced (git history,
+ * 4985f1a9). An overview card
  * holding every target at a glance and what moved, then one card per area,
  * each opening on its read. The sessions and the day strip are built from
  * strava.json here, never from the model, so the only numbers the model
  * supplies are the graded coverage counts.
  *
- * The plain text half is the one page that has a jq twin to match byte for
- * byte, so read `runners/retro/render.jq` beside this file before changing a
- * space.
+ * The plain text half was held to the jq twin byte for byte, and the goldens
+ * in tst/ are that agreement frozen, so a change to a space here changes a
+ * golden too.
  */
 
 type CoverageRow = { modality?: unknown; logged?: unknown; target?: unknown; note?: unknown };

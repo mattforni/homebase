@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useEmailTheme } from "@atelic-action/ui/email";
 
 /*
- * The handful of rows and spans the three render.jq files built by hand rather
+ * The handful of rows and spans the three jq renderers built by hand rather
  * than through a library def. Each one is a literal port: the same element, the
  * same attributes, and the style declarations in the same order the jq wrote
  * them, because the parity check compares declarations as an ordered list.

@@ -35,12 +35,11 @@ WORKDIR /home/runner
 
 COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
 COPY --chown=runner:runner prompt.md /home/runner/prompt.md
-COPY --chown=runner:runner render.jq /home/runner/render.jq
-# The shared library: runner.sh for the entrypoint, email.jq for the renderer,
-# hubspot.mjs, gmail.mjs and text.mjs for the pulls.
+# The shared library: runner.sh for the entrypoint, hubspot.mjs, gmail.mjs
+# and text.mjs for the pulls.
 COPY --chown=runner:runner lib/ /home/runner/lib/
-# The bundled renderer, at the first place runner.sh looks for it. render.jq
-# and lib/email.jq stay in the image as the fallback.
+# The bundled renderer, at the first place runner.sh looks for it, and the
+# only renderer in the image since the jq one retired (ATE-563).
 COPY --from=email --chown=runner:runner /email/dist/render.cjs /home/runner/lib/render.cjs
 # The brief: the same agent definition the laptop runs, found where Claude Code
 # looks for user level agents.

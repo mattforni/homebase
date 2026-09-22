@@ -231,8 +231,8 @@ meta_line() {
 # a reader sees it: the subject ("2026-W38 Retro"), the masthead, the failure
 # page. The third argument says which week is the default when WEEK is not
 # set: the week in progress, or the week yesterday belonged to (the retro
-# fires Sunday night about the week that is closing). Reads DRY_RUN, SKIP_PULLS, WORK, WEEK
-# and RUNNER_RENDERER from the environment, and needs SELF_DIR (the entrypoint's
+# fires Sunday night about the week that is closing). Reads DRY_RUN, SKIP_PULLS,
+# WORK and WEEK from the environment, and needs SELF_DIR (the entrypoint's
 # own directory) and RUNNER_LIB (this file's path) set by the entrypoint's
 # bootstrap. Sets:
 #   RUNNER_NAME RUNNER_TITLE    the name and the title
@@ -246,9 +246,9 @@ meta_line() {
 #   REPORT_TEXT                 $WORK/email.txt, the plain text part when the
 #                               runner renders one (runner_render_text)
 #   ATTACHMENT                  empty; a runner sets it to a file to send along
-#   PROMPT_FILE RENDER          prompt.md and render.jq beside the entrypoint
-#   LIB_DIR JQ_LIB              the shared library (email.jq, hubspot.mjs,
-#                               text.mjs), one name for the jq include path
+#   PROMPT_FILE                 prompt.md beside the entrypoint
+#   LIB_DIR                     the shared library (render.cjs, hubspot.mjs,
+#                               text.mjs), wherever it was found
 #   status fail_reason result rc
 # and traps runner_finish on EXIT.
 runner_init() {
@@ -292,11 +292,10 @@ runner_init() {
     rm -f "$REPORT_TEXT"
     ATTACHMENT=""
     PROMPT_FILE="${PROMPT_FILE:-$SELF_DIR/prompt.md}"
-    RENDER="${RENDER:-$SELF_DIR/render.jq}"
-    # The shared email design (email.jq) sits beside this library, wherever
-    # it was found: runners/lib in the repo, /home/runner/lib in an image.
+    # The pull scripts and the bundled renderer sit beside this library,
+    # wherever it was found: runners/lib in the repo, /home/runner/lib in an
+    # image.
     LIB_DIR="$(dirname "$RUNNER_LIB")"
-    JQ_LIB="$LIB_DIR"
 
     status="failure"
     fail_reason=""
@@ -311,13 +310,22 @@ runner_init() {
 }
 
 # The failure email, in the same design as the page: the reason on top, the
-# log's tail beneath. Falls back to a bare <pre> if the renderer itself is
-# what broke.
+# log's tail beneath, rendered by the same bundle with the tail on stdin.
+# Falls back to a bare <pre> if the renderer itself is what broke, which is
+# the last thing standing between a broken renderer and no mail at all. The
+# page is built whole before anything is printed, so a render that dies
+# halfway cannot leave half a document above the <pre>. The renderer's own
+# stderr is left alone: it lands in the log, which is the only place left to
+# say why the failure page itself could not be drawn.
 runner_failure_html() {
-    jq -rn -L "$JQ_LIB" --arg title "$RUNNER_TITLE" --arg eyebrow "$RUNNER_TITLE · $WEEK" \
-        --arg reason "${fail_reason:-unknown failure}" --rawfile tail <(tail -n 40 "$LOG") \
-        'include "email"; failure_page($title; $eyebrow; $reason; $tail)' \
-    || printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
+    local bundle page
+    if bundle="$(runner_renderer_bundle)" && page="$(tail -n 40 "$LOG" | node "$bundle" failure html \
+        --title "$RUNNER_TITLE" --eyebrow "$RUNNER_TITLE · $WEEK" \
+        --reason "${fail_reason:-unknown failure}")" && [[ -n "$page" ]]; then
+        printf '%s\n' "$page"
+        return 0
+    fi
+    printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
 }
 
 # The EXIT trap. Mails the rendered page (with ATTACHMENT beside it when the
@@ -530,9 +538,12 @@ runner_draft() {
 # ---------- the renderer ----------
 # The page is rendered by the bundled node renderer (runners/email), which is
 # the same email design as one React component library shared with every other
-# surface the practice builds. render.jq stays in the tree and in every image
-# as the fallback, so a renderer that cannot start is a plainer email rather
-# than a failed run, and RUNNER_RENDERER=jq forces it for a comparison.
+# surface the practice builds. It is the only renderer: the jq one it replaced
+# retired on 2026-09-22 (ATE-563) once both scheduled runners had come back
+# clean on the node path, so a renderer that cannot start is now a failed run
+# rather than a plainer email. Only the failure page still has a fallback, a
+# bare <pre>, because that one mails at the moment everything else is already
+# broken. The four jq files are in git history, last carried at 4985f1a9.
 
 # Where the node bundle is: beside the shared library in an image, in the
 # repo's own build on this machine. The same two places, in the same order,
@@ -548,83 +559,60 @@ runner_renderer_bundle() {
     return 1
 }
 
-# True unless RUNNER_RENDERER names jq.
-runner_renderer_is_node() { [[ "${RUNNER_RENDERER:-node}" != "jq" ]]; }
-
-# A runner's render.jq has a plain text branch when it reads the format
-# argument; the retro's does and the other two never had one. Without it the jq
-# fallback would write the html page into the text part, which reads worse in a
-# mail client than no text part at all.
-runner_render_jq_has_text() { grep -q 'ARGS.named.format' "$RENDER" 2>/dev/null; }
-
 # Usage: runner_render_node <html|text> <out-file> <stderr-file> <meta>
 # One pass of the node renderer. Prints a loud line and returns non zero on
-# anything short of a non empty file, so the caller can say so and fall back.
+# anything short of a non empty file, so the caller can say so and stop.
+#
+# renderer_error is this function's out parameter, deliberately not `local`:
+# the reason has to reach the caller's fail_reason and so the failure email,
+# and the stderr file cannot carry it, since a missing bundle returns before
+# anything is ever redirected into that file.
+# shellcheck disable=SC2034
 runner_render_node() {
     local format="$1" out="$2" errors="$3" meta="$4" bundle
+    renderer_error=""
     if ! bundle="$(runner_renderer_bundle)"; then
-        echo "RENDERER: no node bundle at $LIB_DIR/render.cjs or $LIB_DIR/../email/dist/render.cjs"
+        renderer_error="no node bundle at $LIB_DIR/render.cjs or $LIB_DIR/../email/dist/render.cjs"
+        echo "RENDERER: $renderer_error"
         return 1
     fi
     if ! node "$bundle" "$RUNNER_NAME" "$format" \
         --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
         < "$DRAFT_JSON" > "$out" 2>"$errors"; then
-        echo "RENDERER: the node $format render failed: $(head -c 300 "$errors" 2>/dev/null)"
+        renderer_error="the node $format render failed: $(head -c 300 "$errors" 2>/dev/null)"
+        echo "RENDERER: $renderer_error"
         return 1
     fi
     if [[ ! -s "$out" ]]; then
-        echo "RENDERER: the node $format render wrote nothing to $out"
+        renderer_error="the node $format render wrote nothing to $out"
+        echo "RENDERER: $renderer_error"
         return 1
     fi
 }
 
-# Usage: runner_render [extra jq arguments...]
-# DRAFT_JSON into REPORT_HTML, through the node renderer and, when that cannot
-# run, through render.jq with the shared design on the include path, the week,
-# and the footer line. Extra arguments (--arg pairs) pass straight to jq for a
-# renderer that needs more than the draft; the node renderer takes the draft
-# alone.
+# Usage: runner_render
+# DRAFT_JSON into REPORT_HTML, through the node renderer with the week and the
+# footer line. A render that cannot run fails the run: the reason is already on
+# a RENDERER line in the log, and fail_reason carries it into the failure page.
 runner_render() {
     local meta
     meta="$(meta_line "$RESULT_JSON")"
-    if runner_renderer_is_node; then
-        if runner_render_node html "$REPORT_HTML" "$WORK/render-stderr.txt" "$meta"; then
-            echo "render: $(wc -c < "$REPORT_HTML" | tr -d ' ') bytes of html"
-            return 0
-        fi
-        echo "RENDERER: falling back to jq for the html"
-    fi
-    if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" "$@" \
-        -f "$RENDER" "$DRAFT_JSON" > "$REPORT_HTML" 2>"$WORK/render-stderr.txt" || [[ ! -s "$REPORT_HTML" ]]; then
-        fail_reason="render failed: $(head -c 300 "$WORK/render-stderr.txt")"
+    if ! runner_render_node html "$REPORT_HTML" "$WORK/render-stderr.txt" "$meta"; then
+        fail_reason="render failed: $renderer_error"
         return 1
     fi
     echo "render: $(wc -c < "$REPORT_HTML" | tr -d ' ') bytes of html"
 }
 
-# Usage: runner_render_text [extra jq arguments...]
+# Usage: runner_render_text
 # The email's plain text part, into REPORT_TEXT. The node renderer writes one
-# for every runner. The jq fallback writes one only for a render.jq that has a
-# text branch; for the other two the part is skipped loudly and the email goes
-# out as html alone, which is where they were before the node renderer.
+# for every runner, so a failure here is a failure of the run rather than an
+# email that quietly goes out as html alone.
 runner_render_text() {
     local meta
     meta="$(meta_line "$RESULT_JSON")"
-    if runner_renderer_is_node; then
-        if runner_render_node text "$REPORT_TEXT" "$WORK/render-text-stderr.txt" "$meta"; then
-            echo "render: $(wc -c < "$REPORT_TEXT" | tr -d ' ') bytes of text"
-            return 0
-        fi
-        echo "RENDERER: falling back to jq for the plain text"
-    fi
-    if ! runner_render_jq_has_text; then
-        rm -f "$REPORT_TEXT"
-        echo "RENDERER: $RUNNER_NAME has no jq text branch, so this email goes out as html alone"
-        return 0
-    fi
-    if ! jq -r -L "$JQ_LIB" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" --arg format text "$@" \
-        -f "$RENDER" "$DRAFT_JSON" > "$REPORT_TEXT" 2>"$WORK/render-text-stderr.txt" || [[ ! -s "$REPORT_TEXT" ]]; then
-        fail_reason="plain text render failed: $(head -c 300 "$WORK/render-text-stderr.txt")"
+    if ! runner_render_node text "$REPORT_TEXT" "$WORK/render-text-stderr.txt" "$meta"; then
+        fail_reason="plain text render failed: $renderer_error"
         return 1
     fi
     echo "render: $(wc -c < "$REPORT_TEXT" | tr -d ' ') bytes of text"
