@@ -314,12 +314,14 @@ runner_init() {
 # Falls back to a bare <pre> if the renderer itself is what broke, which is
 # the last thing standing between a broken renderer and no mail at all. The
 # page is built whole before anything is printed, so a render that dies
-# halfway cannot leave half a document above the <pre>.
+# halfway cannot leave half a document above the <pre>. The renderer's own
+# stderr is left alone: it lands in the log, which is the only place left to
+# say why the failure page itself could not be drawn.
 runner_failure_html() {
     local bundle page
     if bundle="$(runner_renderer_bundle)" && page="$(tail -n 40 "$LOG" | node "$bundle" failure html \
         --title "$RUNNER_TITLE" --eyebrow "$RUNNER_TITLE · $WEEK" \
-        --reason "${fail_reason:-unknown failure}" 2>/dev/null)" && [[ -n "$page" ]]; then
+        --reason "${fail_reason:-unknown failure}")" && [[ -n "$page" ]]; then
         printf '%s\n' "$page"
         return 0
     fi
