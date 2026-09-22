@@ -385,7 +385,7 @@ google_access_token() {
 fill_prompt() {
     local file="$1" v val args=()
     TODAY="$(date +%F)"
-    for v in WEEK MONDAY SUNDAY NEXT_MONDAY TODAY WORK EUDY PULLS ATELIC; do
+    for v in WEEK MONDAY SUNDAY NEXT_MONDAY TODAY WORK EUDY PULLS ATELIC TEXT; do
         val="${!v:-}"
         [[ -n "$val" ]] || continue
         val="$(printf '%s' "$val" | sed -e 's/[|&\\]/\\&/g')"
@@ -492,8 +492,11 @@ runner_check_result() {
         return 1
     fi
     local denials
-    denials="$(jq -r '.permission_denials // [] | map("\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring)") | join("; ")' <<<"$result" 2>/dev/null)"
-    [[ -z "$denials" ]] || echo "claude: permission denials: $(head -c 400 <<<"$denials")"
+    # One line per denial, each cut to 200 characters, so a long first denial
+    # never hides the rest (a single 400 character cut showed two of them on
+    # the 2026-09-22 recruiter run).
+    denials="$(jq -r '.permission_denials // [] | .[] | "\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring | gsub("\n"; " ") | .[0:200])"' <<<"$result")"
+    [[ -z "$denials" ]] || echo "claude: $(wc -l <<<"$denials" | tr -d ' ') permission denials:"$'\n'"$(sed 's/^/  denied /' <<<"$denials")"
     if ! jq -e '.subtype == "success" and .is_error == false' <<<"$result" >/dev/null; then
         fail_reason="claude did not complete: $(jq -r '.subtype // "unknown"' <<<"$result")"
         return 1
