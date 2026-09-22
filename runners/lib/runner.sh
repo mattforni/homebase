@@ -495,7 +495,7 @@ runner_check_result() {
     # One line per denial, each cut to 200 characters, so a long first denial
     # never hides the rest (a single 400 character cut showed two of them on
     # the 2026-09-22 recruiter run).
-    denials="$(jq -r '.permission_denials // [] | .[] | "\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring | gsub("\n"; " ") | .[0:200])"' <<<"$result" 2>/dev/null)"
+    denials="$(jq -r '.permission_denials // [] | .[] | "\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring | gsub("\n"; " ") | .[0:200])"' <<<"$result")"
     [[ -z "$denials" ]] || echo "claude: $(wc -l <<<"$denials" | tr -d ' ') permission denials:"$'\n'"$(sed 's/^/  denied /' <<<"$denials")"
     if ! jq -e '.subtype == "success" and .is_error == false' <<<"$result" >/dev/null; then
         fail_reason="claude did not complete: $(jq -r '.subtype // "unknown"' <<<"$result")"
