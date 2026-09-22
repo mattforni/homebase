@@ -407,6 +407,11 @@ ALLOWED_TOOLS=(
     "Bash(awk:*)"
     "Bash(echo:*)"
     "Bash(printf:*)"
+    # The runner's own HTML to text reader, and only it: a posting page the
+    # model saved with curl -o reads as text through this, where the W39 run
+    # (2026-09-22) spent turns on denied python3 tag strippers. A bare node or
+    # python3 rule would let the model run any code it writes.
+    "Bash(node $TEXT:*)"
     # No Write: the agent's own `tools:` list never offers it under `--agent`,
     # and the agent never writes files (its ledger rows ride in the result).
 )
