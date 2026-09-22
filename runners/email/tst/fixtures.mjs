@@ -27,8 +27,8 @@ export const CONTEXT = {
 export const CASES = [
 	{ runner: "retro", fixture: "retro" },
 	{ runner: "retro", fixture: "retro-empty" },
-	{ runner: "outreach", fixture: "outreach" },
-	{ runner: "outreach", fixture: "outreach-empty" },
+	{ runner: "pipeline", fixture: "pipeline" },
+	{ runner: "pipeline", fixture: "pipeline-empty" },
 	{ runner: "recruiter", fixture: "recruiter" },
 	{ runner: "recruiter", fixture: "recruiter-empty" },
 ];

@@ -27,7 +27,7 @@ import { leadBlock } from "./text";
 import type { RenderContext } from "./types";
 
 /*
- * The Outreach email, ported from runners/outreach/render.jq: the week's
+ * The Pipeline email, ported from runners/pipeline/render.jq: the week's
  * scoreboard as the roster carries it, one list per type of everyone still
  * owed that touch, the queue counts, the portal diff, and the long tail behind
  * two folds. The roster itself is deliberately not here: it travels as a file
@@ -45,7 +45,7 @@ type ChecklistName = {
 type ChecklistRow = { type?: unknown; names?: ChecklistName[] | null };
 type LeadNote = { lead?: unknown; note?: unknown };
 
-export type OutreachDraft = {
+export type PipelineDraft = {
 	preheader?: unknown;
 	headline?: string[] | null;
 	lede?: unknown;
@@ -65,13 +65,13 @@ export type OutreachDraft = {
 	not_in_block?: LeadNote[] | null;
 };
 
-function targetOf(draft: OutreachDraft, type: string): number {
+function targetOf(draft: PipelineDraft, type: string): number {
 	const match = alt(draft.scoreboard, []).filter((row) => row.type === type)[0];
 	return match === undefined ? 0 : alt(match.target, 0);
 }
 
 /** The board's rows, Complete at zero on the day the roster is built. */
-function boardRows(draft: OutreachDraft): string[][] {
+function boardRows(draft: PipelineDraft): string[][] {
 	const rows = alt(draft.scoreboard, []);
 	const total = rows.reduce((sum, row) => sum + alt(row.target, 0), 0);
 	return [
@@ -86,12 +86,12 @@ function boardRows(draft: OutreachDraft): string[][] {
 	];
 }
 
-function filledLists(draft: OutreachDraft): ChecklistRow[] {
+function filledLists(draft: PipelineDraft): ChecklistRow[] {
 	return alt(draft.checklist, []).filter((row) => alt(row.names, []).length > 0);
 }
 
 /** The six queue counts, each of which reads as a question mark when the sweep could not see it. */
-function countRows(draft: OutreachDraft): string[][] {
+function countRows(draft: PipelineDraft): string[][] {
 	const counts = alt(draft.counts, {});
 	return [
 		[
@@ -110,8 +110,8 @@ const BOARD_HEADERS = ["Type", "Complete", "Target", "%", "Details"];
 
 /* ---------- html ---------- */
 
-export function outreachHTML(input: unknown, context: RenderContext): string {
-	const draft = input as OutreachDraft;
+export function pipelineHTML(input: unknown, context: RenderContext): string {
+	const draft = input as PipelineDraft;
 	const lists = filledLists(draft);
 	const counts = alt(draft.counts, {});
 	const topOpened = jqToString(alt(counts.top_opened, ""));
@@ -120,11 +120,11 @@ export function outreachHTML(input: unknown, context: RenderContext): string {
 	const notInBlock = alt(draft.not_in_block, []);
 
 	return renderEmail({
-		title: `${context.week} Outreach`,
+		title: `${context.week} Pipeline`,
 		preheader: jqToString(alt(draft.preheader, "")),
 		children: (
 			<>
-				<Masthead title="Outreach" />
+				<Masthead title="Pipeline" />
 				<TitleCard
 					eyebrowText={`Week ${weekNumber(context.week)} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}`}
 					headlineLines={alt(draft.headline, [])}
@@ -242,7 +242,7 @@ export function outreachHTML(input: unknown, context: RenderContext): string {
 
 /* ---------- plain text ---------- */
 /*
- * No jq twin: the outreach email mailed html alone until the node renderer
+ * No jq twin: the Pipeline email mailed html alone until the node renderer
  * arrived. Written in the retro's idiom, because the two land in the same
  * inbox and should read as one family: a title block, a ruled section per
  * card, a column table wherever the html shows a table, and every label and
@@ -267,14 +267,14 @@ function nameText(name: ChecklistName): string {
 	return leadBlock(company === "" ? person : `${person} · ${company}`, jqToString(alt(name.note, "")));
 }
 
-export function outreachText(input: unknown, context: RenderContext): string {
-	const draft = input as OutreachDraft;
+export function pipelineText(input: unknown, context: RenderContext): string {
+	const draft = input as PipelineDraft;
 	const number = weekNumber(context.week);
 	const counts = alt(draft.counts, {});
 	const topOpened = jqToString(alt(counts.top_opened, ""));
 	const lists = filledLists(draft);
 
-	let out = `ATELIC · OUTREACH · WEEK ${number}\n`;
+	let out = `ATELIC · PIPELINE · WEEK ${number}\n`;
 	out += `Week ${number} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}\n\n`;
 	out += `${asciiUpcase(alt(draft.headline, []).join("\n"))}\n\n`;
 	out += `${unindent(wrap(jqToString(alt(draft.lede, ""))))}\n`;

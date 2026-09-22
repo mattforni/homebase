@@ -1,7 +1,7 @@
-# Renders the outreacher's JSON summary into the Outreach email, composed from
+# Renders the plumber's JSON summary into the Pipeline email, composed from
 # the shared runner email design (runners/lib/email.jq). Invoked by the
 # scaffold's runner_render as
-#   jq -r -L <lib> --arg week ... --arg monday ... --arg sunday ... --arg meta ... -f render.jq outreach.json
+#   jq -r -L <lib> --arg week ... --arg monday ... --arg sunday ... --arg meta ... -f render.jq pipeline.json
 # The pieces and the palette live in the library; this file only says which
 # of the summary's fields go where. The roster is deliberately not here: it
 # travels as a file beside the email, since the block reads it in the repo.
@@ -70,8 +70,8 @@ def dig_in:
         list((if $nb == 0 then list_row("Nothing was left off on purpose.") else ((.not_in_block // []) | map(lead_row(.lead; .note)) | join("")) end); "13px")); true)
     );
 
-page($week + " Outreach"; (.preheader // "");
-  masthead("Outreach")
+page($week + " Pipeline"; (.preheader // "");
+  masthead("Pipeline")
   + title_card("Week " + week_number + " · " + short_date($monday) + " to " + short_date($sunday);
                (.headline // []); (.lede // "");
                stats_row(stat(target_of("Replies"); "replies owed")

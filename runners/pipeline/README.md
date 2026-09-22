@@ -1,6 +1,6 @@
-# The Outreach Runner
+# The Pipeline Runner
 
-Pulls the portal, both mailboxes, the One Pager and the candidate sites, runs the `outreacher` agent headlessly over what was pulled, so the week's roster is built and drafted before the Tuesday desk block opens, and mails a report as `YYYY-Www Outreach` with the roster attached. Fired by hand; `bin/runner/run-local outreach` is the way to iterate on it and, until it is promoted, the way to run it.
+Pulls the portal, both mailboxes, the One Pager and the candidate sites, runs the `plumber` agent headlessly over what was pulled, so the week's roster is built and drafted before the Tuesday desk block opens, and mails a report as `YYYY-Www Pipeline` with the roster attached. Fired by hand; `bin/runner/run-local pipeline` is the way to iterate on it and, until it is promoted, the way to run it.
 
 **The runner fetches; the model reads** (ATE-551, 2026-09-15, the recruiter's shape from ATE-543). Until then the agent did every read itself, one `hs` or `gws` command per model turn, walked sites in a browser, and a pass cost 7.54 USD on Opus; the fetching was most of the bill. Now the entrypoint pulls before `claude -p` starts:
 
@@ -15,35 +15,35 @@ Then a write probe (`runner_probe_write`, a one line Haiku call with the same ag
 **The roster rides as the attachment, and Forni places it.** The runner writes nothing into either checkout. After a run the file is copied into the repo and committed by hand:
 
 ```bash
-cp runners/outreach/out/2026-W38-roster.md ~/Eudaimonia/Craft/Vocation/Atelic/Outreach/
+cp runners/pipeline/out/2026-W38-roster.md ~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/
 ```
 
 **What stays out, for now.** The browser walk. The method already says machine verified is not verified and that the Google captures for a bump come from Forni's own browser, so the runner drafts each bump and first touch from the pulled evidence and marks on the roster line which claims still need a capture; the Tuesday block finishes it. Putting Chromium in the image is a follow up once this version has run a few weeks. The HubSpot writes (auditing a prospect, parking a name) stay interactive too; those are things Forni asks for by name.
 
 Prep only. The agent never emails anyone, never moves a Lead Status, never posts to a client surface, and here it has no `hs`, no `gws`, no browser and no git at all. Every send waits for Forni's explicit yes inside the Tuesday block, one at a time, through `/atelic:handle-outreach`.
 
-It reports to `matt@atelic.me`, not the personal Gmail account, because this is Atelic work. Locally that comes from `~/.config/headless-report/recipient-outreach`.
+It reports to `matt@atelic.me`, not the personal Gmail account, because this is Atelic work. Locally that comes from `~/.config/headless-report/recipient-pipeline`.
 
 ## Running It
 
 ```bash
-bin/runner/run-local outreach --week 2026-W38 --no-open   # in the image: pulls, one model call, renders to out/, sends nothing
-bin/runner/run-local outreach --reuse                      # skips the pulls, one model call over the files already in out/
-bin/runner/render-local outreach                           # re-render out/outreach.json, no network, no model
-bin/runner/run-local outreach --send                       # the real thing, from this machine
+bin/runner/run-local pipeline --week 2026-W38 --no-open   # in the image: pulls, one model call, renders to out/, sends nothing
+bin/runner/run-local pipeline --reuse                      # skips the pulls, one model call over the files already in out/
+bin/runner/render-local pipeline                           # re-render out/pipeline.json, no network, no model
+bin/runner/run-local pipeline --send                       # the real thing, from this machine
 ```
 
-A local run builds the image and runs it with Docker Desktop, and mounts this machine's `~/Eudaimonia` read only at the container's `/home/runner/Eudaimonia` (`mounts`), so the agent's `~/Eudaimonia/...` paths resolve there, the Atelic repo is found nested inside it, and no deploy key is needed on this machine. The work directory is `runners/outreach/out/`, which is also the agent's scratch directory: `portal.md`, `portal-detail.md` and `portal.json` the sweep, `mailbox.md` and `mailbox.json` the mailboxes, `one-pager.md`, `pulls/sites/<domain>.md` the site text, `pulls.md` what was pulled and what failed, `outreach.json` the summary, `email.html` the render, and `YYYY-Www-roster.md` the attachment.
+A local run builds the image and runs it with Docker Desktop, and mounts this machine's `~/Eudaimonia` read only at the container's `/home/runner/Eudaimonia` (`mounts`), so the agent's `~/Eudaimonia/...` paths resolve there, the Atelic repo is found nested inside it, and no deploy key is needed on this machine. The work directory is `runners/pipeline/out/`, which is also the agent's scratch directory: `portal.md`, `portal-detail.md` and `portal.json` the sweep, `mailbox.md` and `mailbox.json` the mailboxes, `one-pager.md`, `pulls/sites/<domain>.md` the site text, `pulls.md` what was pulled and what failed, `pipeline.json` the summary, `email.html` the render, and `YYYY-Www-roster.md` the attachment.
 
-**Credentials before promotion.** `fetch-env` reads a deployed job's secret mapping, and there is no job yet, so `runners/outreach/.env.local` is written by hand for now: `HUBSPOT_SERVICE_KEY` from the Keychain (`hubspot-service-key-atelic`), and `GWS_OAUTH_TOKEN_ATELIC_JSON` and `GWS_OAUTH_TOKEN_PERSONAL_JSON` from `gws auth export --unmasked` under each profile. Mode 600, gitignored, never printed.
+**Credentials before promotion.** `fetch-env` reads a deployed job's secret mapping, and there is no job yet, so `runners/pipeline/.env.local` is written by hand for now: `HUBSPOT_SERVICE_KEY` from the Keychain (`hubspot-service-key-atelic`), and `GWS_OAUTH_TOKEN_ATELIC_JSON` and `GWS_OAUTH_TOKEN_PERSONAL_JSON` from `gws auth export --unmasked` under each profile. Mode 600, gitignored, never printed.
 
 ## What It Reads
 
-The agent definition is `.claude/agents/outreacher.md`, copied into the image by the staged build context (`agents`), and it names its own sources of truth: the method, the voice, the ICP statement in the One Pager, HubSpot, and the board. This runner adds only `prompt.md`: the week, the checkouts, the pulled files and which steps they already cover, the scratch directory, the roster's destination, and the JSON shape the renderer reads. The method itself lives in the agent. The model and effort are the agent's own (`model: opus`, `effort: medium`) unless `RUNNER_MODEL` names another, which is how the side by side is run (`RUNNER_MODEL=sonnet bin/runner/run-local outreach --reuse`).
+The agent definition is `.claude/agents/plumber.md`, copied into the image by the staged build context (`agents`), and it names its own sources of truth: the method, the voice, the ICP statement in the One Pager, HubSpot, and the board. This runner adds only `prompt.md`: the week, the checkouts, the pulled files and which steps they already cover, the scratch directory, the roster's destination, and the JSON shape the renderer reads. The method itself lives in the agent. The model and effort are the agent's own (`model: opus`, `effort: medium`) unless `RUNNER_MODEL` names another, which is how the side by side is run (`RUNNER_MODEL=sonnet bin/runner/run-local pipeline --reuse`).
 
 ## Promoting It
 
-Not yet promoted. What it takes, all with precedent in `runners/` now: a Cloud Run Job `outreach` in the `atelic` project under its own service account, seven vault secrets injected (`claude-code-oauth`, `resend-api-key`, `hubspot-service-key-atelic`, `gws-oauth-token-atelic` and `github-deploy-key-atelic` in `atelic-keys`; `gws-oauth-token-personal` and `github-deploy-key-eudy` in `forni-keys`), `REPORT_RECIPIENT` set to the Atelic mailbox, and `bin/runner/fire outreach` by hand each Monday. The two new secrets are the atelic profile's `gws auth export --unmasked` and a read only deploy key registered on `mattforni/atelic`. No Cloud Scheduler entry until the cost is measured; a timer spends a pass whether or not the week needs one, which is why the last version was unscheduled (2026-08-31). The runtime one pager for the pattern is Eudy's `Admin/Tools/cloud-run.md`.
+Not yet promoted. What it takes, all with precedent in `runners/` now: a Cloud Run Job `pipeline` in the `atelic` project under its own service account, seven vault secrets injected (`claude-code-oauth`, `resend-api-key`, `hubspot-service-key-atelic`, `gws-oauth-token-atelic` and `github-deploy-key-atelic` in `atelic-keys`; `gws-oauth-token-personal` and `github-deploy-key-eudy` in `forni-keys`), `REPORT_RECIPIENT` set to the Atelic mailbox, and `bin/runner/fire pipeline` by hand each Monday. The two new secrets are the atelic profile's `gws auth export --unmasked` and a read only deploy key registered on `mattforni/atelic`. No Cloud Scheduler entry until the cost is measured; a timer spends a pass whether or not the week needs one, which is why the last version was unscheduled (2026-08-31). The runtime one pager for the pattern is Eudy's `Admin/Tools/cloud-run.md`.
 
 ## Failure
 

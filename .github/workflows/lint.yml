@@ -84,7 +84,7 @@ jobs:
       # A scheduled runner's PATH is stated in two files that cannot read each
       # other, and a plist names its runner as a bare XML string. Both drift
       # silently and both surface at 06:00 on a morning nobody is watching,
-      # which is how the Outreacher went a week without once reaching its agent.
+      # which is how the Plumber went a week without once reaching its agent.
       - name: Check runners
         run: ./bin/lint/runners
 

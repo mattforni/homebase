@@ -1,11 +1,11 @@
-# The Outreach Runner. A Cloud Run Job image: the entrypoint puts Eudaimonia
+# The Pipeline Runner. A Cloud Run Job image: the entrypoint puts Eudaimonia
 # and the Atelic repo in place over read only deploy keys, pulls the portal,
 # both mailboxes, the One Pager and the candidate sites, then headless Claude
-# Code runs the outreacher agent over those files and Resend delivers the
+# Code runs the plumber agent over those files and Resend delivers the
 # report with the roster attached. Nothing here writes to the world.
 #
 # Built from the staged context bin/runner/lib.sh assembles, which is this
-# directory plus lib/ and agents/outreacher.md copied in from the repo, since
+# directory plus lib/ and agents/plumber.md copied in from the repo, since
 # a Docker context cannot reach above its own root.
 
 # The email renderer, built in its own stage: the three runner pages as React
@@ -44,7 +44,7 @@ COPY --chown=runner:runner lib/ /home/runner/lib/
 COPY --from=email --chown=runner:runner /email/dist/render.cjs /home/runner/lib/render.cjs
 # The brief: the same agent definition the laptop runs, found where Claude Code
 # looks for user level agents.
-COPY --chown=runner:runner agents/outreacher.md /home/runner/.claude/agents/outreacher.md
+COPY --chown=runner:runner agents/plumber.md /home/runner/.claude/agents/plumber.md
 RUN chmod +x /home/runner/entrypoint.sh
 
 # GitHub's published ed25519 host key, pinned so the clones never trust on

@@ -5,10 +5,10 @@
 //       The retro's three finished tables for one ISO week: what outreach went
 //       out and what came back (ATE-471). Unchanged since it lived at
 //       runners/retro/hubspot.mjs; moved here 2026-09-15 (ATE-551) so the
-//       outreach sweep below could reuse the client and the joins rather than
+//       pipeline sweep below could reuse the client and the joins rather than
 //       grow a second copy of them.
 //   node hubspot.mjs sweep <monday YYYY-MM-DD> <out-dir>
-//       The outreach runner's portal sweep for the week that starts on that
+//       The pipeline runner's portal sweep for the week that starts on that
 //       Monday: every funnel company and contact, every logged email with its
 //       opens, every open task, and the recent meetings and notes, with the
 //       day counts and the section each name falls into worked out here.
@@ -473,9 +473,9 @@ const coverage = [
 console.log(JSON.stringify({ ...tables, coverage, totals }, null, 2));
 }
 
-// ---------- sweep: the outreach runner's portal read ----------
+// ---------- sweep: the pipeline runner's portal read ----------
 //
-// Everything the outreacher's method reads out of the portal in steps 2 and 3,
+// Everything the plumber's method reads out of the portal in steps 2 and 3,
 // pulled once and worked into the shape the roster sorts by. The day counts
 // and the section each name lands in are computed here, and labelled as the
 // pull's suggestion: the model reads the mailbox and the thread before it
@@ -573,7 +573,7 @@ async function sweep(argv) {
     const contactRows = await batch("contacts", [...wanted], CONTACT_PROPS);
     const contacts = new Map(contactRows.map((c) => [c.id, { id: c.id, ...c.properties }]));
     // The association is the join; associatedcompanyid is the fallback, since
-    // it lags and is not proof (the outreacher's own rule for reading it back).
+    // it lags and is not proof (the plumber's own rule for reading it back).
     const ctToCo = new Map();
     for (const [co, cts] of coToCt) for (const ct of cts) if (!ctToCo.has(ct)) ctToCo.set(ct, co);
     for (const c of contacts.values()) {

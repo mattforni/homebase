@@ -17,7 +17,7 @@
 # the two are compared.
 #
 # The draft is out/<name>.json, the object the model returned; a runner whose
-# email renders from the claude result itself (the outreach report) has no
+# email renders from the claude result itself (the pipeline report) has no
 # draft, and out/result.json stands in. --json names any other file.
 set -euo pipefail
 
