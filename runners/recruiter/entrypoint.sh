@@ -170,6 +170,7 @@ GETRO_BOARDS=(
 GETRO_QUERIES=(
     "staff software engineer"
     "principal software engineer"
+    "senior software engineer"
     "staff backend"
     "staff platform engineer"
     "site reliability"
