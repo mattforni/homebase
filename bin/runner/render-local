@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Re-render a runner's saved draft through its renderer.
 #
-# Usage: render-local <runner-name> [--week YYYY-Www] [--json <file>] [--renderer node|jq] [--no-open]
+# Usage: render-local <runner-name> [--week YYYY-Www] [--json <file>] [--no-open]
 #
 # No network, no model, no credentials: this reads the JSON a previous run left
 # in out/ and pushes it back through the renderer exactly the way the scaffold's
@@ -11,10 +11,9 @@
 # other loop, run-local --reuse, which re-asks Claude over the same cached
 # pulls.
 #
-# The node renderer in runners/email is the default, rebuilt first whenever it
-# is older than its sources, and it writes the plain text part beside the page.
-# --renderer jq pushes the same draft through render.jq instead, which is how
-# the two are compared.
+# The node renderer in runners/email does the rendering, rebuilt first whenever
+# it is older than its sources, and it writes the plain text part beside the
+# page. It has been the only renderer since the jq one retired (ATE-563).
 #
 # The draft is out/<name>.json, the object the model returned; a runner whose
 # email renders from the claude result itself (the pipeline report) has no
@@ -30,27 +29,19 @@ LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 # shellcheck source=../../runners/lib/runner.sh
 . "$(runner_entrypoint_lib)"
 
-name=""; week=""; json=""; open_it=1; renderer="node"
+name=""; week=""; json=""; open_it=1
 while (( $# )); do
     case "$1" in
         --week)     week="${2:-}"; shift 2 ;;
         --json)     json="${2:-}"; shift 2 ;;
-        --renderer) renderer="${2:-}"; shift 2 ;;
         --no-open)  open_it=0; shift ;;
-        -h|--help)  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)         die "unknown option $1" ;;
         *)          [[ -z "$name" ]] || die "unexpected argument $1"; name="$1"; shift ;;
     esac
 done
 
-case "$renderer" in
-    node|jq) ;;
-    *)       die "--renderer takes node or jq, got \"$renderer\"" ;;
-esac
-
 dir="$(runner_dir "$name")"
-render="$dir/render.jq"
-[[ -r "$render" ]] || die "$name has no render.jq"
 
 work="$dir/out"
 if [[ -z "$json" ]]; then
@@ -72,24 +63,15 @@ text="$work/email.txt"
 meta="$(meta_line "$work/result.json")"
 rm -f "$text"
 
-if [[ "$renderer" == "node" ]]; then
-    bundle="$(runner_email_bundle)" || die "could not build the node renderer in runners/email"
-    node "$bundle" "$name" html --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
-        < "$json" > "$html" || die "the node html render failed"
-    # Every runner has a plain text part under the node renderer, so a failure
-    # here is worth saying out loud rather than leaving the file behind empty.
-    if ! node "$bundle" "$name" text --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
-        < "$json" > "$text"; then
-        rm -f "$text"
-        echo "the node text render failed; the page above is html only" >&2
-    fi
-else
-    jq -r -L "$(dirname "$(runner_entrypoint_lib)")" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" -f "$render" "$json" > "$html"
-    # Only the retro's render.jq has a text branch; for the other two the jq
-    # path would write the html page into the text part, so it writes none.
-    if grep -q 'ARGS.named.format' "$render"; then
-        jq -r -L "$(dirname "$(runner_entrypoint_lib)")" --arg week "$WEEK" --arg monday "$MONDAY" --arg sunday "$SUNDAY" --arg meta "$meta" --arg format text -f "$render" "$json" > "$text"
-    fi
+bundle="$(runner_email_bundle)" || die "could not build the node renderer in runners/email"
+node "$bundle" "$name" html --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
+    < "$json" > "$html" || die "the node html render failed"
+# Every runner has a plain text part under the node renderer, so a failure here
+# is worth saying out loud rather than leaving the file behind empty.
+if ! node "$bundle" "$name" text --week "$WEEK" --monday "$MONDAY" --sunday "$SUNDAY" --meta "$meta" \
+    < "$json" > "$text"; then
+    rm -f "$text"
+    echo "the node text render failed; the page above is html only" >&2
 fi
 
 [[ -s "$html" ]] || die "render produced nothing"

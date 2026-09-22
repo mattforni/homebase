@@ -20,6 +20,5 @@ bin/runner/fire retro                      # run production now
 | `entrypoint.sh` | The pulls and the Strava write back, on the shared scaffold in `runners/lib/runner.sh` (the week, the `claude -p` call with Read as its only tool, the draft check, the render, the send) |
 | `hubspot.mjs` | The Atelic pull, called by `entrypoint.sh`: the HubSpot joins and the outreach arithmetic, handed to the prompt as finished tables |
 | `prompt.md` | The retro brief: the block's grading, the JSON shape, the voice rules; `{{WEEK}}`, `{{MONDAY}}`, `{{SUNDAY}}`, `{{TODAY}}`, `{{WORK}}`, `{{EUDY}}` are filled at run time |
-| `render.jq` | The fallback renderer, and the record of what the page was before `runners/email/retro.tsx` took over. Which of the draft's fields go where, composed from the shared runner email design (`runners/lib/email.jq`) since 2026-09-15: sessions, deals and leads as item rows, the coverage tables as compact mono tables, each read as a note. The 2026-08-27 Geist template it replaced lives in git history |
 
 The page lands at `out/email.html` and the draft at `out/retro.json`, the names every runner uses.

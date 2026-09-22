@@ -10,7 +10,7 @@
 # plan, the rubric, the work search log and the sweep ledger from that
 # checkout and the pulled files from the work directory, verifies what
 # survives on the employers' own ATS APIs, and returns the board as JSON;
-# render.jq turns that into the designed email and Resend delivers it as
+# the node renderer turns that into the designed email and Resend delivers it as
 # "YYYY-Www Recruiter". The agent writes nothing outside its work directory;
 # the runner is what talks to the Pinole work API through the pinole CLI: it
 # pulls the postings ledger before the model starts (the seen set the sweep

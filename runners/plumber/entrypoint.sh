@@ -10,7 +10,7 @@
 # which reads the method and the samples from the Atelic checkout and the
 # pulled files from the work directory, sorts the week, drafts every touch,
 # writes the roster into the work directory and returns a summary as JSON;
-# render.jq turns that into the designed email and Resend delivers it as
+# the node renderer turns that into the designed email and Resend delivers it as
 # "YYYY-Www Pipeline" with the roster attached. Read only against the world:
 # the agent writes nothing outside its work directory, and Forni places the
 # roster in the repo himself, the way he already commits it.

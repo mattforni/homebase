@@ -25,7 +25,7 @@ import { hang, leadBlock } from "./text";
 import type { RenderContext } from "./types";
 
 /*
- * The Recruiter email, ported from runners/recruiter/render.jq: the shortlist,
+ * The Recruiter email, ported from the jq renderer it replaced: the shortlist,
  * the escape hatches above the fold where they cannot be read past, the
  * fractional lane, and the considered and rejected tail behind a fold. The
  * ledger is deliberately not here: it travels as a file beside the email,
