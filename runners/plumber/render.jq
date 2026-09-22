@@ -1,7 +1,7 @@
 # Renders the plumber's JSON summary into the Pipeline email, composed from
 # the shared runner email design (runners/lib/email.jq). Invoked by the
 # scaffold's runner_render as
-#   jq -r -L <lib> --arg week ... --arg monday ... --arg sunday ... --arg meta ... -f render.jq pipeline.json
+#   jq -r -L <lib> --arg week ... --arg monday ... --arg sunday ... --arg meta ... -f render.jq plumber.json
 # The pieces and the palette live in the library; this file only says which
 # of the summary's fields go where. The roster is deliberately not here: it
 # travels as a file beside the email, since the block reads it in the repo.

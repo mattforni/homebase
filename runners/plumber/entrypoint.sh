@@ -64,7 +64,7 @@ if [[ -z "${RUNNER_LIB:-}" ]]; then
     exit 1
 fi
 
-runner_init pipeline "Pipeline" current
+runner_init plumber "Pipeline" current
 
 required=(CLAUDE_CODE_OAUTH_TOKEN)
 [[ "$DRY_RUN" == "1" ]] || required+=(RESEND_API_KEY REPORT_RECIPIENT)

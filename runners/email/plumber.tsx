@@ -27,7 +27,7 @@ import { leadBlock } from "./text";
 import type { RenderContext } from "./types";
 
 /*
- * The Pipeline email, ported from runners/pipeline/render.jq: the week's
+ * The Pipeline email, ported from runners/plumber/render.jq: the week's
  * scoreboard as the roster carries it, one list per type of everyone still
  * owed that touch, the queue counts, the portal diff, and the long tail behind
  * two folds. The roster itself is deliberately not here: it travels as a file

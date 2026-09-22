@@ -8,7 +8,7 @@ L7 mise; see Eudy's `LEVELS.md` for the story.
 is executed.** `runners/README.md` owns the pattern itself and is the place to
 start; this one carries what is specific to launchd, the Keychain, and
 `claude -p`. The worked example is
-[`runners/pipeline/`](../../runners/pipeline/README.md), which is run by hand
+[`runners/plumber/`](../../runners/plumber/README.md), which is run by hand
 through `bin/runner/run-local`.
 
 **Nothing is on a LaunchAgent right now and `launchagents/` is empty.** The
@@ -268,7 +268,7 @@ considered, and pricing. JSON payload assembled via `jq -n --arg ...` to
 dodge bash escaping pitfalls; HTML escaping via `sed`.
 
 Adding a new headless routine: read `runners/README.md`, copy the shape of
-`runners/pipeline/entrypoint.sh`, and add a plist pointing at
+`runners/plumber/entrypoint.sh`, and add a plist pointing at
 `bin/runner/run-scheduled <name>`. Swap the subject, the success predicate, the
 `--allowedTools` set, and what the runner actually does. Everything else,
 including the whole email path, comes from `runners/lib/runner.sh`.
