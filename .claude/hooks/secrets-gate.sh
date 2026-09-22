@@ -21,7 +21,8 @@
 # `ls`, `git check-ignore`, `test -s`. So does moving a value between
 # processes without echoing it (`gcloud secrets versions access ... |
 # python3 ...`, `--data-file=-`), since no guarded file name appears.
-# Prefix a command with SECRETS_GATE_BYPASS=1 to override on purpose.
+# Prefix a command with SECRETS_GATE_BYPASS=1 to override on purpose; the
+# token counts only at the very start, where an assignment prefix belongs.
 # Fails OPEN: any parse error exits 0, never worse than an ungated command.
 set -uo pipefail
 
@@ -29,13 +30,14 @@ input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input" 2>/dev/null)
 [[ -z "$cmd" ]] && exit 0
 
-grep -qE '(^|[[:space:]])SECRETS_GATE_BYPASS=1([[:space:]]|$)' <<<"$cmd" && exit 0
+grep -qE '^[[:space:]]*SECRETS_GATE_BYPASS=1([[:space:]]|$)' <<<"$cmd" && exit 0
 
 # The guarded names, matched anywhere in the command as a path tail.
 guarded='(\.env\.local|credentials\.enc|token_cache\.json|client_secret\.json|\.env\.(production|secrets)|secrets?\.(env|json))'
 grep -qE "$guarded" <<<"$cmd" || exit 0
 
-# Split on pipes and separators, and judge each simple command on its own, so
+# Split on pipes and separators (a lone & included, since `sleep 1 & cat file`
+# is two commands), and judge each simple command on its own, so
 # `wc -c runners/x/.env.local` passes while `cat runners/x/.env.local | wc -c`
 # does not (the cat already printed, whatever consumed it).
 deny=0
@@ -45,7 +47,7 @@ while IFS= read -r simple; do
   # The first word, past any leading assignments, sudo, or a path prefix.
   verb=$(sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//; s/^(sudo|command|exec)[[:space:]]+//; s/^([^[:space:]]*\/)?([^[:space:]]+).*/\2/' <<<"$simple")
   case "$verb" in
-    cat|head|tail|less|more|cut|sed|awk|paste|tac|nl|od|xxd|hexdump|strings|bat|column|fold|fmt|pr|rev|tr|sort|uniq|jq|yq|python|python3|node|ruby|perl|base64|openssl)
+    cat|head|tail|less|more|cut|sed|awk|paste|tac|nl|od|xxd|hexdump|strings|bat|column|fold|fmt|pr|rev|tr|sort|uniq|dd|jq|yq|python|python3|node|ruby|perl|base64|openssl)
       deny=1 ;;
     grep|egrep|fgrep|rg|ag)
       # A count, a file list, or a quiet test prints no line; anything else does.
@@ -58,7 +60,7 @@ while IFS= read -r simple; do
   grep -qE '\$\([^)]*(cat|head|tail|cut|sed|awk|<)[^)]*'"$guarded" <<<"$simple" && deny=1
   # `< file` as the input of a printing command.
   grep -qE '<[[:space:]]*[^[:space:]]*'"$guarded" <<<"$simple" && case "$verb" in wc|grep|egrep|fgrep|rg|python|python3|node|gcloud|curl) ;; *) deny=1 ;; esac
-done < <(sed -E 's/\|\|/\n/g; s/&&/\n/g; s/[|;]/\n/g' <<<"$cmd")
+done < <(sed -E 's/\|\|/\n/g; s/&&/\n/g; s/[|;&]/\n/g' <<<"$cmd")
 
 if [[ $deny -eq 1 ]]; then
   cat <<'JSON'
