@@ -88,6 +88,13 @@ jobs:
       - name: Check runners
         run: ./bin/lint/runners
 
+      # The secrets gate hook denies any Bash command that would print a
+      # credentials file into a transcript. A hook that fails open is one
+      # regex edit from guarding nothing, so a table of commands that must
+      # deny and must pass runs here and by hand.
+      - name: Test the secrets gate
+        run: ./bin/lint/secrets-gate-test
+
       # The two always loaded context files (CLAUDE.md, .claude/CLAUDE.md) each
       # carry a byte cap set at their last reduction. Growth past it fails here
       # and in the pre-commit hook, so a reduction stays reduced.
