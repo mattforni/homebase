@@ -52,7 +52,7 @@ The desired array supports both stdio and http transports. For http entries that
 
 **Deleting an MCP server, a connector, or a plugin is half the change. The other half is grepping for everything that named it, and the grep covers every removed thing, not the one currently in mind.** A skill that declares a tool which no longer exists does not fail loudly; it silently loses a capability, or its `allowed-tools` block quietly stops matching anything.
 
-Before landing a removal, grep the live surface (`.claude/agents`, `.claude/commands`, `.claude/local-skills`, `plugins/`) for the server name in every form it appears: the qualified tool (`mcp__claude_ai_Todoist__add-tasks`), the wildcard (`mcp__claude_ai_Todoist__*`), and any prose naming it. Read the whole result; a truncated `head` is how a partial sweep looks complete.
+Before landing a removal, grep the live surface (`.claude/agents`, `.claude/skills`, `.claude/local-skills`, `plugins/`) for the server name in every form it appears: the qualified tool (`mcp__claude_ai_Todoist__add-tasks`), the wildcard (`mcp__claude_ai_Todoist__*`), and any prose naming it. Read the whole result; a truncated `head` is how a partial sweep looks complete.
 
 Codified 2026-08-13. Retiring six connectors in one session swept Linear's consumers thoroughly and left everything else: Todoist survived in five skills plus the `planner` agent, which is the entire Sunday planning set, and Notion and Google Calendar survived in five more. The break surfaced only when `assist:wrap` ran its own Todoist step and nothing happened. Two of them were found on a second pass, after a truncated grep had already been read as clean.
 

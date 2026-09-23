@@ -63,14 +63,12 @@ DEPLOY_TABLE=(
   "link|CLAUDE.md"
   "link|.claude/CLAUDE.md"
   "link|.claude/agents"
-  "link|.claude/commands"
   "link|.claude/output-styles"
   "link|.claude/hooks"
   "link|.claude/local-skills"
   "link|.claude/references"
   "link|.claude/skills"
   "link|.claude/statusline.sh"
-  "link|.claude/workflows"
   # User level rules. Sourced from a directory of its own because .claude/rules
   # is this repo's project scoped rules with homebase relative globs; linking
   # that into ~/.claude/rules would fire them in every repo on the machine.

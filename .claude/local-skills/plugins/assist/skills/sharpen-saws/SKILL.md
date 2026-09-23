@@ -1,131 +1,99 @@
 ---
 name: sharpen-saws
-description: Run a sharpen session to move collaboration one small step toward Levels 7 and 8 of the agentic engineering hierarchy. Evaluate recent activity (git, memory, plans) against LEVELS.md, propose one or two concrete small moves toward background autonomy or agent teams, help implement the chosen move, and append a dated log entry. Use this skill whenever the user says "sharpen", "sharpen saws", asks to "sharpen our process", or explicitly starts a sharpen session. Paired with the weekly Sharpen Saws block on Wednesdays. The sharpener agent carries this method for background dispatch.
-argument-hint: "[optional focus area, e.g., 'zero code review' or 'email triage']"
-allowed-tools:
-  - Agent
-  - Bash
-  - Read
-  - Edit
-  - Write
-  - Glob
-  - Grep
-  - AskUserQuestion
+description: Run the weekly sharpen audit that moves collaboration one small step toward Levels 7 and 8 of the agentic engineering hierarchy. Verify each unattended routine fired and was consumed, close or ticket every deferral, take one cut from the always loaded context, groom one flag, and append a one screen log entry to LEVELS.md. Use this skill whenever the user says "sharpen", "sharpen saws", asks to "sharpen our process", or explicitly starts a sharpen session. Paired with the weekly Sharpen Saws block on Wednesdays. The sharpener agent carries this method for background dispatch.
 ---
 
 # Sharpen Assist
 
-Move our collaboration one rung at a time toward Level 7 (background agents) and Level 8 (autonomous agent teams) as framed in [Bassi Eledath's 8 Levels of Agentic Engineering](https://www.bassimeledath.com/blog/levels-of-agentic-engineering). Each session is small. One small move, logged, compounds.
+Move our collaboration one rung at a time toward Level 7 (background agents) and Level 8 (autonomous agent teams) as framed in [Bassi Eledath's 8 Levels of Agentic Engineering](https://www.bassimeledath.com/blog/levels-of-agentic-engineering). Each session is a weekly audit of the background work already running and the context that runs it. Small, logged, compounding.
 
-The `sharpener` agent (`~/.claude/agents/sharpener.md`) runs this method in the background and returns to Forni at the pick; the main session hosts the pick and the implementation, and performs every write. Run the method inline only when the sharpener is unavailable or Forni wants to drive together.
+The `sharpener` agent (`~/.claude/agents/sharpener.md`) runs Ground and Audit in the background and returns the routine table and the closure list; the main session hosts Close, Cut, and Groom in dialogue with Forni, and performs every write. Run the method inline only when the sharpener is unavailable or Forni wants to drive together.
 
 ## Before Every Invocation
 
 1. Read [learned-rules.md](../../learned-rules.md) for any prior corrections about how Forni wants sharpen to run.
-2. Read [LEVELS.md](../../../../../../Eudaimonia/LEVELS.md) (absolute path: `~/Eudaimonia/LEVELS.md`) to anchor on current state and recent log entries.
+2. Read [LEVELS.md](../../../../../../Eudaimonia/LEVELS.md) (absolute path: `~/Eudaimonia/LEVELS.md`) to anchor on the current state table, the Background paragraph, and the last log entry.
 3. Check this skill's directory for a local `learned-rules.md` and read it if present.
-4. When the session will write to a repo, cut its worktree branch named `YYYY-MM-DD-sharpen-saws` (date first so branches sort chronologically). One branch per repo touched (homebase, Eudy).
+4. Dispatch the sharpener from the primary checkout; cut the session's worktree branch `YYYY-MM-DD-sharpen-saws` (one per repo touched) only after it returns, at the top of Close.
 
 ## Principles
 
-- **One small move per session.** Not a refactor. One concrete rep that shifts posture toward background autonomy.
-- **Propose, then ask.** Surface one or two options with Forni's voice, not a menu of five. Let him pick at most one.
-- **Levels 3 through 5 are the foundation.** If context engineering, compounding, or skills feel sloppy, sharpening those is a legitimate move even though they are not 7 or 8. Clean foundation lets higher levels scale.
-- **Evidence over theory.** Ground proposals in what actually happened in recent sessions, not abstract ideals.
-- **Codify what you learn.** If the session surfaces a durable lesson, invoke `assist:codify-context` or append directly to the right learned-rules.md.
-- **Every session reduces; sprawl beyond one bounded cut is a grooming job.** The Reduce phase trims one thing from the always loaded context every run (Forni, 2026-08-27). Anything larger, such as layers duplicated, altitude wrong across files, or a basic that keeps getting dropped, is `assist:groom-context` (run monthly via reflect, or on demand), not a sharpen rep.
+- **Audit first, build never.** The session verifies, closes, cuts, and grooms. A build that the audit surfaces gets a Linear ticket and the cycle owns it; sharpen reads the ticket's state next week.
+- **Tickets are read, not remembered.** A row with a ticket is a pointer; its state comes from `linear issue view` at Ground. Only rows with no ticket and no owner live in the Background paragraph, and none survives two entries without becoming a ticket or a retirement.
+- **The measure is hand steps.** For each unattended routine, the number that matters is how many hand steps remain between its fire and the block that consumes it. Held hours never moved in five entries; hand steps do.
+- **Every session cuts and grooms.** One bounded reduction of the always loaded context and one grooming flag, every week, anchor or not.
+- **Evidence over theory.** Executions, scheduler entries, and mail are the sources; the board's own memory is not.
+- **The board is on demand.** Scouts and a ranked board run only when the audit finds nothing to close or Forni sets a focus.
 
 ## The Method
 
-Eight phases. The sharpener owns Ground, Scan, and Board, and drafts the Log; the main session hosts Pick, Reduce, and Implement in dialogue with Forni, and performs every write, including Log and Codify.
+Six phases. The sharpener owns Ground and Audit and drafts the Log; the main session hosts Close, Cut, and Groom with Forni, and performs every write, including Log and Codify.
 
 ### Phase 1: Ground
 
-Anchor on LEVELS.md: the current state table, the last two log entries, and any queued reps, which are standing candidates unless explicitly retired. Read the plugin and skill learned rules. Honor the focus area if the session was given one (e.g., "zero code review"), narrowing every later pull to it.
+Anchor on LEVELS.md: the current state table, the Background paragraph, the last log entry's deferrals. Read the plugin and skill learned rules. For every ticketed pointer in the Background paragraph and the last entry, read its state and latest comment (`env -u LINEAR_API_KEY linear --workspace atelic issue view <key>`). Pull git on Eudy and homebase since the last log entry's date, the newest auto memory entries, and the always on load (`wc -lc` on GC, `~/CLAUDE.md`, `~/Eudaimonia/CLAUDE.md`, and the Eudaimonia `MEMORY.md`), set against the last entry's Load line. Honor a focus if the session was given one.
 
-### Phase 2: Scan
+### Phase 2: Audit
 
-Pull the signal, inline:
+One row per unattended routine (today: retro, recruiter, plumber; the roster lives in homebase `runners/`). Sources: `gcloud run jobs executions list --job <name> --project atelic --region us-central1`, `gcloud scheduler jobs list --project atelic --location us-central1`, the failed execution's log tail, and the runner mail in the consuming mailbox. Three columns:
 
-- **Recent git activity**: `git -C ~/Eudaimonia log --since="14 days ago" --oneline`, and the same for `~/Eudaimonia/Craft/Development/personal/homebase`
-- **Recent auto memory entries**: the Eudaimonia project's `MEMORY.md` index under `~/.claude/projects/`, plus a skim of the newest entries
-- **Recent plan files**: `ls -lt ~/.claude/plans/ | head -10` and read titles
-- **The always on load**: line and byte counts of GC (`~/.claude/CLAUDE.md`), `~/CLAUDE.md`, `~/Eudaimonia/CLAUDE.md`, and the Eudaimonia `MEMORY.md` (`wc -lc` on the four), set against the Load line of the last log entry. Anything over the 200 line anchor is a Reduce candidate; name the best single cut
-- **Patterns to find**: repeated synchronous work (background candidates), friction points (corrections, retries, missing hooks), foundation cracks (Levels 3 to 5 drift), background ready tasks that do not need Forni's judgment each time
+- **Fired on schedule** (Y/N): the scheduler's last attempt matched an execution that started on time.
+- **Consumed without a rerun** (Y/N): the block that reads the mail ran on the scheduled fire, with no hand rerun between.
+- **Hand steps left**: the count between the fire and the block, and what they are.
 
-Then dispatch the two scouts in parallel, each for capability the scanner lacks, each briefed with objective, output format, and boundaries: **socrates** to critique this skill, its learned rules, and the LEVELS.md framing with fresh eyes, and **claude-code-guide** to surface current Claude Code and Agent SDK capabilities the setup is not using.
+A failed fire is a row, not an alarm: note whether the failure page mailed and whether the fix landed, and read the cost footer.
 
-### Phase 3: Board
+### Phase 3: Close
 
-Synthesize the scan and both scout reports into a ranked board of three to five candidate moves. Each row: the move in one line, the level it pushes, the smallest rep this session, the evidence pointer, and whether it is session sized or plan sized. Rank by evidence strength first, then smallest rep size; a row the aging term (Phase 4) has made the default pick ranks first regardless, marked as such. Route context sprawl to a grooming flag rather than the board.
+The main session, with Forni. Walk every deferral from the last entry and every Background row, one at a time, to one of three ends: **closed** (done, with the pointer), **ticketed** (a Linear ticket in the next cycle, no due date, one cognitive load label), or **retired** (with the reason). A ticketed row leaves the paragraph and becomes a pointer the next Ground reads. Cut the worktrees here, before the first write.
 
-### Phase 4: Pick
+### Phase 4: Cut
 
-The main session surfaces the top one or two rows to Forni in his voice: tight, facts forward, concrete, never the whole board. Each proposal carries:
+One bounded reduction of the always loaded context, every session. A section that only matters when a particular file is being edited moves into a path scoped rule (`.claude/rules/<topic>.md` with `paths:` frontmatter), a narrative moves into its tool doc under `~/Eudaimonia/Admin/Tools/`, or a derivable inventory is deleted. Measure before and after; when the file is one homebase owns, lower its cap in `bin/lint/context-size`. The 200 line anchor decides whether a larger rule or tool doc move is due; it never excuses the cut. One cut, never a restructure; a restructure is `assist:groom-context`.
 
-- **What it is**: One sentence describing the change
-- **Which level it pushes**: 3 (context), 4 (compounding), 5 (skills), 6 (harness), 7 (background), 8 (teams)
-- **Concrete next action**: The smallest unit of work to make it real this session
-- **Why now**: What in the recent activity triggered this proposal
+### Phase 5: Groom
 
-Ask one question: which move (if any) do we make this session? If Forni picks none, still log the proposals and the board's remaining rows so they persist for next time.
+The weekly slice of `assist:groom-context`, never a second procedure. Run `/skill-doctor` (headless: `claude -p "/skill-doctor"`) and read `/cost` for the cache hit rate; take one grooming flag from the last entry through groom-context's checklist (a contradiction, a cull, a dedup, a relocation), and carry the rest. Turning a skill off waits for Forni's yes.
 
-**The aging term.** A board row deferred in two consecutive log entries is the default pick: the session takes it or explicitly retires it with the reason, and never carries it a third time. The counts come from the last entry's Background line, so a carry is a number the next Ground reads rather than a phrase it has to notice.
+### Phase 6: Log
 
-### Phase 5: Reduce
-
-The main session, before the pick's implementation begins, every session. When any always on file is over the anchor, make one bounded cut: a section that only matters when a particular file is being edited moves into a path scoped rule (`.claude/rules/<topic>.md` with `paths:` frontmatter, which loads at the point of use), a narrative moves into its tool doc under `~/Eudaimonia/Admin/Tools/`, or a derivable inventory is deleted. Measure before and after, and when the file is one homebase owns, lower its cap in `bin/lint/context-size` so the reduction locks in. One cut, never a restructure; a restructure routes to `assist:groom-context`. If every file is under the anchor, say so and move on.
-
-### Phase 6: Implement
-
-The main session, with Forni. Small enough to finish in session. If the chosen move is larger than session size, split it: do the enabling piece now, queue the rest as a Todoist task on next Sunday or as a follow up plan file.
-
-### Phase 7: Log
-
-Resume the sharpener with the pick and the session outcome; it drafts the entry and returns it. The main session reviews the draft and appends it to `~/Eudaimonia/LEVELS.md` under `## Log`:
+Resume the sharpener with the outcomes; it drafts the entry and returns it. The main session reviews and appends it to `~/Eudaimonia/LEVELS.md` under `## Log`, one screen:
 
 ```markdown
-### YYYY-MM-DD — [one line title]
+### YYYY-MM-DD: [one line title]
 
-**Picked:** [the move, one line]
-**Level pushed:** [which dimension/level]
-**Implemented:** [what landed this session]
-**Deferred:** [what got queued, if anything]
-**Background:** [board rows carried forward, each with its deferral count; a row at two is next session's default pick]
-**Load:** [GC, ~/CLAUDE.md, Eudy CLAUDE.md, MEMORY.md as lines and KB, after this session's cut]
-**Next rep:** [one line hint for future sharpen]
+**Routines:** retro Y/Y/0 · recruiter Y/N/1 · plumber N/N/2 (fired on schedule / consumed without a rerun / hand steps), with one clause per row that changed
+**Closed:** [each deferral with its end: closed, ticketed KEY, or retired with the reason]
+**Cut:** [file, before and after bytes, cap]
+**Groomed:** [the flag taken and the flags carried; skill doctor and cache findings in one line]
+**Built:** [at most ten lines, each with a ticket or PR pointer; the build story lives there]
+**Background:** [unticketed rows only, each with its first date; none survives two entries]
+**Load:** [GC, ~/CLAUDE.md, Eudy CLAUDE.md, MEMORY.md as lines and KB]
+**Next:** [one line]
 ```
 
-If the session altered the Current State table (a dimension's level genuinely changed), update that table as part of the log entry. Be honest: a single move rarely moves a level on its own.
+If the session altered the Current State table (a dimension's level or evidence genuinely changed), update it in the same commit. Be honest: a single session rarely moves a level.
 
-### Phase 8: Codify
+### Board, On Demand
 
-If the session surfaced a rule, preference, or insight worth preserving:
+When the audit finds nothing to close, or Forni sets a focus, the sharpener dispatches its two scouts (socrates on the method and the framing, claude-code-guide on unused harness capabilities) and returns a ranked board of three to five rows: the move, the level it pushes, the smallest rep, the evidence pointer, session or plan sized. The main session surfaces the top one or two in Forni's voice and asks one question. A picked row that is bigger than the session gets a ticket, and the entry's Built line points at it.
 
-- **Cross-skill correction** → append to `~/.claude/local-skills/plugins/assist/learned-rules.md`
-- **Sharpen-specific rule** → append to this skill's `learned-rules.md` (create if missing)
-- **Broader Eudaimonia convention** → invoke `assist:codify-context` for the full three-layer write up
+### Codify
+
+If the session surfaced a rule, preference, or insight worth preserving: a cross skill correction goes to `~/.claude/local-skills/plugins/assist/learned-rules.md`, a sharpen specific rule to this skill's `learned-rules.md`, a broader Eudaimonia convention through `assist:codify-context`.
 
 ## Output Shape
 
-A sharpen session produces:
-
-1. A short summary of signals found (2 to 4 bullets max)
-2. One or two proposed moves
-3. One bounded reduction, with the before and after numbers
-4. Whatever got implemented
-5. A new log entry in LEVELS.md
-6. Any learned-rules additions
-
-Keep the session tight. If it starts to feel like an essay, it is too long. One page.
+A sharpen session produces the routine table, the closure list, one cut with before and after numbers, one groomed flag, a one screen log entry in LEVELS.md, and any learned rules. If it starts to feel like an essay, it is too long.
 
 ## Anti-patterns
 
-- **Do not** propose five moves. Forni will feel decision fatigue and pick zero.
-- **Do not** restate the full LEVELS.md table in the session output. Reference it, do not duplicate.
-- **Do not** make a large structural change disguised as a sharpen move. If it needs a plan file, it needs a plan file.
-- **Do not** skip the log entry. The compounding value is in the running record, not any single session.
-- **Do not** sharpen and also try to do unrelated work in the same turn. Sharpen is its own session.
+- **Do not** build inside the session. Ticket it.
+- **Do not** carry a row on a counter. Ticket it or retire it.
+- **Do not** narrate the ticket cycle's builds in the log. Point at them.
+- **Do not** restate the full LEVELS.md table in the session output.
+- **Do not** skip the log entry. The compounding value is in the running record.
+- **Do not** sharpen and also do unrelated work in the same turn. Sharpen is its own session.
 
 ## Learned Rules
 

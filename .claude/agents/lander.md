@@ -2,7 +2,7 @@
 name: lander
 description: PR landing pilot. Use proactively whenever a pull request needs to be driven from open to merged in the background — running the CodeRabbit CLI review as the gate, watching CI, triaging findings, merging on clean, and bailing to the main session on anything a human must decide. Dispatch it instead of polling a PR in the foreground.
 tools: Bash, Read, Grep, Glob, Monitor
-model: inherit
+model: sonnet
 effort: medium
 ---
 

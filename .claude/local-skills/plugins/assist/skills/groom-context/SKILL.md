@@ -28,7 +28,7 @@ Keep the context architecture honest. The failure this skill exists to fix is **
 
 - **Conflict before length.** Resolve every contradiction first; trim for size last, and only to the ratchet.
 - **Placement and enforcement beat volume.** A rule in the right place, enforced by the flow that needs it, beats three copies of it in always loaded prose.
-- **Full pass every run.** Audit the whole surface, not a slice. Culling shrinks the surface over time, so coverage gets cheaper, not more expensive.
+- **Full pass every monthly run.** Audit the whole surface, not a slice; the Wednesday slice under The Weekly Slice below is the one exception. Culling shrinks the surface over time, so coverage gets cheaper, not more expensive.
 - **Cull without sentiment.** Removing stale, derivable, and duplicated content is the point, not a side effect. When in doubt, propose the cull and let Forni veto.
 - **Reorganize in layers.** Align the shape first (renames, creates, deletes, the authoritative homes), then move content into it.
 - **Propose, then apply.** Present the full diff for approval before touching anything. Never silently edit context files.
@@ -60,7 +60,7 @@ For every topic that appears in more than one place, and for every pair of rules
 
 ### Step 3: Cull
 
-Propose removing what is not pulling its weight: rules naming files, flags, skills, or agents that no longer exist; one off notes that never recurred; guidance fully superseded by a hook or a flow skill step; anything derivable from the code, git history, or a tool's own help (`/doctor` proposes exactly these trims for a checked in CLAUDE.md and is a cheap first pass). Verify a reference is dead before proposing its removal. Records are not rules (see learned rules).
+Propose removing what is not pulling its weight: rules naming files, flags, skills, or agents that no longer exist; one off notes that never recurred; guidance fully superseded by a hook or a flow skill step; anything derivable from the code, git history, or a tool's own help (`/doctor` proposes exactly these trims for a checked in CLAUDE.md and is a cheap first pass). Run `/skill-doctor` (headless: `claude -p "/skill-doctor" --output-format text`) for the skills: it lists every loaded skill with its context cost, seven day tokens, uses, and last use, so a skill that never fires, or one whose job an agent took over, is a cull candidate with numbers behind it. Read `/cost` for the prompt cache hit rate and the reason for the last miss; a cold cache on every turn is a context shape problem, not a size one. Verify a reference is dead before proposing its removal. Records are not rules (see learned rules).
 
 ### Step 4: Dedup
 
@@ -86,13 +86,17 @@ Group the proposed changes by repo, since a pass spans Eudaimonia, homebase, and
 
 Land the changes per each repo's convention. The commit messages are the only record of the pass; there is no grooming log (cut 2026-07-04), so write messages that carry the intent.
 
+## The Weekly Slice
+
+The sharpen session's Groom phase (`assist:sharpen-saws`, Phase 5) runs one bounded slice of this checklist every Wednesday: skill doctor and the cache read, then one carried grooming flag taken through the step it belongs to (a contradiction, a cull, a dedup, a relocation). The full pass stays monthly through `assist:reflect`. Both read this file, so a step added here is picked up by both; there is no second grooming procedure. Adopted 2026-09-23.
+
 ## Output Shape
 
 A compact report: the topic to location map (or the slice that had findings), then the proposal grouped as Contradictions / Cull / Dedup / Relocate / Enforce / Size, then the per repo change plan. Lead with the load bearing fixes, not the cosmetic ones.
 
 ## Anti Patterns
 
-- **Do not** audit only a slice and call it done. Full pass, every run.
+- **Do not** audit only a slice and call it done. Full pass, every monthly run; the weekly slice is the one exception, and it names the flag it took.
 - **Do not** apply edits before presenting the diff.
 - **Do not** trim for length while a contradiction stands.
 - **Do not** add a new rule when the real fix is moving, merging, or enforcing an existing one. This skill removes and relocates more than it writes.

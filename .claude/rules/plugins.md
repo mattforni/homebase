@@ -31,3 +31,7 @@ Use semver:
 **Bump against origin/main, never against the local checkout.** A stale checkout carries an old version, and a bump computed from it silently regresses the marketplace: users on the newer version see nothing to update, and skill changes stop propagating with no error anywhere. (Observed 2026-08-04: a commit from a stale checkout took assist from 8.0.11 back to 8.0.7; the regression rode main until the next merge restored the lineage.) Before choosing the next version, fetch and read the current one from origin/main (`git show origin/main:<path to plugin.json>`), and treat any version that moves backward in a diff as a review red flag.
 
 Top-level repo files (`CLAUDE.md`, `README.md`, `.gitconfig`, `.aliases`, etc.) do **not** trigger a plugin version bump because they live outside any plugin directory.
+
+## Testing a Plugin Edit Before the Bump
+
+`claude --plugin-dir <folder>` (2.1.265 and later) loads every subfolder of that folder that carries a manifest as its own plugin for that session, and picks up a subfolder added or removed mid session without a restart. Point it at `plugins/` to load sdlc and linear-lifecycle from the checkout, or at `.claude/local-skills/plugins/` for assist; the two are separate folders, so a session that needs both passes the flag twice. The installed marketplace copy stays untouched, so this is the way to try a skill change live before the version bump publishes it.
