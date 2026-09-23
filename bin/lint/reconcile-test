@@ -46,8 +46,8 @@ mkdir -p "$FAKE/.claude/agents"
 echo "stale content" > "$FAKE/.claude/agents/runner.md"
 
 # A directory holding a file homebase has never tracked. Must be refused.
-mkdir -p "$FAKE/.claude/commands"
-echo "mine" > "$FAKE/.claude/commands/my-own-command.md"
+mkdir -p "$FAKE/.claude/hooks"
+echo "mine" > "$FAKE/.claude/hooks/my-own-hook.sh"
 
 # A legacy path an older run rsynced in and never removed.
 mkdir -p "$FAKE/docs/plugins"
@@ -95,7 +95,7 @@ check "stale copy was migrated to a symlink" \
 check "migrated path now resolves to repo content" \
   '[[ -f "$FAKE/.claude/agents/runner.md" ]] && ! grep -q "stale content" "$FAKE/.claude/agents/runner.md"'
 check "directory with an untracked file was REFUSED" \
-  '[[ ! -L "$FAKE/.claude/commands" ]] && [[ -f "$FAKE/.claude/commands/my-own-command.md" ]]'
+  '[[ ! -L "$FAKE/.claude/hooks" ]] && [[ -f "$FAKE/.claude/hooks/my-own-hook.sh" ]]'
 check "refusal made the phase fail" "[[ $rc1 -ne 0 ]]"
 check "legacy path was pruned" \
   '[[ ! -e "$FAKE/docs" ]]'

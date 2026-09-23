@@ -102,16 +102,7 @@ Notion connects via the native claude.ai connector; details in `~/Eudaimonia/Adm
 
 **Linear is the tracker for engineering and development work; Todoist is for personal and operational tasks.** Anything code (bugs, tech debt, features, follow ups from a build session) goes to Linear, never Todoist, and Todoist is never offered for dev follow ups.
 
-**All Linear access goes through the `linear` CLI, never an MCP** (the connector retired 2026-08-12). Workspace slugs, the `LINEAR_API_KEY` conflict, and the mechanics live in `~/Eudaimonia/Admin/Tools/linear.md`, whose Scheduling section is the only place the scheduling rules are written: the cycle says which week, a hand placed Craft calendar block says which day, sized by the estimate. Every scheduled item carries exactly one cognitive load label (🧠 Sharp / ⚖️ Medium / 🍃 Light), graded on sharpness rather than duration and independent of the estimate; the scale lives in `~/Eudaimonia/Admin/Concepts/cognitive-load.md`.
-
-**When to create a ticket at all.** A ticket tracks work that needs doing: queued for later, spanning sessions, needing prioritization, or handed off. For work decided and executed in one sitting, the PR is the tracking unit; ask before ticketing in session work. A ticket that exists gets used: moved through states and closed on merge, never orphaned in Todo while its PR is open.
-
-When creating new Linear tickets:
-
-- Always set status to **Todo**
-- Always assign to **Forni** (me)
-- Always place the issue in a cycle, and **never set a due date**. Cycles are the whole schedule (2026-08-21). New issues default into the active cycle, so anything meant for later needs its cycle set explicitly at create time
-- No emojis in issue titles or bodies (2026-08-18); the team's cognitive load labels keep their emoji names
+**All Linear access goes through the `linear` CLI, never an MCP** (the connector retired 2026-08-12). Workspace slugs, the `LINEAR_API_KEY` conflict, and the mechanics live in `~/Eudaimonia/Admin/Tools/linear.md`, whose Scheduling section is the only place the scheduling rules are written: the cycle says which week, a hand placed Craft calendar block says which day, sized by the estimate. Every scheduled item carries exactly one cognitive load label (🧠 Sharp / ⚖️ Medium / 🍃 Light), graded on sharpness rather than duration and independent of the estimate; the scale lives in `~/Eudaimonia/Admin/Concepts/cognitive-load.md`. Its Creating an Issue section holds when a ticket exists at all and the creation defaults.
 
 ## Email Preferences
 

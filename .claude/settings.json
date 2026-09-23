@@ -1,4 +1,8 @@
 {
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "opus",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
   "permissions": {
     "allow": [
       "Bash(/bin/rm:*)",
@@ -223,6 +227,18 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/land-via-lander.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/compact-context.sh",
+            "timeout": 15
           }
         ]
       }

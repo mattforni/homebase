@@ -16,8 +16,8 @@
 # pulls the postings ledger before the model starts (the seen set the sweep
 # dedupes against), upserts the judged rows as postings after the model
 # returns, and logs the sweep as one listings_review activity. The ledger rows
-# also ride beside the email as a markdown file (never in its body, Forni
-# 2026-09-15), the fallback until the first unattended Monday proves the POST.
+# are never in the email body (Forni, 2026-09-15); the markdown attachment that
+# duplicated them was dropped 2026-09-23 once the API was the record.
 #
 # The brief is the agent definition; prompt.md adds only the week, the
 # checkout, the pulled files, the scratch directory and the JSON shape the
@@ -48,7 +48,7 @@
 #                             the files already in $WORK, so a prompt change
 #                             costs one model call and no fetches; the ledger
 #                             is pulled fresh regardless, it is one API call
-# fail_reason, result, status and ATTACHMENT cross into the scaffold in
+# fail_reason, result and status cross into the scaffold in
 # lib/runner.sh (its EXIT trap and runner_render read them), which static
 # analysis cannot see across files.
 # shellcheck disable=SC2034,SC2154
@@ -85,7 +85,6 @@ require_tools claude jq curl node xargs timeout git pinole || exit 1
 EUDY="${EUDY:-$HOME/Eudaimonia}"
 EUDY_REPO="${EUDY_REPO:-git@github.com:mattforni/Eudaimonia.git}"
 RUBRIC="Craft/Vocation/role-rubric.md"
-LEDGER_MD="$WORK/$WEEK-ledger.md"
 # The Pinole side: the seen set the model reads, the rows the runner writes
 # back, and what the API answered, all kept in the work directory so a failed
 # write can be looked at without another model call.
@@ -297,9 +296,10 @@ pull_ledger() {
 }
 
 # The write back, after the model has returned and the draft has its shape.
-# Both are hard failures: the attachment already exists by then, so nothing
-# the model produced is lost, and an unattended run that silently kept its
-# rows out of the ledger would chase every one of them again next Monday.
+# Both are hard failures: the draft is already saved by then, so nothing the
+# model produced is lost (`render-local` replays it), and an unattended run
+# that silently kept its rows out of the ledger would chase every one of them
+# again next Monday.
 
 # The ledger rows as postings for the API: the prompt's row names map onto
 # the entity's (date to first_seen_on, role to title, fit to fit_score) and
@@ -434,25 +434,6 @@ runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.fractional | type == "array")
     and (.rejected | type == "array") and (.sources | type == "array")
     and (.ledger | type == "array")' || exit 1
-
-# The ledger rows, as the table FY27-sweep-ledger.md is made of, ready to
-# append. They ride beside the email as an attachment rather than in it, the
-# fallback that stays until the first unattended Monday proves the upsert.
-if ! jq -r '
-    def cell: tostring | gsub("\\|"; "\\|") | gsub("\n"; " ");
-    ["# \($week) sweep ledger",
-     "",
-     "Append these rows to Craft/Vocation/FY27-sweep-ledger.md; the email carries none of them.",
-     "",
-     "| Date | Company | Role | Key | Verdict |",
-     "|------|---------|------|-----|---------|"]
-    + (.ledger | map("| \(.date | cell) | \(.company | cell) | \(.role | cell) | \(.key | cell) | \(.verdict | cell) |"))
-    | join("\n")' --arg week "$WEEK" "$DRAFT_JSON" > "$LEDGER_MD"; then
-    fail_reason="could not write the ledger file"
-    exit 1
-fi
-echo "ledger: $(jq -r '.ledger | length' "$DRAFT_JSON") rows in $LEDGER_MD"
-ATTACHMENT="$LEDGER_MD"
 
 upsert_postings || exit 1
 log_sweep_activity || exit 1
