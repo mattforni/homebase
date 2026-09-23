@@ -28,7 +28,7 @@ Keep the context architecture honest. The failure this skill exists to fix is **
 
 - **Conflict before length.** Resolve every contradiction first; trim for size last, and only to the ratchet.
 - **Placement and enforcement beat volume.** A rule in the right place, enforced by the flow that needs it, beats three copies of it in always loaded prose.
-- **Full pass every run.** Audit the whole surface, not a slice. Culling shrinks the surface over time, so coverage gets cheaper, not more expensive.
+- **Full pass every monthly run.** Audit the whole surface, not a slice; the Wednesday slice under The Weekly Slice below is the one exception. Culling shrinks the surface over time, so coverage gets cheaper, not more expensive.
 - **Cull without sentiment.** Removing stale, derivable, and duplicated content is the point, not a side effect. When in doubt, propose the cull and let Forni veto.
 - **Reorganize in layers.** Align the shape first (renames, creates, deletes, the authoritative homes), then move content into it.
 - **Propose, then apply.** Present the full diff for approval before touching anything. Never silently edit context files.
@@ -96,7 +96,7 @@ A compact report: the topic to location map (or the slice that had findings), th
 
 ## Anti Patterns
 
-- **Do not** audit only a slice and call it done. Full pass, every run.
+- **Do not** audit only a slice and call it done. Full pass, every monthly run; the weekly slice is the one exception, and it names the flag it took.
 - **Do not** apply edits before presenting the diff.
 - **Do not** trim for length while a contradiction stands.
 - **Do not** add a new rule when the real fix is moving, merging, or enforcing an existing one. This skill removes and relocates more than it writes.

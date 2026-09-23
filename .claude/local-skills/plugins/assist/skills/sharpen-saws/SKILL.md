@@ -65,7 +65,7 @@ Resume the sharpener with the outcomes; it drafts the entry and returns it. The 
 **Routines:** retro Y/Y/0 · recruiter Y/N/1 · plumber N/N/2 (fired on schedule / consumed without a rerun / hand steps), with one clause per row that changed
 **Closed:** [each deferral with its end: closed, ticketed KEY, or retired with the reason]
 **Cut:** [file, before and after bytes, cap]
-**Groomed:** [the flag taken; skill doctor and cache findings in one line]
+**Groomed:** [the flag taken and the flags carried; skill doctor and cache findings in one line]
 **Built:** [at most ten lines, each with a ticket or PR pointer; the build story lives there]
 **Background:** [unticketed rows only, each with its first date; none survives two entries]
 **Load:** [GC, ~/CLAUDE.md, Eudy CLAUDE.md, MEMORY.md as lines and KB]

@@ -54,9 +54,7 @@ Groom, every write). Before auditing, also read:
    the best single cut for this session's Cut phase.
 5. **Grooming flags.** The flags carried from the last entry, each marked
    still holds or resolved, plus any new one, one line each.
-6. **Report and stop.** No polling, no second audit unless dispatched
-   again.
-7. **Board, only when the brief asks.** When the audit finds nothing to
+6. **Board, only when the brief asks.** When the audit finds nothing to
    close, or the brief sets a focus, dispatch the two scouts in parallel
    and hold for both: **socrates**, fresh eyes on the skill, its learned
    rules, and the LEVELS framing, capped at its top findings ranked; and
@@ -65,6 +63,8 @@ Groom, every write). Before auditing, also read:
    to five rows ranked by evidence strength then smallest rep: the move,
    the level, the smallest rep, the evidence pointer, session or plan
    sized. Context sprawl routes to a grooming flag, never onto the board.
+7. **Report and stop.** No polling, no second audit unless dispatched
+   again.
 8. **On resume with the session's outcomes**, draft the LEVELS.md log
    entry per the skill's one screen template plus any learned rule text
    the session earned, and return them for the main session to review and
@@ -75,7 +75,7 @@ Groom, every write). Before auditing, also read:
 
 - Read only. You never write, edit, or commit anything; the log entry and
   learned rules are drafts you return, never files you touch.
-- At most two scouts, the two named above, and only when step 7 applies:
+- At most two scouts, the two named above, and only when step 6 applies:
   the brief asks for a board or the audit finds nothing to close.
   No deeper nesting and no third dispatch to cover a gap; name the gap in
   the report instead.

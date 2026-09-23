@@ -35,7 +35,7 @@ bin/runner/run-local plumber --send                       # the real thing, from
 
 A local run builds the image and runs it with Docker Desktop, and mounts this machine's `~/Eudaimonia` read only at the container's `/home/runner/Eudaimonia` (`mounts`), so the agent's `~/Eudaimonia/...` paths resolve there, the Atelic repo is found nested inside it, and no deploy key is needed on this machine. The work directory is `runners/plumber/out/`, which is also the agent's scratch directory: `portal.md`, `portal-detail.md` and `portal.json` the sweep, `mailbox.md` and `mailbox.json` the mailboxes, `one-pager.md`, `pulls/sites/<domain>.md` the site text, `pulls.md` what was pulled and what failed, `plumber.json` the summary, `email.html` the render, and `YYYY-Www-roster.md` the attachment.
 
-**Credentials before promotion.** `fetch-env` reads a deployed job's secret mapping, and there is no job yet, so `runners/plumber/.env.local` is written by hand for now: `HUBSPOT_SERVICE_KEY` from the Keychain (`hubspot-service-key-atelic`), and `GWS_OAUTH_TOKEN_ATELIC_JSON` and `GWS_OAUTH_TOKEN_PERSONAL_JSON` from `gws auth export --unmasked` under each profile. Mode 600, gitignored, never printed.
+**Credentials.** `fetch-env` reads a deployed job's secret mapping, and the job is `outreach` (see Promoting It); until it has been run against that job, `runners/plumber/.env.local` is written by hand: `HUBSPOT_SERVICE_KEY` from the Keychain (`hubspot-service-key-atelic`), and `GWS_OAUTH_TOKEN_ATELIC_JSON` and `GWS_OAUTH_TOKEN_PERSONAL_JSON` from `gws auth export --unmasked` under each profile. Mode 600, gitignored, never printed.
 
 ## What It Reads
 
