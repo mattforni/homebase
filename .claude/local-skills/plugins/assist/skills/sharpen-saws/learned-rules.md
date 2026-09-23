@@ -38,7 +38,7 @@ Before proposing a new headless routine, audit the feedback channels on existing
 
 ## Structural Moves Get Plan Mode Before Any File Is Written
 
-When a sharpen session creates or reshapes a durable surface (an agent, a skill, a hook, a workflow), enter plan mode and walk the design with Forni before authoring anything. Ground the design in the authoring conventions (`~/.claude/references/skills.md`) and, for anything agent shaped, a fresh read of Anthropic's guidance; settle the ownership and orchestration forks with him one at a time, then build.
+When a sharpen session creates or reshapes a durable surface (an agent, a skill, a hook, a workflow), enter plan mode and walk the design with Forni before authoring anything. Ground the design in the authoring conventions (`~/.claude/references/skills.md`) and, for anything agent shaped, a fresh read of Anthropic's guidance; settle the ownership and orchestration forks with him one at a time, then hand the build to a ticket; a build lands inside the session only on Forni's explicit call, as on 2026-09-23.
 
 **Why:** 2026-08-13. The sharpener agent's first version was authored minutes after the pick with no plan: the skill ended up orchestrating the agent ("Step 1: dispatch the sharpener") when Forni wanted the agent to run the method, and the scan was delegated to three scouts when one context held it fine. Forni: "This feels like we didn't really think about this very hard and didn't really come up with a plan." The whole build was redone through plan mode the same session.
 
