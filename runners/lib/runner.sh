@@ -340,6 +340,17 @@ runner_finish() {
         echo "FAILED: ${fail_reason:-unknown failure}"
         body="$(runner_failure_html)"
         printf '%s' "$body" > "$REPORT_HTML"
+        # What the model returned rides beside the failure page: the draft
+        # when it was cut, else the raw result. A failure after the model has
+        # answered (an upsert, a render) would otherwise lose the only copy,
+        # since a cloud execution's work directory is gone when it ends; with
+        # the file in the mail, runner_replay or render-local can pick the run
+        # back up without paying for the agent again (2026-09-23).
+        if [[ -n "${DRAFT_JSON:-}" && -s "$DRAFT_JSON" ]]; then
+            attachment="$DRAFT_JSON"
+        elif [[ -n "${RESULT_JSON:-}" && -s "$RESULT_JSON" ]]; then
+            attachment="$RESULT_JSON"
+        fi
     else
         body="$(cat "$REPORT_HTML")"
         [[ -s "$REPORT_TEXT" ]] && text="$(cat "$REPORT_TEXT")"
