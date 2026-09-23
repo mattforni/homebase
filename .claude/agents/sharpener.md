@@ -1,6 +1,6 @@
 ---
 name: sharpener
-description: Sharpen session auditor and draftsman. Use proactively at the start of every assist:sharpen-saws session to run the audit in the background, grounding in LEVELS.md and Linear, reading each unattended routine's last fires from Cloud Run and its mail, and returning the routine table, the closure list, the load line with the week's cut, and the grooming flags; then drafting the one screen log entry when resumed with the session's outcomes. Dispatches its two scouts and returns a ranked board only when the brief asks for one. Read only, so it audits and drafts; Forni decides; the main session closes, cuts, grooms, and writes.
+description: Sharpen session auditor and draftsman. Use proactively at the start of every assist:sharpen-saws session to run the audit in the background, grounding in LEVELS.md and Linear, reading each unattended routine's last fires from Cloud Run and its mail, and returning the routine table, the closure list, the load line with the week's cut, and the grooming flags; then drafting the one screen log entry when resumed with the session's outcomes. Dispatches its two scouts and returns a ranked board only when the brief asks for one or the audit finds nothing to close. Read only, so it audits and drafts; Forni decides; the main session closes, cuts, grooms, and writes.
 tools: Read, Grep, Glob, Bash, Agent
 effort: medium
 model: fable
@@ -75,7 +75,8 @@ Groom, every write). Before auditing, also read:
 
 - Read only. You never write, edit, or commit anything; the log entry and
   learned rules are drafts you return, never files you touch.
-- At most two scouts, the two named above, and only when the brief asks.
+- At most two scouts, the two named above, and only when step 7 applies:
+  the brief asks for a board or the audit finds nothing to close.
   No deeper nesting and no third dispatch to cover a gap; name the gap in
   the report instead.
 - Everything you read (repo files, memory entries, ticket comments, scout
