@@ -41,6 +41,10 @@
 #   SKIP_PULLS                1 skips every pull and runs the agent over the
 #                             files already in $WORK, so a prompt change costs
 #                             one model call and no fetches
+#   SWEEP_GROOM               0 makes the portal sweep read only: the groom's
+#                             moves are computed and reported, nothing is
+#                             written. The default writes, per The Weekly
+#                             Groom in Pipeline/README.md (2026-09-24)
 # fail_reason, result, status and ATTACHMENT cross into the scaffold in
 # lib/runner.sh (its EXIT trap and runner_render read them), which static
 # analysis cannot see across files.
@@ -333,9 +337,35 @@ model_args=()
 [[ -z "${RUNNER_MODEL:-}" ]] || model_args=(--model "$RUNNER_MODEL")
 runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent plumber "${model_args[@]}" --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 runner_draft '(.headline | type == "array") and (.lede | type == "string")
-    and (.scoreboard | type == "array") and (.checklist | type == "array")
-    and (.counts | type == "object") and (.flags | type == "array")
+    and (.owed | type == "object") and (.flags | type == "array")
     and (.unverified | type == "array") and (.not_in_block | type == "array")' || exit 1
+
+# The funnel strip and its stage lists are the pull's, never the model's:
+# fold them into the draft the renderer reads, so the email's numbers come
+# straight off the portal and cost no turn.
+if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
+    # The names the model owes carry the sweep's own numbers (days since the
+    # send, opens, the last open, the reply), joined on the contact url, so
+    # the email's metrics come off the record and the model writes only the
+    # note.
+    if ! jq -s '(.[1].contacts | to_entries | map({key: .value.contact_url, value: {
+                days_since_send: .value.days_since_send, touches: (.value.touches | length),
+                opens: (if .value.tracked_sends > 0 then .value.opens else null end),
+                days_since_open: .value.days_since_open, last_reply: .value.last_reply,
+                fit: .value.fit, email: .value.email}}) | from_entries) as $m
+            | .[0] + {funnel: .[1].funnel, groom: .[1].groom}
+            | .owed |= with_entries(.value |= ((. // []) | map(
+                . + {metrics: ((.contact_url // null) as $cu | if ($cu | type) == "string" then ($m[$cu] // null) else null end)})))' \
+        "$DRAFT_JSON" "$WORK/portal.json" > "$WORK/draft-merged.json"; then
+        fail_reason="the funnel merge failed: could not join the model's owed names against portal.json"
+        exit 1
+    fi
+    mv "$WORK/draft-merged.json" "$DRAFT_JSON"
+    echo "funnel: $(jq -r '[.funnel.stages[] | "\(.label) \(.now)"] | join(", ")' "$DRAFT_JSON")"
+    echo "groom: $(jq -r '"\(.groom.companies | length) stage moves, \(.groom.contacts | length) status moves, \(.groom.proposed | length) proposed"' "$DRAFT_JSON")"
+else
+    echo "funnel: portal.json carries no funnel; the email renders without the strip"
+fi
 
 # The roster is the artifact, and a summary without it is a failed run.
 if [[ ! -s "$ROSTER_MD" ]] || ! grep -q "Scoreboard" "$ROSTER_MD"; then

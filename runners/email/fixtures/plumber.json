@@ -1,89 +1,463 @@
 {
-  "preheader": "Four replies owed, five bumps, two visits, and one name running hot.",
-  "headline": ["Four replies owed,", "five bumps, two visits."],
-  "lede": "The sweep found four names waiting on an answer and five sitting past their bump window. Open on Pinewood Cabinetry, which has read the last send seven times in twelve days.",
-  "scoreboard": [
-    { "type": "Replies", "target": 4, "details": "Two are waiting on a number, two on a date." },
-    { "type": "Bumps", "target": 5, "details": "" },
-    { "type": "Closes", "target": 0, "details": "Nothing is close enough to ask." },
-    { "type": "Intros", "target": 3, "details": "" },
-    { "type": "Visits", "target": 2, "details": "Both are walkable from the desk." }
-  ],
-  "checklist": [
-    {
-      "type": "Replies",
-      "names": [
-        {
-          "person": "Salley Wilson",
-          "company": "Pinewood Cabinetry",
-          "contact_url": "https://app.example.test/contacts/1/record/0-1/101",
-          "company_url": "https://app.example.test/contacts/1/record/0-2/201",
-          "note": "Owed a number since Tuesday, sending as Atelic, graded A, and she asked twice whether the audit could be walked through in person at the shop rather than over a call."
-        },
-        {
-          "person": "Dov Marchetti",
-          "company": "Harbor Line Plumbing",
-          "contact_url": null,
-          "company_url": null,
-          "note": ""
-        }
-      ]
-    },
-    {
-      "type": "Bumps",
-      "names": [
-        {
-          "person": "Renata Oyelaran",
-          "company": "Sable Creek Landscaping",
-          "contact_url": "https://app.example.test/contacts/1/record/0-1/102",
-          "company_url": "",
-          "note": "Day 9 on the first send, no open yet."
-        }
-      ]
-    },
-    { "type": "Closes", "names": [] },
-    {
-      "type": "Visits",
-      "names": [
-        {
-          "person": "Marguerite Bell",
-          "company": "Thistle Lane Florist",
-          "contact_url": "https://app.example.test/contacts/1/record/0-1/103",
-          "company_url": "https://app.example.test/contacts/1/record/0-2/203",
-          "note": "Walkable, open until 17:00."
-        }
-      ]
-    }
-  ],
-  "counts": {
-    "next_up": 41,
-    "next_up_new": 26,
-    "unscored": 5,
-    "tasks_due": 2,
-    "tasks_parked": 1,
-    "tasks_stale": 0,
-    "top_opened": "Salley Wilson, Pinewood Cabinetry, 7 opens on day 12"
-  },
-  "flags": [
-    {
-      "lead": "Harbor Line Plumbing reads NEW with a reply on the record.",
-      "note": "The portal says NEW and the mailbox carries a reply from Thursday. Move it to CONTACTED, or say why not."
-    },
-    {
-      "lead": "Ridgeline Glass has a send that never logged.",
-      "note": "The thread shows one send on Monday and the record shows none. The extension was off that morning."
-    }
-  ],
-  "unverified": [
-    {
-      "lead": "The One Pager pull failed.",
-      "note": "The ICP statement could not be read this run, so nothing in the drafts leans on it."
-    }
-  ],
-  "not_in_block": [
-    {
-      "lead": "Copper Kettle Catering",
-      "note": "Asked for a month of quiet on the last call, which runs to the end of February."
-    }
-  ]
+	"preheader": "Four replies owed, five bumps, two visits, and one name running hot.",
+	"headline": [
+		"Three replies came in,",
+		"nine names moved to MQL."
+	],
+	"lede": "The groom walked nine opened sends to MQL and three replies to SQL, so the strip finally reads the week that happened. Blue Heron Plumbing is the hottest thread on the board, six opens on a bump at day nine with no reply yet. Tuesday opens on the two replies owed, then the first touches.",
+	"owed": {
+		"reply": [
+			{
+				"person": "Salley Wilson",
+				"company": "Pinewood Cabinetry",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/101",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/201",
+				"note": "Owed a number since Tuesday, sending as Atelic, graded A, and she asked twice whether the audit could be walked through in person at the shop rather than over a call.",
+				"metrics": {
+					"days_since_send": 3,
+					"touches": 2,
+					"opens": 5,
+					"days_since_open": 1,
+					"last_reply": "2026-09-18",
+					"fit": 15,
+					"email": "x@example.test"
+				}
+			},
+			{
+				"person": "Dov Marchetti",
+				"company": "Harbor Line Plumbing",
+				"contact_url": null,
+				"company_url": null,
+				"note": "",
+				"metrics": {
+					"days_since_send": 3,
+					"touches": 2,
+					"opens": 5,
+					"days_since_open": 1,
+					"last_reply": "2026-09-18",
+					"fit": 15,
+					"email": ""
+				}
+			}
+		],
+		"bump": [
+			{
+				"person": "Renata Oyelaran",
+				"company": "Sable Creek Landscaping",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/102",
+				"company_url": "",
+				"note": "Day 9 on the first send, no open yet.",
+				"metrics": {
+					"days_since_send": 9,
+					"touches": 1,
+					"opens": 6,
+					"days_since_open": 2,
+					"last_reply": "",
+					"fit": 14,
+					"email": "x@example.test"
+				}
+			}
+		],
+		"visit": [
+			{
+				"person": "Marguerite Bell",
+				"company": "Thistle Lane Florist",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/103",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/203",
+				"note": "Walkable, open until 17:00.",
+				"metrics": {
+					"days_since_send": 14,
+					"touches": 2,
+					"opens": 0,
+					"days_since_open": null,
+					"last_reply": "",
+					"fit": 13,
+					"email": ""
+				}
+			}
+		],
+		"first_touch": [
+			{
+				"person": "Ines Ferreira",
+				"company": "Harbor Lane Bakery and Provisions of Old Town",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/301",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/401",
+				"note": "audit led, owner direct, graded A minus",
+				"metrics": {
+					"days_since_send": null,
+					"touches": 0,
+					"opens": null,
+					"days_since_open": null,
+					"last_reply": "",
+					"fit": 17,
+					"email": "x@example.test"
+				}
+			},
+			{
+				"person": "Tobias Wren",
+				"company": "Ridgeback Fencing",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/302",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/402",
+				"note": "heads up on the hours mismatch, graded A",
+				"metrics": {
+					"days_since_send": null,
+					"touches": 0,
+					"opens": null,
+					"days_since_open": null,
+					"last_reply": "",
+					"fit": 17,
+					"email": ""
+				}
+			}
+		],
+		"decide": []
+	},
+	"flags": [
+		{
+			"lead": "Harbor Line Plumbing reads NEW with a reply on the record.",
+			"note": "The portal says NEW and the mailbox carries a reply from Thursday. Move it to CONTACTED, or say why not."
+		},
+		{
+			"lead": "Ridgeline Glass has a send that never logged.",
+			"note": "The thread shows one send on Monday and the record shows none. The extension was off that morning."
+		}
+	],
+	"unverified": [
+		{
+			"lead": "The One Pager pull failed.",
+			"note": "The ICP statement could not be read this run, so nothing in the drafts leans on it."
+		}
+	],
+	"not_in_block": [
+		{
+			"lead": "Copper Kettle Catering",
+			"note": "Asked for a month of quiet on the last call, which runs to the end of February."
+		}
+	],
+	"funnel": {
+		"built": "2026-09-21",
+		"from": "2026-09-14",
+		"to": "2026-09-21",
+		"stages": [
+			{
+				"key": "new",
+				"label": "New",
+				"now": 41,
+				"then": 38,
+				"delta": 3,
+				"pct": 8,
+				"entered": [
+					"Harbor Lane Bakery",
+					"Ridgeback Fencing",
+					"Two Pines Chiropractic"
+				],
+				"left": [],
+				"companies": []
+			},
+			{
+				"key": "lead",
+				"label": "Lead",
+				"now": 22,
+				"then": 25,
+				"delta": -3,
+				"pct": -12,
+				"entered": [
+					"Pinewood Cabinetry"
+				],
+				"left": [
+					"Blue Heron Plumbing",
+					"Sunridge Dental",
+					"Old Mill Roasters",
+					"Granite Peak Tile"
+				],
+				"companies": []
+			},
+			{
+				"key": "mql",
+				"label": "MQL",
+				"now": 7,
+				"then": 4,
+				"delta": 3,
+				"pct": 75,
+				"entered": [
+					"Blue Heron Plumbing",
+					"Sunridge Dental",
+					"Old Mill Roasters"
+				],
+				"left": [
+					"Granite Peak Tile"
+				],
+				"companies": [
+					{
+						"id": "0",
+						"name": "Blue Heron Plumbing",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "CONTACTED",
+						"last_touch": "Bump",
+						"last_send": "2026-09-12",
+						"touches": 2,
+						"opens": 6,
+						"replied": "",
+						"days_since_send": 9,
+						"deal": null,
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 2,
+						"days_since_reply": null
+					},
+					{
+						"id": "0",
+						"name": "Sunridge Dental",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "CONTACTED",
+						"last_touch": "First",
+						"last_send": "2026-09-17",
+						"touches": 1,
+						"opens": 4,
+						"replied": "",
+						"days_since_send": 4,
+						"deal": null,
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 3,
+						"days_since_reply": null
+					},
+					{
+						"id": "0",
+						"name": "Old Mill Roasters",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "CONTACTED",
+						"last_touch": "Bump",
+						"last_send": "2026-09-10",
+						"touches": 2,
+						"opens": 3,
+						"replied": "",
+						"days_since_send": 11,
+						"deal": null,
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 4,
+						"days_since_reply": null
+					}
+				]
+			},
+			{
+				"key": "sql",
+				"label": "SQL",
+				"now": 3,
+				"then": 2,
+				"delta": 1,
+				"pct": 50,
+				"entered": [
+					"Granite Peak Tile"
+				],
+				"left": [],
+				"companies": [
+					{
+						"id": "0",
+						"name": "Granite Peak Tile",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "ENGAGED",
+						"last_touch": "Bump",
+						"last_send": "2026-09-15",
+						"touches": 2,
+						"opens": 5,
+						"replied": "2026-09-18",
+						"days_since_send": 6,
+						"deal": null,
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 2,
+						"days_since_reply": 3
+					},
+					{
+						"id": "0",
+						"name": "Northwind Outfitters",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "CONNECTED",
+						"last_touch": "Visit",
+						"last_send": "2026-09-02",
+						"touches": 3,
+						"opens": 2,
+						"replied": "2026-09-09",
+						"days_since_send": 19,
+						"deal": null,
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 3,
+						"days_since_reply": 3
+					},
+					{
+						"id": "0",
+						"name": "Silver Sage Counseling",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "ENGAGED",
+						"last_touch": "First",
+						"last_send": "2026-08-28",
+						"touches": 1,
+						"opens": 1,
+						"replied": "2026-08-30",
+						"days_since_send": 24,
+						"deal": null,
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 4,
+						"days_since_reply": 3
+					}
+				]
+			},
+			{
+				"key": "opportunity",
+				"label": "Oppty",
+				"now": 1,
+				"then": 1,
+				"delta": 0,
+				"pct": 0,
+				"entered": [],
+				"left": [],
+				"companies": [
+					{
+						"id": "0",
+						"name": "Rivermark Kitchen and Bath",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "QUALIFIED",
+						"last_touch": "Visit",
+						"last_send": "2026-09-18",
+						"touches": 6,
+						"opens": 9,
+						"replied": "2026-09-17",
+						"days_since_send": 3,
+						"deal": {
+							"name": "Rivermark Build",
+							"stage": "Proposal",
+							"amount": 8500,
+							"close": "2026-10-31"
+						},
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 2,
+						"days_since_reply": 3
+					}
+				]
+			},
+			{
+				"key": "customer",
+				"label": "Customer",
+				"now": 2,
+				"then": 2,
+				"delta": 0,
+				"pct": 0,
+				"entered": [],
+				"left": [],
+				"companies": [
+					{
+						"id": "0",
+						"name": "Alder and Oak Physical Therapy",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "QUALIFIED",
+						"last_touch": "Visit",
+						"last_send": "2026-09-19",
+						"touches": 12,
+						"opens": 0,
+						"replied": "2026-09-19",
+						"days_since_send": null,
+						"deal": {
+							"name": "Alder and Oak Growth",
+							"stage": "Closed Won",
+							"amount": 9090,
+							"close": "2026-09-17"
+						},
+						"closed": null,
+						"last_open": "",
+						"days_since_open": null,
+						"days_since_reply": 3
+					},
+					{
+						"id": "0",
+						"name": "Westbrook Skylights",
+						"url": "https://app.example.test/contacts/1/record/0-2/9",
+						"fit": null,
+						"status": "QUALIFIED",
+						"last_touch": "Visit",
+						"last_send": "2026-09-16",
+						"touches": 14,
+						"opens": 40,
+						"replied": "2026-09-15",
+						"days_since_send": null,
+						"deal": {
+							"name": "Westbrook Growth Engagement",
+							"stage": "Closed Won",
+							"amount": 7500,
+							"close": "2026-08-20"
+						},
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 3,
+						"days_since_reply": 3
+					}
+				]
+			},
+			{
+				"key": "closed",
+				"label": "Closed",
+				"now": 9,
+				"then": 8,
+				"delta": 1,
+				"pct": 13,
+				"entered": [
+					"Foothills Home Inspection"
+				],
+				"left": [],
+				"companies": []
+			}
+		]
+	},
+	"groom": {
+		"applied": true,
+		"companies": [
+			{
+				"id": "1",
+				"name": "Blue Heron Plumbing",
+				"url": "https://app.example.test/contacts/1/record/0-2/501",
+				"from": "lead",
+				"to": "marketingqualifiedlead",
+				"why": "a tracked open"
+			},
+			{
+				"id": "2",
+				"name": "Granite Peak Tile",
+				"url": "https://app.example.test/contacts/1/record/0-2/502",
+				"from": "lead",
+				"to": "salesqualifiedlead",
+				"why": "a reply on the record"
+			}
+		],
+		"contacts": [
+			{
+				"id": "3",
+				"name": "Priya Venkataraman",
+				"company": "Granite Peak Tile",
+				"from": "CONTACTED",
+				"to": "ENGAGED",
+				"why": "they wrote back"
+			}
+		],
+		"proposed": [
+			{
+				"kind": "duplicate company",
+				"name": "Native Roofing and Native Roofing and Solar",
+				"company": "nativeroofing.example",
+				"url": "https://app.example.test/contacts/1/record/0-2/503",
+				"note": "two companies on nativeroofing.example; merge them"
+			}
+		]
+	}
 }

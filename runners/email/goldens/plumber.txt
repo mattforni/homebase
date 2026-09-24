@@ -1,93 +1,142 @@
 ATELIC · PIPELINE · WEEK 5
 Week 5 · 01/26 to 02/01
 
-FOUR REPLIES OWED,
-FIVE BUMPS, TWO VISITS.
-
-The sweep found four names waiting on an answer and five sitting
-past their bump window. Open on Pinewood Cabinetry, which has read
-the last send seven times in twelve days.
+THREE REPLIES CAME IN,
+NINE NAMES MOVED TO MQL.
 
 
 ================================================================
-THE BOARD
+THE PIPELINE
 ================================================================
 
-  Type     Complete  Target  %
-  Replies         0       4  0
-  Bumps           0       5  0
-  Closes          0       0  0
-  Intros          0       3  0
-  Visits          0       2  0
-  Total           0      14  0
+The Read
+  The groom walked nine opened sends to MQL and three replies to
+  SQL, so the strip finally reads the week that happened. Blue Heron
+  Plumbing is the hottest thread on the board, six opens on a bump
+  at day nine with no reply yet. Tuesday opens on the two replies
+  owed, then the first touches.
 
-  Replies
-  Two are waiting on a number, two on a date.
+  Stage     Now  Change
+  Lead       22  -3 (12%)
+  MQL         7  +3 (75%)
+  SQL         3  +1 (50%)
+  Oppty       1  0
+  Customer    2  0
+  Closed      9  +1 (13%)
 
-  Closes
-  Nothing is close enough to ask.
-
-  Visits
-  Both are walkable from the desk.
-
-Replies · 2
-  Salley Wilson · Pinewood Cabinetry
-  Owed a number since Tuesday, sending as Atelic, graded A, and she
-  asked twice whether the audit could be walked through in person at
-  the shop rather than over a call.
-  Dov Marchetti · Harbor Line Plumbing
-
-Bumps · 1
-  Renata Oyelaran · Sable Creek Landscaping
-  Day 9 on the first send, no open yet.
-
-Visits · 1
-  Marguerite Bell · Thistle Lane Florist
-  Walkable, open until 17:00.
+  41 names waiting for a first send: 3 in and 0 out this week.
+  Lead 22, -3 (12%): 1 in and 4 out this week.
+  Closed 9, +1 (13%): 1 in and 0 out this week.
 
 
 ================================================================
-THE QUEUE
+MQL · 7
 ================================================================
 
-  Measure    Count
-  Next Up       41
-  Still NEW     26
-  Unscored       5
-  Tasks due      2
-  Parked         1
-  Stale          0
+  Blue Heron Plumbing
+    Contacted · 2 touches · 6 opens
+    bump 9 days ago · opened 2 days ago
 
-Hottest reader
-  Salley Wilson, Pinewood Cabinetry, 7 opens on day 12
+  Sunridge Dental
+    Contacted · 1 touch · 4 opens
+    first 4 days ago · opened 3 days ago
+
+  Old Mill Roasters
+    Contacted · 2 touches · 3 opens
+    bump 11 days ago · opened 4 days ago
+
+================================================================
+SQL · 3
+================================================================
+
+  Granite Peak Tile
+    Engaged · 2 touches · 5 opens
+    bump 6 days ago · opened 2 days ago · replied 3 days ago
+
+  Northwind Outfitters
+    Connected · 3 touches · 2 opens
+    visit 19 days ago · opened 3 days ago · replied 3 days ago
+
+  Silver Sage Counseling
+    Engaged · 1 touch · 1 open
+    first 24 days ago · opened 4 days ago · replied 3 days ago
+
+================================================================
+OPPTY · 1
+================================================================
+
+  Rivermark Kitchen and Bath
+    Proposal · $8,500
+    closes 2026-10-31 · qualified
+
+================================================================
+CUSTOMER · 2
+================================================================
+
+  Alder and Oak Physical Therapy
+    Closed Won · $9,090
+    signed 2026-09-17 · qualified
+
+  Westbrook Skylights
+    Closed Won · $7,500
+    signed 2026-08-20 · qualified
+
+================================================================
+THIS WEEK
+================================================================
+
+Reply to · 2
+  Salley Wilson
+    Pinewood Cabinetry · replied 2026-09-18 · 2 touches · 5 opens ·
+    opened yesterday
+    Owed a number since Tuesday, sending as Atelic, graded A, and
+    she asked twice whether the audit could be walked through in
+    person at the shop rather than over a call.
+
+  Dov Marchetti
+    Harbor Line Plumbing · replied 2026-09-18 · 2 touches · 5 opens
+    · opened yesterday
+Bump · 1
+  Renata Oyelaran
+    Sable Creek Landscaping · sent 9 days ago · 1 touch · 6 opens ·
+    opened 2 days ago
+    Day 9 on the first send, no open yet.
+First touch · 2
+  Ines Ferreira
+    Harbor Lane Bakery and Provisions of Old Town · fit 17 · owner
+    direct
+    audit led, owner direct, graded A minus
+
+  Tobias Wren
+    Ridgeback Fencing · fit 17 · shared inbox
+    heads up on the hours mismatch, graded A
+Visit · 1
+  Marguerite Bell
+    Thistle Lane Florist · sent 14 days ago · 2 touches · 0 opens
+    Walkable, open until 17:00.
 
 
 ================================================================
-FLAGS FROM THE PORTAL DIFF
+THE GROOM
 ================================================================
 
+  The groom moved 2 companies and 1 contact to match what the record
+  already showed.
+
+  Blue Heron Plumbing
+    Lead to MQL · a tracked open
+
+  Granite Peak Tile
+    Lead to SQL · a reply on the record
+
+  Priya Venkataraman, Granite Peak Tile
+    Contacted to Engaged · they wrote back
+Left for you · 3
+  Native Roofing and Native Roofing and Solar,
+  nativeroofing.example: two companies on nativeroofing.example;
+  merge them
   Harbor Line Plumbing reads NEW with a reply on the record.
-  The portal says NEW and the mailbox carries a reply from Thursday.
-  Move it to CONTACTED, or say why not.
-
   Ridgeline Glass has a send that never logged.
-  The thread shows one send on Monday and the record shows none. The
-  extension was off that morning.
-
-
-================================================================
-IF YOU WANT TO DIG IN
-================================================================
-
-Could not verify today · 1
-  The One Pager pull failed.
-  The ICP statement could not be read this run, so nothing in the
-  drafts leans on it.
-
-Deliberately not in this block · 1
-  Copper Kettle Catering
-  Asked for a month of quiet on the last call, which runs to the end
-  of February.
 
 
 12m 04s · $0.42 · 9 turns · claude-sonnet
