@@ -1,13 +1,7 @@
-ATELIC · PIPELINE · WEEK 5
-Week 5 · 01/26 to 02/01
+ATELIC · PIPELINE · WEEK 5 · 01/26 TO 02/01
 
 THREE REPLIES CAME IN,
 NINE NAMES MOVED TO MQL.
-
-
-================================================================
-THE PIPELINE
-================================================================
 
 The Read
   The groom walked nine opened sends to MQL and three replies to
@@ -15,6 +9,11 @@ The Read
   Plumbing is the hottest thread on the board, six opens on a bump
   at day nine with no reply yet. Tuesday opens on the two replies
   owed, then the first touches.
+
+
+================================================================
+THE PIPELINE
+================================================================
 
   Stage     Now  Change
   Lead       22  -3 (12%)
@@ -33,59 +32,75 @@ The Read
 MQL · 7
 ================================================================
 
-  Blue Heron Plumbing
-    Contacted · 2 touches · 6 opens
+  Blue Heron Plumbing [Contacted]
+    2 touches · 6 opens
     bump 9 days ago · opened 2 days ago
+    PARKED UNTIL 2026-11-09
+    Reach back out to Priya Venkataraman about the rebuild
 
-  Sunridge Dental
-    Contacted · 1 touch · 4 opens
+  Sunridge Dental [Contacted]
+    1 touch · 4 opens
     first 4 days ago · opened 3 days ago
+    NOTE 2026-09-19
+    Quoted Foundation at $6,500 in the room; she is reviewing last
+    year's numbers first.
 
-  Old Mill Roasters
-    Contacted · 2 touches · 3 opens
+  Old Mill Roasters [Contacted]
+    2 touches · 3 opens
     bump 11 days ago · opened 4 days ago
 
 ================================================================
 SQL · 3
 ================================================================
 
-  Granite Peak Tile
-    Engaged · 2 touches · 5 opens
+  Granite Peak Tile [Engaged]
+    2 touches · 5 opens
     bump 6 days ago · opened 2 days ago · replied 3 days ago
 
-  Northwind Outfitters
-    Connected · 3 touches · 2 opens
+  Northwind Outfitters [Connected]
+    3 touches · 2 opens
     visit 19 days ago · opened 3 days ago · replied 3 days ago
 
-  Silver Sage Counseling
-    Engaged · 1 touch · 1 open
+  Silver Sage Counseling [Engaged]
+    1 touch · 1 open
     first 24 days ago · opened 4 days ago · replied 3 days ago
 
 ================================================================
 OPPTY · 1
 ================================================================
 
-  Rivermark Kitchen and Bath
+  Rivermark Kitchen and Bath [Qualified]
     Proposal · $8,500
-    closes 2026-10-31 · qualified
+    closes 2026-10-31
 
 ================================================================
 CUSTOMER · 2
 ================================================================
 
-  Alder and Oak Physical Therapy
+  Alder and Oak Physical Therapy [Qualified]
     Closed Won · $9,090
-    signed 2026-09-17 · qualified
+    signed 2026-09-17
 
-  Westbrook Skylights
+  Westbrook Skylights [Qualified]
     Closed Won · $7,500
-    signed 2026-08-20 · qualified
+    signed 2026-08-20
 
 ================================================================
 THIS WEEK
 ================================================================
 
-Reply to · 2
+  Touch        Owed
+  Reply to        2
+  Bump            1
+  First touch     2
+  Visit           1
+  Decide          0
+
+
+================================================================
+REPLY TO · 2
+================================================================
+
   Salley Wilson
     Pinewood Cabinetry · replied 2026-09-18 · 2 touches · 5 opens ·
     opened yesterday
@@ -96,12 +111,20 @@ Reply to · 2
   Dov Marchetti
     Harbor Line Plumbing · replied 2026-09-18 · 2 touches · 5 opens
     · opened yesterday
-Bump · 1
+
+================================================================
+BUMP · 1
+================================================================
+
   Renata Oyelaran
     Sable Creek Landscaping · sent 9 days ago · 1 touch · 6 opens ·
     opened 2 days ago
     Day 9 on the first send, no open yet.
-First touch · 2
+
+================================================================
+FIRST TOUCH · 2
+================================================================
+
   Ines Ferreira
     Harbor Lane Bakery and Provisions of Old Town · fit 17 · owner
     direct
@@ -110,11 +133,14 @@ First touch · 2
   Tobias Wren
     Ridgeback Fencing · fit 17 · shared inbox
     heads up on the hours mismatch, graded A
-Visit · 1
+
+================================================================
+VISIT · 1
+================================================================
+
   Marguerite Bell
     Thistle Lane Florist · sent 14 days ago · 2 touches · 0 opens
     Walkable, open until 17:00.
-
 
 ================================================================
 THE GROOM
