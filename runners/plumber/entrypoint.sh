@@ -348,15 +348,19 @@ if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
     # send, opens, the last open, the reply), joined on the contact url, so
     # the email's metrics come off the record and the model writes only the
     # note.
-    jq -s '(.[1].contacts | to_entries | map({key: .value.contact_url, value: {
+    if ! jq -s '(.[1].contacts | to_entries | map({key: .value.contact_url, value: {
                 days_since_send: .value.days_since_send, touches: (.value.touches | length),
                 opens: (if .value.tracked_sends > 0 then .value.opens else null end),
                 days_since_open: .value.days_since_open, last_reply: .value.last_reply,
                 fit: .value.fit, email: .value.email}}) | from_entries) as $m
             | .[0] + {funnel: .[1].funnel, groom: .[1].groom}
-            | .owed |= with_entries(.value |= map(. + {metrics: ($m[.contact_url] // null)}))' \
-        "$DRAFT_JSON" "$WORK/portal.json" > "$WORK/draft-merged.json" \
-        && mv "$WORK/draft-merged.json" "$DRAFT_JSON"
+            | .owed |= with_entries(.value |= ((. // []) | map(
+                . + {metrics: ((.contact_url // null) as $cu | if ($cu | type) == "string" then ($m[$cu] // null) else null end)})))' \
+        "$DRAFT_JSON" "$WORK/portal.json" > "$WORK/draft-merged.json"; then
+        fail_reason="the funnel merge failed: could not join the model's owed names against portal.json"
+        exit 1
+    fi
+    mv "$WORK/draft-merged.json" "$DRAFT_JSON"
     echo "funnel: $(jq -r '[.funnel.stages[] | "\(.label) \(.now)"] | join(", ")' "$DRAFT_JSON")"
     echo "groom: $(jq -r '"\(.groom.companies | length) stage moves, \(.groom.contacts | length) status moves, \(.groom.proposed | length) proposed"' "$DRAFT_JSON")"
 else
