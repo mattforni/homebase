@@ -759,8 +759,6 @@ async function sweep(argv) {
     const LIFECYCLE = ["lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer"];
     const groom = { applied: GROOM, companies: [], contacts: [], proposed: [] };
     const write = async (obj, id, props) => { if (GROOM) await api(`crm/v3/objects/${obj}/${id}`, { properties: props }, "PATCH"); };
-    const meetingsByContact = new Map();
-    for (const m of meetings) for (const ct of m.contacts) meetingsByContact.set(ct, [...(meetingsByContact.get(ct) || []), m]);
     const nowIso = new Date().toISOString();
     const ENTERED_PROP = { marketingqualifiedlead: "hs_v2_date_entered_marketingqualifiedlead", salesqualifiedlead: "hs_v2_date_entered_salesqualifiedlead", opportunity: "hs_v2_date_entered_opportunity", customer: "hs_v2_date_entered_customer" };
     for (const co of companies.values()) {
@@ -781,12 +779,18 @@ async function sweep(argv) {
         const opened = cts.some((c) => (perContact.get(c.id)?.touches || []).some((t) => (t.opens || 0) > 0));
         const replied = cts.some((c) => (perContact.get(c.id)?.replies || []).length > 0);
         const connected = cts.some((c) => ["CONNECTED", "QUALIFIED"].includes(c.hs_lead_status));
-        const met = (meetingsByCompany.get(co.id) || []).length > 0 || cts.some((c) => (meetingsByContact.get(c.id) || []).length > 0);
+        // A reply is a pulse, not a qualification: it moves a company to MQL
+        // and never further. SQL is intent, and intent is a human read
+        // written as the Lead Status (Connected or Qualified) when a reply
+        // asks for a visit, a call or a price, or a real conversation with the
+        // decision maker happened. A logged meeting is not intent on its own:
+        // the Platform Strength walk in met a coach (Forni, 2026-09-24, after
+        // the first automated groom promoted every reply).
         let target = co.lifecyclestage;
         if (deal?.hs_is_closed_won === "true") target = "customer";
         else if (deal && deal.hs_is_closed !== "true") target = "opportunity";
-        else if (replied || connected || met) target = "salesqualifiedlead";
-        else if (opened) target = "marketingqualifiedlead";
+        else if (connected) target = "salesqualifiedlead";
+        else if (opened || replied) target = "marketingqualifiedlead";
         const from = LIFECYCLE.indexOf(co.lifecyclestage), to = LIFECYCLE.indexOf(target);
         if (to > from) {
             for (let i = from + 1; i <= to; i += 1) {
@@ -794,7 +798,7 @@ async function sweep(argv) {
                 co[ENTERED_PROP[LIFECYCLE[i]]] = nowIso;
             }
             groom.companies.push({ id: co.id, name: co.name, url: companyUrl(co.id), from: co.lifecyclestage, to: target,
-                why: target === "customer" ? "a won deal" : target === "opportunity" ? "an open deal" : replied ? "a reply on the record" : connected ? "a contact at CONNECTED or beyond" : met ? "a meeting on the record" : "a tracked open" });
+                why: target === "customer" ? "a won deal" : target === "opportunity" ? "an open deal" : connected ? "a contact at Connected or beyond" : replied ? "a reply on the record" : "a tracked open" });
             co.lifecyclestage = target;
         }
         // Step 3: true up the contacts against what happened.
@@ -805,7 +809,6 @@ async function sweep(argv) {
             if (co.lifecyclestage === "customer" && status !== "QUALIFIED") { next = "QUALIFIED"; why = "the company is a customer"; }
             else if (!status && t.touches.length) { next = "CONTACTED"; why = "a logged send and no Lead Status"; }
             else if (status === "NEW" && t.touches.length) { next = "CONTACTED"; why = "a first touch logged"; }
-            else if (["CONTACTED", "ENGAGED"].includes(status) && (meetingsByContact.get(c.id) || []).length) { next = "CONNECTED"; why = "a meeting on the contact"; }
             else if (status === "CONTACTED" && t.replies.length) { next = "ENGAGED"; why = "they wrote back"; }
             if (next !== status) {
                 await write("contacts", c.id, { hs_lead_status: next });
