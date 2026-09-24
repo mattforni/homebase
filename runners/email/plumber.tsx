@@ -1,12 +1,9 @@
 import {
 	asciiUpcase,
-	BigFold,
 	Card,
 	EmptyRow,
 	Eyebrow,
 	Footer,
-	FoldRow,
-	LeadRow,
 	List,
 	ListRow,
 	Masthead,
@@ -22,16 +19,21 @@ import {
 } from "@atelic-action/ui/email";
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, jqToString, numberString, shortDate, unindent, weekNumber } from "./jq";
-import { DimLine, FaintSpan, GroupLabel, Link } from "./local";
+import { DimLine, GroupLabel, Link } from "./local";
 import { leadBlock } from "./text";
 import type { RenderContext } from "./types";
 
 /*
- * The Pipeline email, ported from the jq renderer it replaced: the week's
- * scoreboard as the roster carries it, one list per type of everyone still
- * owed that touch, the queue counts, the portal diff, and the long tail behind
- * two folds. The roster itself is deliberately not here: it travels as a file
- * beside the email, since the block reads it in the repo.
+ * The Pipeline email: the week's scoreboard as the roster carries it, one list
+ * of bare names per type of everyone still owed that touch, the queue counts,
+ * the flags from the portal diff as one line each, and one line saying what
+ * the roster holds beyond that. The roster itself is deliberately not here: it
+ * travels as a file beside the email, since the block reads it in the repo,
+ * and it carries everything the email leaves out (the per name notes, every
+ * flag's full note, the could not verify list and the names left off on
+ * purpose). The first mail of this page, 2026-W39, carried all of that inline
+ * and Forni read it as too dense to run unattended; the two minute read is
+ * the email's whole job, and the roster gets the block (ATE-551, 2026-09-24).
  */
 
 type ScoreboardRow = { type?: unknown; target?: number | null; details?: unknown };
@@ -108,6 +110,23 @@ function countRows(draft: PipelineDraft): string[][] {
 const COUNT_HEADERS = ["Next Up", "Still NEW", "Unscored", "Tasks due", "Parked", "Stale"];
 const BOARD_HEADERS = ["Type", "Complete", "Target", "%", "Details"];
 
+function plural(count: number, noun: string): string {
+	return `${numberString(count)} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+/** The one line that stands in for the two lists the roster carries at its foot. */
+function rosterTail(unverified: number, notInBlock: number): string {
+	const could =
+		unverified === 0
+			? "Everything on the roster was verified"
+			: `${plural(unverified, "claim")} could not be verified today`;
+	const left =
+		notInBlock === 0
+			? "nothing was left off on purpose"
+			: `${plural(notInBlock, "name")} ${notInBlock === 1 ? "was" : "were"} left off on purpose`;
+	return `${could}, and ${left}. Both lists, every draft, and each flag's full note are in the attached roster.`;
+}
+
 /* ---------- html ---------- */
 
 export function pipelineHTML(input: unknown, context: RenderContext): string {
@@ -159,15 +178,6 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 											<Link text={jqToString(name.person)} url={name.contact_url} />
 											{", "}
 											<Link text={jqToString(name.company)} url={name.company_url} />
-											{jqToString(alt(name.note, "")) !== "" ? (
-												<>
-													{" "}
-													<FaintSpan>
-														{"· "}
-														{jqToString(name.note)}
-													</FaintSpan>
-												</>
-											) : null}
 										</ListRow>
 									))}
 								</List>
@@ -195,43 +205,18 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 							<List fontSize="14px">
 								{flags.map((flag, index) => (
 									// biome-ignore lint/suspicious/noArrayIndexKey: a flag's position is its identity
-									<LeadRow key={index} lead={jqToString(flag.lead)} rest={jqToString(flag.note)} />
+									<ListRow key={index}>{jqToString(flag.lead)}</ListRow>
 								))}
 							</List>
 						</Row>
 					)}
 				</Card>
 
-				<Eyebrow text="If you want to dig in" />
+				<Eyebrow text="In the roster" />
 				<Card>
-					<FoldRow last={false}>
-						<BigFold summary="Could not verify today" count={numberString(unverified.length)}>
-							<List fontSize="13px">
-								{unverified.length === 0 ? (
-									<ListRow>Everything on the roster was verified.</ListRow>
-								) : (
-									unverified.map((row, index) => (
-										// biome-ignore lint/suspicious/noArrayIndexKey: a row's position is its identity
-										<LeadRow key={index} lead={jqToString(row.lead)} rest={jqToString(row.note)} />
-									))
-								)}
-							</List>
-						</BigFold>
-					</FoldRow>
-					<FoldRow last={true}>
-						<BigFold summary="Deliberately not in this block" count={numberString(notInBlock.length)}>
-							<List fontSize="13px">
-								{notInBlock.length === 0 ? (
-									<ListRow>Nothing was left off on purpose.</ListRow>
-								) : (
-									notInBlock.map((row, index) => (
-										// biome-ignore lint/suspicious/noArrayIndexKey: a row's position is its identity
-										<LeadRow key={index} lead={jqToString(row.lead)} rest={jqToString(row.note)} />
-									))
-								)}
-							</List>
-						</BigFold>
-					</FoldRow>
+					<Row last={true}>
+						<DimLine text={rosterTail(unverified.length, notInBlock.length)} />
+					</Row>
 				</Card>
 
 				<Footer meta={context.meta} />
@@ -249,22 +234,20 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
  * number in its own column.
  */
 
-function leadNotesText(rows: LeadNote[], empty: string): string {
+/** The flags as one wrapped line each; the full note is the roster's. */
+function leadsText(rows: LeadNote[], empty: string): string {
 	if (rows.length === 0) return `  ${empty}\n`;
-	return `${rows
-		.map((row) => leadBlock(jqToString(row.lead), jqToString(alt(row.note, ""))))
-		.join("\n\n")}\n`;
+	return `${rows.map((row) => wrap(jqToString(row.lead))).join("\n")}\n`;
 }
 
 /*
- * One name on the week's list: the person and the company on a line, the note
- * wrapped beneath. A note is free text, so it never rides in a table column,
- * where one long note would stretch every row of the table.
+ * One name on the week's list: the person and the company on a line, wrapped
+ * as prose, since a company with its role title is as long as any sentence.
  */
 function nameText(name: ChecklistName): string {
 	const person = jqToString(name.person);
 	const company = jqToString(alt(name.company, ""));
-	return leadBlock(company === "" ? person : `${person} · ${company}`, jqToString(alt(name.note, "")));
+	return leadBlock(company === "" ? person : `${person} · ${company}`, "");
 }
 
 export function pipelineText(input: unknown, context: RenderContext): string {
@@ -312,15 +295,10 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	if (topOpened !== "") out += `\nHottest reader\n${wrap(topOpened)}\n`;
 
 	out += textSection("Flags From the Portal Diff");
-	out += leadNotesText(alt(draft.flags, []), "The roster and the portal agree.");
+	out += leadsText(alt(draft.flags, []), "The roster and the portal agree.");
 
-	out += textSection("If You Want to Dig In");
-	const unverified = alt(draft.unverified, []);
-	const notInBlock = alt(draft.not_in_block, []);
-	out += `Could not verify today · ${unverified.length}\n`;
-	out += leadNotesText(unverified, "Everything on the roster was verified.");
-	out += `\nDeliberately not in this block · ${notInBlock.length}\n`;
-	out += leadNotesText(notInBlock, "Nothing was left off on purpose.");
+	out += textSection("In the Roster");
+	out += `${wrap(rosterTail(alt(draft.unverified, []).length, alt(draft.not_in_block, []).length))}\n`;
 
 	out += `\n\n${context.meta}\n`;
 	return out;

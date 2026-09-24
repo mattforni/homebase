@@ -37,14 +37,12 @@ FLAGS FROM THE PORTAL DIFF
 
 
 ================================================================
-IF YOU WANT TO DIG IN
+IN THE ROSTER
 ================================================================
 
-Could not verify today · 0
-  Everything on the roster was verified.
-
-Deliberately not in this block · 0
-  Nothing was left off on purpose.
+  Everything on the roster was verified, and nothing was left off on
+  purpose. Both lists, every draft, and each flag's full note are in
+  the attached roster.
 
 
 12m 04s · $0.42 · 9 turns · claude-sonnet
