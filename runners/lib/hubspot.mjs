@@ -739,6 +739,10 @@ async function sweep(argv) {
     for (const t of tasks) {
         for (const ct of t.contacts) taskIndex.set(ct, [...(taskIndex.get(ct) || []), t]);
     }
+    const noteIndex = new Map();
+    for (const n of notes) {
+        for (const ct of n.contacts) noteIndex.set(ct, [...(noteIndex.get(ct) || []), n]);
+    }
     const byCompany = (list) => {
         const m = new Map();
         for (const x of list) for (const co of x.companies) m.set(co, [...(m.get(co) || []), x]);
@@ -971,7 +975,10 @@ async function sweep(argv) {
         return t ? { due: t.due, reading: t.reading, subject: t.subject } : null;
     };
     const recentNote = (co) => {
-        const n = (notesByCompany.get(co.id) || [])
+        const own = [...(notesByCompany.get(co.id) || []), ...co.contacts.flatMap((id) => noteIndex.get(id) || [])];
+        const seen = new Set();
+        const n = own
+            .filter((x) => !seen.has(x.id) && seen.add(x.id))
             .filter((x) => x.date && x.body && daysSince(`${x.date}T12:00:00Z`) >= 0 && daysSince(`${x.date}T12:00:00Z`) <= 14)
             .sort((a, b) => b.date.localeCompare(a.date))[0];
         return n ? { date: n.date, text: n.body.split("\n")[0].slice(0, 160) } : null;
