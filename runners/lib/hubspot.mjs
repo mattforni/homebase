@@ -53,10 +53,11 @@ const ACCOUNT = process.env.HS_ACCOUNT || "hs-pat-atelic";
 const SELF_COMPANY = process.env.ATELIC_COMPANY_ID || "342531943133";
 const PORTAL = process.env.ATELIC_PORTAL_ID || "246648548";
 
-async function api(path, body) {
+async function api(path, body, method) {
+    method = method || (body ? "POST" : "GET");
     if (KEY) {
         const res = await fetch(`https://api.hubapi.com/${path}`, {
-            method: body ? "POST" : "GET",
+            method,
             headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
             body: body ? JSON.stringify(body) : undefined,
         });
@@ -65,8 +66,11 @@ async function api(path, body) {
         return JSON.parse(text);
     }
     const args = ["api", path, "--account=" + ACCOUNT];
-    if (body) args.push("-X", "POST", "--data", JSON.stringify(body));
-    return JSON.parse(execFileSync("hs", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
+    if (body) args.push("-X", method, "--data", JSON.stringify(body));
+    // The shim refuses a write unless HS_APPLY is set; a groom through the
+    // shim (a local run with no service key) has to opt in the same way.
+    const env = method === "GET" || method === "POST" ? process.env : { ...process.env, HS_APPLY: "1" };
+    return JSON.parse(execFileSync("hs", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env }));
 }
 
 const EMAIL_PROPS = [
@@ -86,6 +90,16 @@ const NOISE = [
     /^(re|fwd|fw):\s*(accepted|declined|tentative|cancelled|canceled|invitation|updated invitation|automatic reply):/i,
     /^out of office\b/i,
     /^\d+\s*min(ute)?s?\s+meeting\b/i,
+    // Autoresponders and automation that arrive as incoming mail and read as a
+    // reply: a shop's "thanks for emailing" bounce, a billing system's invoice.
+    // The read only groom of 2026-09-24 would have moved Platform Strength to
+    // SQL on its 2026-07-30 autoresponder and Blue Spruce Maids on an invoice.
+    /^thank(s| you) for (emailing|contacting|reaching out|your (email|message|inquiry))/i,
+    /^we('ve| have)? received your/i,
+    /^(your )?(invoice|receipt|order|statement)\b.*(attached|confirmation|is ready)/i,
+    /^invoice attached/i,
+    /\bnewsletter\b/i,
+    /^(do not reply|no-?reply)\b/i,
 ];
 const isNoise = (p) => NOISE.some((re) => re.test((p.hs_email_subject || "").trim()));
 
@@ -734,6 +748,82 @@ async function sweep(argv) {
     const meetingsByCompany = byCompany(meetings);
     const notesByCompany = byCompany(notes);
 
+    // ----- the groom: make the portal say what is true -----
+    // The Weekly Groom in Pipeline/README.md, steps 1 through 3, which write
+    // on their own because every move is derived from a signal already on the
+    // record; step 4 (duplicates and orphans) only proposes. Lifecycle walks
+    // every stage between so each entry date stamps, and never moves
+    // backwards. SWEEP_GROOM=0 reads the moves and writes nothing, which is
+    // how a local iteration runs against the real portal without touching it.
+    const GROOM = process.env.SWEEP_GROOM !== "0";
+    const LIFECYCLE = ["lead", "marketingqualifiedlead", "salesqualifiedlead", "opportunity", "customer"];
+    const groom = { applied: GROOM, companies: [], contacts: [], proposed: [] };
+    const write = async (obj, id, props) => { if (GROOM) await api(`crm/v3/objects/${obj}/${id}`, { properties: props }, "PATCH"); };
+    const meetingsByContact = new Map();
+    for (const m of meetings) for (const ct of m.contacts) meetingsByContact.set(ct, [...(meetingsByContact.get(ct) || []), m]);
+    const nowIso = new Date().toISOString();
+    const ENTERED_PROP = { marketingqualifiedlead: "hs_v2_date_entered_marketingqualifiedlead", salesqualifiedlead: "hs_v2_date_entered_salesqualifiedlead", opportunity: "hs_v2_date_entered_opportunity", customer: "hs_v2_date_entered_customer" };
+    for (const co of companies.values()) {
+        const cts = co.contacts.map((id) => contacts.get(id)).filter(Boolean);
+        const deal = dealByCompany.get(co.id)?.properties;
+        // Step 1: a closed company's contacts read UNQUALIFIED; a contact
+        // UNQUALIFIED under a company with no reason is a half applied close.
+        if (co.disqualification_reason) {
+            for (const c of cts) if (c.hs_lead_status && c.hs_lead_status !== "UNQUALIFIED") {
+                await write("contacts", c.id, { hs_lead_status: "UNQUALIFIED" });
+                groom.contacts.push({ id: c.id, name: `${c.firstname || ""} ${c.lastname || ""}`.trim(), company: co.name, from: c.hs_lead_status, to: "UNQUALIFIED", why: `company closed: ${co.disqualification_reason}` });
+                c.hs_lead_status = "UNQUALIFIED";
+            }
+            continue;
+        }
+        for (const c of cts) if (c.hs_lead_status === "UNQUALIFIED") groom.proposed.push({ kind: "half applied close", name: `${c.firstname || ""} ${c.lastname || ""}`.trim(), company: co.name, url: companyUrl(co.id), note: "contact reads UNQUALIFIED with no Disqualification Reason on the company; set the reason or reopen the contact" });
+        // Step 2: the signals decide the stage.
+        const opened = cts.some((c) => (perContact.get(c.id)?.touches || []).some((t) => (t.opens || 0) > 0));
+        const replied = cts.some((c) => (perContact.get(c.id)?.replies || []).length > 0);
+        const connected = cts.some((c) => ["CONNECTED", "QUALIFIED"].includes(c.hs_lead_status));
+        const met = (meetingsByCompany.get(co.id) || []).length > 0 || cts.some((c) => (meetingsByContact.get(c.id) || []).length > 0);
+        let target = co.lifecyclestage;
+        if (deal?.hs_is_closed_won === "true") target = "customer";
+        else if (deal && deal.hs_is_closed !== "true") target = "opportunity";
+        else if (replied || connected || met) target = "salesqualifiedlead";
+        else if (opened) target = "marketingqualifiedlead";
+        const from = LIFECYCLE.indexOf(co.lifecyclestage), to = LIFECYCLE.indexOf(target);
+        if (to > from) {
+            for (let i = from + 1; i <= to; i += 1) {
+                await write("companies", co.id, { lifecyclestage: LIFECYCLE[i] });
+                co[ENTERED_PROP[LIFECYCLE[i]]] = nowIso;
+            }
+            groom.companies.push({ id: co.id, name: co.name, url: companyUrl(co.id), from: co.lifecyclestage, to: target,
+                why: target === "customer" ? "a won deal" : target === "opportunity" ? "an open deal" : replied ? "a reply on the record" : connected ? "a contact at CONNECTED or beyond" : met ? "a meeting on the record" : "a tracked open" });
+            co.lifecyclestage = target;
+        }
+        // Step 3: true up the contacts against what happened.
+        for (const c of cts) {
+            const t = perContact.get(c.id) || { touches: [], replies: [] };
+            const status = c.hs_lead_status || "";
+            let next = status, why = "";
+            if (co.lifecyclestage === "customer" && status !== "QUALIFIED") { next = "QUALIFIED"; why = "the company is a customer"; }
+            else if (!status && t.touches.length) { next = "CONTACTED"; why = "a logged send and no Lead Status"; }
+            else if (status === "NEW" && t.touches.length) { next = "CONTACTED"; why = "a first touch logged"; }
+            else if (["CONTACTED", "ENGAGED"].includes(status) && (meetingsByContact.get(c.id) || []).length) { next = "CONNECTED"; why = "a meeting on the contact"; }
+            else if (status === "CONTACTED" && t.replies.length) { next = "ENGAGED"; why = "they wrote back"; }
+            if (next !== status) {
+                await write("contacts", c.id, { hs_lead_status: next });
+                groom.contacts.push({ id: c.id, name: `${c.firstname || ""} ${c.lastname || ""}`.trim(), company: co.name, from: status || "(none)", to: next, why });
+                c.hs_lead_status = next;
+            }
+        }
+    }
+    // Step 4: duplicates and orphans, proposed and never done.
+    const byDomain = new Map();
+    for (const co of companies.values()) if (co.domain) { const d = co.domain.toLowerCase().replace(/^www\./, ""); byDomain.set(d, [...(byDomain.get(d) || []), co]); }
+    for (const [d, list] of byDomain) if (list.length > 1) groom.proposed.push({ kind: "duplicate company", name: list.map((c) => c.name).join(" and "), company: d, url: companyUrl(list[0].id), note: `two companies on ${d}; merge them` });
+    const byEmail = new Map();
+    for (const c of contacts.values()) if (c.email && c.in_funnel) { const e = c.email.toLowerCase(); byEmail.set(e, [...(byEmail.get(e) || []), c]); }
+    for (const [e, list] of byEmail) if (list.length > 1) groom.proposed.push({ kind: "duplicate contact", name: e, company: companies.get(list[0].company_id)?.name || "", url: contactUrl(list[0].id), note: `two contacts on ${e}; merge them` });
+    for (const c of contacts.values()) if (c.hs_lead_status && !c.in_funnel && !c.company_id) groom.proposed.push({ kind: "orphan contact", name: `${c.firstname || ""} ${c.lastname || ""}`.trim() || c.email || c.id, company: "", url: contactUrl(c.id), note: "a Lead Status with no company; associate or clear it" });
+    log(`groom${GROOM ? "" : " (read only)"}: ${groom.companies.length} stage moves, ${groom.contacts.length} status moves, ${groom.proposed.length} proposed`);
+
     const reads = [];
     for (const c of contacts.values()) {
         const co = companies.get(c.company_id);
@@ -889,26 +979,29 @@ async function sweep(argv) {
         stages: STAGE_ORDER.map((key) => {
             const nowList = byStage.now.get(key) || [], thenList = byStage.then.get(key) || [];
             const thenIds = new Set(thenList.map((c) => c.id)), nowIds = new Set(nowList.map((c) => c.id));
-            // Closed shows the week's closes; every other stage shows who is there now.
-            const shown = (key === "closed" ? nowList.filter((c) => !thenIds.has(c.id)) : nowList).map(funnelRow).sort(stageSort[key]);
+            // New, Lead and Closed are read as counts and movers alone; the
+            // four stages in between list every company (Forni, 2026-09-24).
+            const listed = ["mql", "sql", "opportunity", "customer"].includes(key);
+            const shown = (listed ? nowList : []).map(funnelRow).sort(stageSort[key]);
             const delta = nowList.length - thenList.length;
             return {
                 key, label: STAGE_LABEL[key], now: nowList.length, then: thenList.length, delta,
                 pct: thenList.length ? Math.round((delta / thenList.length) * 100) : null,
                 entered: nowList.filter((c) => !thenIds.has(c.id)).map((c) => c.name),
                 left: thenList.filter((c) => !nowIds.has(c.id)).map((c) => c.name),
-                top: shown.slice(0, 5), more: Math.max(0, shown.length - 5),
+                companies: shown,
             };
         }),
     };
     counts.funnel = Object.fromEntries(funnel.stages.map((st) => [st.key, { now: st.now, delta: st.delta }]));
+    counts.groom = { applied: GROOM, companies: groom.companies.length, contacts: groom.contacts.length, proposed: groom.proposed.length };
 
     // ----- the files -----
     mkdirSync(outDir, { recursive: true });
     const nameOf = (id) => { const c = contacts.get(id); return c ? `${c.firstname || ""} ${c.lastname || ""}`.trim() : `contact ${id}`; };
     const coName = (id) => companies.get(id)?.name || `company ${id}`;
     const json = {
-        counts, funnel, sections, tasks, meetings, notes,
+        counts, funnel, groom, sections, tasks, meetings, notes,
         companies: Object.fromEntries([...companies.values()].map((c) => [c.id, { ...c, url: companyUrl(c.id) }])),
         contacts: Object.fromEntries(reads.map((r) => [r.contact_id, r])),
     };
@@ -947,6 +1040,16 @@ async function sweep(argv) {
             st.label, st.now, st.then, `${st.delta >= 0 ? "+" : ""}${st.delta}${st.pct === null ? "" : ` (${st.pct >= 0 ? "+" : ""}${st.pct}%)`}`,
             st.entered.join("; ") || "", st.left.join("; ") || "",
         ])),
+        "",
+        "## The Groom",
+        "",
+        `${GROOM ? "Applied" : "Read only, nothing written"}: ${groom.companies.length} stage moves, ${groom.contacts.length} status moves, ${groom.proposed.length} proposed and left for Forni. The runner renders this into the email; your read may name a move that changes the week.`,
+        "",
+        groom.companies.length ? table(["Company", "From", "To", "Why"], groom.companies.map((m) => [m.name, m.from, m.to, m.why])) : "No stage moves.",
+        "",
+        groom.contacts.length ? table(["Contact", "Company", "From", "To", "Why"], groom.contacts.map((m) => [m.name, m.company, m.from, m.to, m.why])) : "No status moves.",
+        "",
+        groom.proposed.length ? table(["Kind", "Who", "Company", "Note"], groom.proposed.map((m) => [m.kind, m.name, m.company, m.note])) : "Nothing proposed.",
         "",
         sectionMd("Replies Owed", sections.replies_owed, "Their reply is the last message on the HubSpot record. The reply text is in the detail below; read the thread in the mailbox pull before drafting."),
         sectionMd("Tasks Due", sections.tasks_due, "An open task due this week or earlier, or stale. The task body is under Open Tasks."),

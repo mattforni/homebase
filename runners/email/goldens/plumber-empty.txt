@@ -4,36 +4,25 @@ Week 5 · 01/26 to 02/01
 NOTHING IS OWED.
 
 
+================================================================
+THE PIPELINE
+================================================================
+
+  The portal sweep carried no funnel this run.
 
 
 ================================================================
-THE BOARD
+THIS WEEK
 ================================================================
 
-  Type   Complete  Target  %
-  Total         0       0  0
-
-  Nobody is owed a touch this week.
+  Nothing is owed this week.
 
 
 ================================================================
-THE QUEUE
+THE GROOM
 ================================================================
 
-  Measure    Count
-  Next Up        ?
-  Still NEW      ?
-  Unscored       ?
-  Tasks due      ?
-  Parked         ?
-  Stale          ?
-
-
-================================================================
-FLAGS FROM THE PORTAL DIFF
-================================================================
-
-  The roster and the portal agree.
+  The groom did not run this week.
 
 
 ================================================================
@@ -41,7 +30,7 @@ IN THE ROSTER
 ================================================================
 
   Everything on the roster was verified, and nothing was left off on
-  purpose. Both lists, every draft, and each flag's full note are in
+  purpose. Every draft, each name's full line, and both lists are in
   the attached roster.
 
 

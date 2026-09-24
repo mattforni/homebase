@@ -1,66 +1,97 @@
 ATELIC · PIPELINE · WEEK 5
 Week 5 · 01/26 to 02/01
 
-FOUR REPLIES OWED,
-FIVE BUMPS, TWO VISITS.
-
-The sweep found four names waiting on an answer and five sitting
-past their bump window. Open on Pinewood Cabinetry, which has read
-the last send seven times in twelve days.
+THREE REPLIES CAME IN,
+NINE NAMES MOVED TO MQL.
 
 
 ================================================================
-THE BOARD
+THE PIPELINE
 ================================================================
 
-  Type     Complete  Target  %
-  Replies         0       4  0
-  Bumps           0       5  0
-  Closes          0       0  0
-  Intros          0       3  0
-  Visits          0       2  0
-  Total           0      14  0
+The Read
+  The groom walked nine opened sends to MQL and three replies to
+  SQL, so the strip finally reads the week that happened. Blue Heron
+  Plumbing is the hottest thread on the board, six opens on a bump
+  at day nine with no reply yet. Tuesday opens on the two replies
+  owed, then the first touches.
 
-  Replies
-  Two are waiting on a number, two on a date.
+  Stage     Now  Change
+  New        41  +3 · +8%
+  Lead       22  -3 · -12%
+  MQL         7  +3 · +75%
+  SQL         3  +1 · +50%
+  Oppty       1  0
+  Customer    2  0
+  Closed      9  +1 · +13%
 
-  Closes
-  Nothing is close enough to ask.
+  New 41, +3 · +8%: 3 in, 0 out this week.
+  Lead 22, -3 · -12%: 1 in, 4 out this week.
+  Closed 9, +1 · +13%: 1 in, 0 out this week.
 
-  Visits
-  Both are walkable from the desk.
+MQL · 7
+  Nobody here this week.
 
-Replies · 2
-  Salley Wilson · Pinewood Cabinetry
-  Dov Marchetti · Harbor Line Plumbing
+SQL · 3
+  Nobody here this week.
 
-Bumps · 1
-  Renata Oyelaran · Sable Creek Landscaping
+Oppty · 1
+  Nobody here this week.
 
-Visits · 1
-  Marguerite Bell · Thistle Lane Florist
-
-
-================================================================
-THE QUEUE
-================================================================
-
-  Measure    Count
-  Next Up       41
-  Still NEW     26
-  Unscored       5
-  Tasks due      2
-  Parked         1
-  Stale          0
-
-Hottest reader
-  Salley Wilson, Pinewood Cabinetry, 7 opens on day 12
+Customer · 2
+  Nobody here this week.
 
 
 ================================================================
-FLAGS FROM THE PORTAL DIFF
+THIS WEEK
 ================================================================
 
+Reply to · 2
+  Salley Wilson
+    Pinewood Cabinetry
+    Owed a number since Tuesday, sending as Atelic, graded A, and
+    she asked twice whether the audit could be walked through in
+    person at the shop rather than over a call.
+
+  Dov Marchetti
+    Harbor Line Plumbing
+Bump · 1
+  Renata Oyelaran
+    Sable Creek Landscaping
+    Day 9 on the first send, no open yet.
+Visit · 1
+  Marguerite Bell
+    Thistle Lane Florist
+    Walkable, open until 17:00.
+First touch · 2
+  Ines Ferreira
+    Harbor Lane Bakery and Provisions of Old Town
+    audit led, owner direct, graded A minus
+
+  Tobias Wren
+    Ridgeback Fencing
+    heads up on the hours mismatch, graded A
+
+
+================================================================
+THE GROOM
+================================================================
+
+  The groom moved 2 companies and 1 contact to match what the record
+  already showed.
+
+  Blue Heron Plumbing
+    Lead to MQL · a tracked open
+
+  Granite Peak Tile
+    Lead to SQL · a reply on the record
+
+  Priya Venkataraman, Granite Peak Tile
+    Contacted to Engaged · they wrote back
+Left for you · 3
+  Native Roofing and Native Roofing and Solar,
+  nativeroofing.example: two companies on nativeroofing.example;
+  merge them
   Harbor Line Plumbing reads NEW with a reply on the record.
   Ridgeline Glass has a send that never logged.
 
@@ -70,7 +101,7 @@ IN THE ROSTER
 ================================================================
 
   1 claim could not be verified today, and 1 name was left off on
-  purpose. Both lists, every draft, and each flag's full note are in
+  purpose. Every draft, each name's full line, and both lists are in
   the attached roster.
 
 

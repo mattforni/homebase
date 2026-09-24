@@ -1,94 +1,62 @@
 {
 	"preheader": "Four replies owed, five bumps, two visits, and one name running hot.",
 	"headline": [
-		"Four replies owed,",
-		"five bumps, two visits."
+		"Three replies came in,",
+		"nine names moved to MQL."
 	],
-	"lede": "The sweep found four names waiting on an answer and five sitting past their bump window. Open on Pinewood Cabinetry, which has read the last send seven times in twelve days.",
-	"scoreboard": [
-		{
-			"type": "Replies",
-			"target": 4,
-			"details": "Two are waiting on a number, two on a date."
-		},
-		{
-			"type": "Bumps",
-			"target": 5,
-			"details": ""
-		},
-		{
-			"type": "Closes",
-			"target": 0,
-			"details": "Nothing is close enough to ask."
-		},
-		{
-			"type": "Intros",
-			"target": 3,
-			"details": ""
-		},
-		{
-			"type": "Visits",
-			"target": 2,
-			"details": "Both are walkable from the desk."
-		}
-	],
-	"checklist": [
-		{
-			"type": "Replies",
-			"names": [
-				{
-					"person": "Salley Wilson",
-					"company": "Pinewood Cabinetry",
-					"contact_url": "https://app.example.test/contacts/1/record/0-1/101",
-					"company_url": "https://app.example.test/contacts/1/record/0-2/201",
-					"note": "Owed a number since Tuesday, sending as Atelic, graded A, and she asked twice whether the audit could be walked through in person at the shop rather than over a call."
-				},
-				{
-					"person": "Dov Marchetti",
-					"company": "Harbor Line Plumbing",
-					"contact_url": null,
-					"company_url": null,
-					"note": ""
-				}
-			]
-		},
-		{
-			"type": "Bumps",
-			"names": [
-				{
-					"person": "Renata Oyelaran",
-					"company": "Sable Creek Landscaping",
-					"contact_url": "https://app.example.test/contacts/1/record/0-1/102",
-					"company_url": "",
-					"note": "Day 9 on the first send, no open yet."
-				}
-			]
-		},
-		{
-			"type": "Closes",
-			"names": []
-		},
-		{
-			"type": "Visits",
-			"names": [
-				{
-					"person": "Marguerite Bell",
-					"company": "Thistle Lane Florist",
-					"contact_url": "https://app.example.test/contacts/1/record/0-1/103",
-					"company_url": "https://app.example.test/contacts/1/record/0-2/203",
-					"note": "Walkable, open until 17:00."
-				}
-			]
-		}
-	],
-	"counts": {
-		"next_up": 41,
-		"next_up_new": 26,
-		"unscored": 5,
-		"tasks_due": 2,
-		"tasks_parked": 1,
-		"tasks_stale": 0,
-		"top_opened": "Salley Wilson, Pinewood Cabinetry, 7 opens on day 12"
+	"lede": "The groom walked nine opened sends to MQL and three replies to SQL, so the strip finally reads the week that happened. Blue Heron Plumbing is the hottest thread on the board, six opens on a bump at day nine with no reply yet. Tuesday opens on the two replies owed, then the first touches.",
+	"owed": {
+		"reply": [
+			{
+				"person": "Salley Wilson",
+				"company": "Pinewood Cabinetry",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/101",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/201",
+				"note": "Owed a number since Tuesday, sending as Atelic, graded A, and she asked twice whether the audit could be walked through in person at the shop rather than over a call."
+			},
+			{
+				"person": "Dov Marchetti",
+				"company": "Harbor Line Plumbing",
+				"contact_url": null,
+				"company_url": null,
+				"note": ""
+			}
+		],
+		"bump": [
+			{
+				"person": "Renata Oyelaran",
+				"company": "Sable Creek Landscaping",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/102",
+				"company_url": "",
+				"note": "Day 9 on the first send, no open yet."
+			}
+		],
+		"visit": [
+			{
+				"person": "Marguerite Bell",
+				"company": "Thistle Lane Florist",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/103",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/203",
+				"note": "Walkable, open until 17:00."
+			}
+		],
+		"first_touch": [
+			{
+				"person": "Ines Ferreira",
+				"company": "Harbor Lane Bakery and Provisions of Old Town",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/301",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/401",
+				"note": "audit led, owner direct, graded A minus"
+			},
+			{
+				"person": "Tobias Wren",
+				"company": "Ridgeback Fencing",
+				"contact_url": "https://app.example.test/contacts/1/record/0-1/302",
+				"company_url": "https://app.example.test/contacts/1/record/0-2/402",
+				"note": "heads up on the hours mismatch, graded A"
+			}
+		],
+		"decide": []
 	},
 	"flags": [
 		{
@@ -516,6 +484,46 @@
 					}
 				],
 				"more": 0
+			}
+		]
+	},
+	"groom": {
+		"applied": true,
+		"companies": [
+			{
+				"id": "1",
+				"name": "Blue Heron Plumbing",
+				"url": "https://app.example.test/contacts/1/record/0-2/501",
+				"from": "lead",
+				"to": "marketingqualifiedlead",
+				"why": "a tracked open"
+			},
+			{
+				"id": "2",
+				"name": "Granite Peak Tile",
+				"url": "https://app.example.test/contacts/1/record/0-2/502",
+				"from": "lead",
+				"to": "salesqualifiedlead",
+				"why": "a reply on the record"
+			}
+		],
+		"contacts": [
+			{
+				"id": "3",
+				"name": "Priya Venkataraman",
+				"company": "Granite Peak Tile",
+				"from": "CONTACTED",
+				"to": "ENGAGED",
+				"why": "they wrote back"
+			}
+		],
+		"proposed": [
+			{
+				"kind": "duplicate company",
+				"name": "Native Roofing and Native Roofing and Solar",
+				"company": "nativeroofing.example",
+				"url": "https://app.example.test/contacts/1/record/0-2/503",
+				"note": "two companies on nativeroofing.example; merge them"
 			}
 		]
 	}

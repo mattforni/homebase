@@ -41,6 +41,10 @@
 #   SKIP_PULLS                1 skips every pull and runs the agent over the
 #                             files already in $WORK, so a prompt change costs
 #                             one model call and no fetches
+#   SWEEP_GROOM               0 makes the portal sweep read only: the groom's
+#                             moves are computed and reported, nothing is
+#                             written. The default writes, per The Weekly
+#                             Groom in Pipeline/README.md (2026-09-24)
 # fail_reason, result, status and ATTACHMENT cross into the scaffold in
 # lib/runner.sh (its EXIT trap and runner_render read them), which static
 # analysis cannot see across files.
@@ -333,17 +337,17 @@ model_args=()
 [[ -z "${RUNNER_MODEL:-}" ]] || model_args=(--model "$RUNNER_MODEL")
 runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent plumber "${model_args[@]}" --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 runner_draft '(.headline | type == "array") and (.lede | type == "string")
-    and (.scoreboard | type == "array") and (.checklist | type == "array")
-    and (.counts | type == "object") and (.flags | type == "array")
+    and (.owed | type == "object") and (.flags | type == "array")
     and (.unverified | type == "array") and (.not_in_block | type == "array")' || exit 1
 
 # The funnel strip and its stage lists are the pull's, never the model's:
 # fold them into the draft the renderer reads, so the email's numbers come
 # straight off the portal and cost no turn.
 if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
-    jq -s '.[0] + {funnel: .[1].funnel}' "$DRAFT_JSON" "$WORK/portal.json" > "$WORK/draft-merged.json" \
+    jq -s '.[0] + {funnel: .[1].funnel, groom: .[1].groom}' "$DRAFT_JSON" "$WORK/portal.json" > "$WORK/draft-merged.json" \
         && mv "$WORK/draft-merged.json" "$DRAFT_JSON"
     echo "funnel: $(jq -r '[.funnel.stages[] | "\(.label) \(.now)"] | join(", ")' "$DRAFT_JSON")"
+    echo "groom: $(jq -r '"\(.groom.companies | length) stage moves, \(.groom.contacts | length) status moves, \(.groom.proposed | length) proposed"' "$DRAFT_JSON")"
 else
     echo "funnel: portal.json carries no funnel; the email renders without the strip"
 fi

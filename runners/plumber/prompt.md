@@ -1,6 +1,6 @@
 Prep the weekly outreach roster for ISO week {{WEEK}} ({{MONDAY}} to {{SUNDAY}}); today is {{TODAY}}. Eudaimonia is checked out at {{EUDY}} and the Atelic repo at {{ATELIC}}, so every path in your definition that begins with ~/Eudaimonia resolves under {{EUDY}}. Scratch directory for working files: {{WORK}}; write nowhere else. You have no hs, no gws, no agent-browser and no git in this run, and you do not need them. Bash is allowed for node, jq, curl, date, cat, ls and wc alone: a python one liner or a grep is denied and costs a turn, so read with Read and search with Grep.
 
-Steps 1 through 4 of your method, and the portal half of step 2 and 3's arithmetic, are already done by the runner, before you started. Read these first, in this order:
+Steps 1 through 4 of your method, and the portal half of step 2 and 3's arithmetic, are already done by the runner, before you started, and so is the groom: the runner has already moved every stage and status the signals on the record justify (The Weekly Groom in Pipeline/README.md, steps 1 through 3) and written what it did and what it could not settle into portal.md under The Groom. You never move a record; you read the groomed portal. Read these first, in this order:
 
 - {{WORK}}/pulls.md: what was pulled and what failed this run. A failed pull is named under `unverified` in your summary, never silently worked around.
 - {{WORK}}/portal.md: the portal sweep. The counts line, then every name sorted into the pull's suggested section (replies owed, tasks due, bumps due, visits due, closes due, first touch candidates, in conversation, parked, waiting), with last send, days since, touches run, opens, and their last reply; the open tasks with their bodies; and the meetings and notes of the last sixty days with their bodies, Granola links included. The suggestion is the record's; the mailbox and the thread decide, and when you move a name out of its suggested section, say why on its roster line. {{WORK}}/portal-detail.md holds every active name's logged sends and replies in full, one `### Name, Company` block each: read a name's block when you draft for that name, with Grep to find it, never the whole file. {{WORK}}/portal.json holds the same as data.
@@ -20,24 +20,20 @@ The shape, every key present (use `[]` or `""` where a week has nothing):
 
 ```json
 {
-  "preheader": "One sentence on the state of the week, under 90 characters.",
-  "headline": ["Five replies owed,", "six bumps, two visits."],
-  "lede": "Two or three sentences: what the sweep found and what the block should open on. Name the hottest reader on the board.",
-  "scoreboard": [
-    { "type": "Replies", "target": 5, "details": "One line for the row: the shape of what remains and any blocker with its owner." },
-    { "type": "Bumps", "target": 6, "details": "" },
-    { "type": "Closes", "target": 0, "details": "" },
-    { "type": "Intros", "target": 5, "details": "" },
-    { "type": "Visits", "target": 2, "details": "" }
-  ],
-  "checklist": [
-    { "type": "Replies", "names": [ { "person": "Salley Wilson", "company": "Outdoors Geek", "contact_url": "https://app.hubspot.com/contacts/246648548/record/0-1/...", "company_url": "https://app.hubspot.com/contacts/246648548/record/0-2/...", "note": "the one line the block needs: what this touch is, the sending address, the grade" } ] }
-  ],
-  "counts": { "next_up": 64, "next_up_new": 40, "unscored": 6, "tasks_due": 2, "tasks_parked": 2, "tasks_stale": 0, "top_opened": "Xerxes Steirer, Just Heat Pumps, 7 opens on day 12" },
+  "preheader": "One sentence on the state of the pipeline, under 90 characters.",
+  "headline": ["Three replies came in,", "two names moved to SQL."],
+  "lede": "Two or three sentences, the read: what moved in the funnel this week and why, the hottest thread on the board, and what Tuesday opens on. The strip, the stage lists and the groom's moves are rendered by the runner from the pull, so name them rather than restating them.",
+  "owed": {
+    "reply": [ { "person": "Salley Wilson", "company": "Outdoors Geek", "contact_url": "https://app.hubspot.com/contacts/246648548/record/0-1/...", "company_url": "https://app.hubspot.com/contacts/246648548/record/0-2/...", "note": "at most twelve words: what this touch is, the sending address, the grade" } ],
+    "bump": [],
+    "visit": [],
+    "first_touch": [],
+    "decide": []
+  },
   "flags": [ { "lead": "Blue Spruce Maids reads NEW with a reply on the record.", "note": "One or two sentences: both values, and what you recommend. You flag; you do not fix." } ],
   "unverified": [ { "lead": "The One Pager pull failed.", "note": "What was not verified today and what it would take." } ],
   "not_in_block": [ { "lead": "Kristy Adams, Project Angel Heart", "note": "Why this name is deliberately not on the board this week." } ]
 }
 ```
 
-Rules for the values: `scoreboard` holds exactly the five types in that order, Complete is zero on Monday and the runner adds it, and a row's `details` is one short line; `checklist` holds one entry per type with anyone still owed that touch, person then company, in the same order as the rows, and a type with nobody gets an empty `names`; a name's `note` is at most twelve words (the touch, the sending address, the grade) and the email does not show it, the roster line does; `flags` is the portal diff (a roster line whose state disagrees with the portal, a send never logged, a status that lags a reply), at most five, the five that matter most, each `lead` one sentence that stands alone because the email shows the lead and nothing else, and the rest of the diff goes in the roster's own flags section; `unverified` is everything you could not verify today, the failed pulls included; `not_in_block` is what you left off on purpose. The email renders only the counts of those last two; their full text lives in the roster's two closing sections. Brevity everywhere: the reader gives the email two minutes and the roster the block. Dates ISO, clocks 24 hour. No dashes of any kind in prose (no hyphens, en dashes or em dashes; split the sentence or use a comma; hyphens inside identifiers, URLs and names as their owners wrote them are fine). End with the JSON; the success line your definition asks for is not needed here.
+Rules for the values: `owed` is what Forni owes this week and nothing else, five kinds in that order, each an array of names (person then company, both linked) or empty: `reply` is every conversation where their message is the latest on the record and no meeting is booked; `bump` is every send at about seven days with no reply; `visit` is every bumped send at about fourteen days, walkable or by phone; `first_touch` is the week's new names, five in a full week; `decide` is every close due, a name silent past three touches or a call only Forni can make (a reopen, a park). A name's `note` is at most twelve words (the touch, the sending address, the grade); the roster line carries the rest. `flags` is what the groom could not settle (a duplicate to merge, a half applied close, a send never logged, a roster line that disagrees with the portal), at most five, the five that matter most, each `lead` one sentence that stands alone because the email shows the lead and nothing else; the rest goes in the roster's own flags section. `unverified` is everything you could not verify today, the failed pulls included; `not_in_block` is what you left off on purpose. The email renders only the counts of those last two; their full text lives in the roster's two closing sections. Brevity everywhere: the reader gives the email two minutes and the roster the block. Dates ISO, clocks 24 hour. No dashes of any kind in prose (no hyphens, en dashes or em dashes; split the sentence or use a comma; hyphens inside identifiers, URLs and names as their owners wrote them are fine). End with the JSON; the success line your definition asks for is not needed here.
