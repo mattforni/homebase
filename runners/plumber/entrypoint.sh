@@ -337,6 +337,17 @@ runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.counts | type == "object") and (.flags | type == "array")
     and (.unverified | type == "array") and (.not_in_block | type == "array")' || exit 1
 
+# The funnel strip and its stage lists are the pull's, never the model's:
+# fold them into the draft the renderer reads, so the email's numbers come
+# straight off the portal and cost no turn.
+if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
+    jq -s '.[0] + {funnel: .[1].funnel}' "$DRAFT_JSON" "$WORK/portal.json" > "$WORK/draft-merged.json" \
+        && mv "$WORK/draft-merged.json" "$DRAFT_JSON"
+    echo "funnel: $(jq -r '[.funnel.stages[] | "\(.label) \(.now)"] | join(", ")' "$DRAFT_JSON")"
+else
+    echo "funnel: portal.json carries no funnel; the email renders without the strip"
+fi
+
 # The roster is the artifact, and a summary without it is a failed run.
 if [[ ! -s "$ROSTER_MD" ]] || ! grep -q "Scoreboard" "$ROSTER_MD"; then
     fail_reason="the agent did not write the roster at $ROSTER_MD (or it has no scoreboard)"

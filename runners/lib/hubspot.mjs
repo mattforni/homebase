@@ -118,6 +118,20 @@ const batch = async (obj, ids, properties) => {
     return out;
 };
 
+// The same batch read with each property's history beside its value, which is
+// the only place a custom property's change date lives (a Disqualification
+// Reason has no entered date the way a lifecycle stage does).
+const batchHistory = async (obj, ids, properties) => {
+    const out = [];
+    for (let i = 0; i < ids.length; i += 100) {
+        const page = await api(`crm/v3/objects/${obj}/batch/read`, {
+            propertiesWithHistory: properties, inputs: ids.slice(i, i + 100).map((id) => ({ id: String(id) })),
+        });
+        out.push(...(page.results || []));
+    }
+    return out;
+};
+
 const assoc = async (from, to, ids) => {
     const map = new Map();
     for (let i = 0; i < ids.length; i += 100) {
@@ -488,8 +502,11 @@ const FUNNEL = new Set(["lead", "marketingqualifiedlead", "salesqualifiedlead", 
 const COMPANY_PROPS = [
     "name", "domain", "website", "lifecyclestage", "fit", "gravity", "refresh", "owner", "wiring",
     "vertical", "segment", "source", "door", "niche", "tags", "disqualification_reason",
-    "address", "city", "phone", "description", "notes_last_contacted",
+    "address", "city", "phone", "description", "notes_last_contacted", "createdate",
+    "hs_v2_date_entered_lead", "hs_v2_date_entered_marketingqualifiedlead", "hs_v2_date_entered_salesqualifiedlead",
+    "hs_v2_date_entered_opportunity", "hs_v2_date_entered_customer",
 ];
+const SWEEP_DEAL_PROPS = ["dealname", "dealstage", "amount", "closedate", "hs_is_closed", "hs_is_closed_won"];
 const CONTACT_PROPS = [
     "firstname", "lastname", "email", "phone", "jobtitle", "hs_lead_status", "lifecyclestage",
     "associatedcompanyid", "notes_last_contacted", "hs_email_last_send_date",
@@ -640,6 +657,30 @@ async function sweep(argv) {
     }));
     log(`${meetings.length} meetings, ${notes.length} notes since ${denverDate(Number(recentMs))}`);
 
+    // ----- deals, every one, and the day each closed company closed -----
+    // The funnel strip reads Opportunity and Customer off the deal (its stage
+    // and the money on the table), and Closed off the day the Disqualification
+    // Reason was set, which only the property's history knows.
+    const stageLabels = Object.fromEntries((await api("crm/v3/pipelines/deals")).results
+        .flatMap((pl) => pl.stages.map((st) => [st.id, st.label])));
+    const dealRows = await searchAll("deals", { properties: SWEEP_DEAL_PROPS, sorts: [{ propertyName: "hs_lastmodifieddate", direction: "DESCENDING" }] });
+    const dlToCo = await assoc("deals", "companies", dealRows.map((d) => d.id));
+    const dealRank = (p) => (p.hs_is_closed_won === "true" ? 0 : p.hs_is_closed !== "true" ? 1 : 2);
+    const dealByCompany = new Map();
+    for (const d of dealRows) {
+        for (const co of dlToCo.get(d.id) || []) {
+            const held = dealByCompany.get(co);
+            if (!held || dealRank(d.properties) < dealRank(held.properties)) dealByCompany.set(co, d);
+        }
+    }
+    const closedIds = [...companies.values()].filter((c) => c.disqualification_reason).map((c) => c.id);
+    for (const row of closedIds.length ? await batchHistory("companies", closedIds, ["disqualification_reason"]) : []) {
+        const history = (row.propertiesWithHistory?.disqualification_reason || []).filter((h) => h.value);
+        const latest = history.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))[0];
+        if (latest && companies.has(row.id)) companies.get(row.id).closed_at = latest.timestamp;
+    }
+    log(`${dealRows.length} deals, ${closedIds.length} closed companies with a reason`);
+
     // ----- the join: every contact's touches, replies, opens, and section -----
     const perContact = new Map();
     const touchesOf = (id) => {
@@ -777,12 +818,97 @@ async function sweep(argv) {
         sections: Object.fromEntries(Object.entries(sections).map(([k, v]) => [k, v.length])),
     };
 
+    // ----- the funnel: seven buckets now and seven days ago -----
+    // The groom's own table (Pipeline/README.md, The Weekly Groom): New is in
+    // the funnel and never sent to, Lead is sent to, MQL through Customer are
+    // the lifecycle as HubSpot stands, Closed is a Disqualification Reason.
+    // A company's stage at any moment is the highest stage it had entered by
+    // then, since lifecycle never moves backwards, so the strip a week ago is
+    // read off the entered dates rather than off a saved snapshot.
+    const STAGE_ORDER = ["new", "lead", "mql", "sql", "opportunity", "customer", "closed"];
+    const STAGE_LABEL = { new: "New", lead: "Lead", mql: "MQL", sql: "SQL", opportunity: "Oppty", customer: "Customer", closed: "Closed" };
+    const ENTERED = [["customer", "hs_v2_date_entered_customer"], ["opportunity", "hs_v2_date_entered_opportunity"],
+        ["sql", "hs_v2_date_entered_salesqualifiedlead"], ["mql", "hs_v2_date_entered_marketingqualifiedlead"]];
+    const readsByCompany = new Map();
+    for (const r of reads) readsByCompany.set(r.company_id, [...(readsByCompany.get(r.company_id) || []), r]);
+    const companyTouches = (co) => {
+        const days = new Set();
+        let opens = 0, tracked = 0, lastSend = "", lastReply = "";
+        for (const r of readsByCompany.get(co.id) || []) {
+            for (const t of r.touches) { days.add(t.date); if (t.tracked) { tracked += 1; opens += t.opens || 0; } if (t.date > lastSend) lastSend = t.date; }
+            for (const x of r.replies) if (x.date > lastReply) lastReply = x.date;
+        }
+        return { days: [...days].sort(), opens, tracked, lastSend, lastReply };
+    };
+    const ts = (v) => (v ? Date.parse(v) : null);
+    const stageAt = (co, atMs) => {
+        const closedAt = ts(co.closed_at);
+        if (co.disqualification_reason && (closedAt === null || closedAt <= atMs)) return "closed";
+        for (const [stage, prop] of ENTERED) { const t = ts(co[prop]); if (t !== null && t <= atMs) return stage; }
+        const enteredLead = ts(co.hs_v2_date_entered_lead) ?? ts(co.createdate);
+        if (enteredLead !== null && enteredLead > atMs) return null;
+        const first = companyTouches(co).days[0];
+        return first && ts(`${first}T12:00:00Z`) <= atMs ? "lead" : "new";
+    };
+    const warmest = (co) => {
+        const seen = (readsByCompany.get(co.id) || []).map((r) => r.status).filter(Boolean);
+        const open = seen.filter((st) => !CLOSED_STATUSES.has(st));
+        return open.length ? open.sort((a, b) => LADDER_OPEN.indexOf(b) - LADDER_OPEN.indexOf(a))[0] : (seen[0] || "");
+    };
+    const weekAgoMs = refMs - 7 * MS_DAY;
+    const funnelRow = (co) => {
+        const t = companyTouches(co);
+        const deal = dealByCompany.get(co.id);
+        const kind = t.days.length === 0 ? "" : t.days.length === 1 ? "First" : t.days.length === 2 ? "Bump" : "Visit";
+        return {
+            id: co.id, name: co.name, url: companyUrl(co.id), fit: co.fit ? Number(co.fit) : null,
+            status: warmest(co), last_touch: kind, last_send: t.lastSend, touches: t.days.length,
+            opens: t.tracked ? t.opens : null, replied: t.lastReply,
+            days_since_send: t.lastSend ? daysSince(`${t.lastSend}T12:00:00Z`) : null,
+            deal: deal ? { name: deal.properties.dealname || "", stage: stageLabels[deal.properties.dealstage] || deal.properties.dealstage || "", amount: deal.properties.amount ? Number(deal.properties.amount) : null, close: denverDate(deal.properties.closedate) } : null,
+            closed: co.disqualification_reason ? { reason: co.disqualification_reason, date: denverDate(co.closed_at) } : null,
+        };
+    };
+    const byStage = { now: new Map(), then: new Map() };
+    for (const co of companies.values()) {
+        const now = stageAt(co, refMs), then = stageAt(co, weekAgoMs);
+        if (now) byStage.now.set(now, [...(byStage.now.get(now) || []), co]);
+        if (then) byStage.then.set(then, [...(byStage.then.get(then) || []), co]);
+    }
+    const stageSort = {
+        new: (a, b) => ((b.fit || 0) - (a.fit || 0)),
+        lead: (a, b) => ((b.opens || 0) - (a.opens || 0)) || ((b.days_since_send || 0) - (a.days_since_send || 0)),
+        mql: (a, b) => ((b.opens || 0) - (a.opens || 0)) || ((b.days_since_send || 0) - (a.days_since_send || 0)),
+        sql: (a, b) => (b.replied || "").localeCompare(a.replied || ""),
+        opportunity: (a, b) => ((b.deal?.amount || 0) - (a.deal?.amount || 0)),
+        customer: (a, b) => a.name.localeCompare(b.name),
+        closed: (a, b) => (b.closed?.date || "").localeCompare(a.closed?.date || ""),
+    };
+    const funnel = {
+        built: refDay, from: denverDate(weekAgoMs), to: refDay,
+        stages: STAGE_ORDER.map((key) => {
+            const nowList = byStage.now.get(key) || [], thenList = byStage.then.get(key) || [];
+            const thenIds = new Set(thenList.map((c) => c.id)), nowIds = new Set(nowList.map((c) => c.id));
+            // Closed shows the week's closes; every other stage shows who is there now.
+            const shown = (key === "closed" ? nowList.filter((c) => !thenIds.has(c.id)) : nowList).map(funnelRow).sort(stageSort[key]);
+            const delta = nowList.length - thenList.length;
+            return {
+                key, label: STAGE_LABEL[key], now: nowList.length, then: thenList.length, delta,
+                pct: thenList.length ? Math.round((delta / thenList.length) * 100) : null,
+                entered: nowList.filter((c) => !thenIds.has(c.id)).map((c) => c.name),
+                left: thenList.filter((c) => !nowIds.has(c.id)).map((c) => c.name),
+                top: shown.slice(0, 5), more: Math.max(0, shown.length - 5),
+            };
+        }),
+    };
+    counts.funnel = Object.fromEntries(funnel.stages.map((st) => [st.key, { now: st.now, delta: st.delta }]));
+
     // ----- the files -----
     mkdirSync(outDir, { recursive: true });
     const nameOf = (id) => { const c = contacts.get(id); return c ? `${c.firstname || ""} ${c.lastname || ""}`.trim() : `contact ${id}`; };
     const coName = (id) => companies.get(id)?.name || `company ${id}`;
     const json = {
-        counts, sections, tasks, meetings, notes,
+        counts, funnel, sections, tasks, meetings, notes,
         companies: Object.fromEntries([...companies.values()].map((c) => [c.id, { ...c, url: companyUrl(c.id) }])),
         contacts: Object.fromEntries(reads.map((r) => [r.contact_id, r])),
     };
@@ -812,6 +938,15 @@ async function sweep(argv) {
         `- Open tasks: ${counts.tasks.due_this_week} due this week or earlier, ${counts.tasks.parked_later} parked later, ${counts.tasks.stale} stale (more than a week past due), ${counts.tasks.undated} undated.`,
         `- Sections: ${Object.entries(counts.sections).map(([k, v]) => `${k} ${v}`).join(", ")}.`,
         `- Top opened sends in flight: ${counts.top_opened.length ? counts.top_opened.map((t) => `${t.name} (${t.company}) ${t.opens} opens, day ${t.days_since_send}`).join("; ") : "none at two or more opens"}.`,
+        "",
+        "## The Funnel",
+        "",
+        `Seven buckets read off the portal as it stands, now against ${funnel.from} (seven days before the build). The runner renders this strip and its top five per stage into the email itself; your read names what moved and why.`,
+        "",
+        table(["Stage", "Now", "A week ago", "Change", "Entered this week", "Left this week"], funnel.stages.map((st) => [
+            st.label, st.now, st.then, `${st.delta >= 0 ? "+" : ""}${st.delta}${st.pct === null ? "" : ` (${st.pct >= 0 ? "+" : ""}${st.pct}%)`}`,
+            st.entered.join("; ") || "", st.left.join("; ") || "",
+        ])),
         "",
         sectionMd("Replies Owed", sections.replies_owed, "Their reply is the last message on the HubSpot record. The reply text is in the detail below; read the thread in the mailbox pull before drafting."),
         sectionMd("Tasks Due", sections.tasks_due, "An open task due this week or earlier, or stale. The task body is under Open Tasks."),
