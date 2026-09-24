@@ -8,7 +8,6 @@ import {
 	List,
 	ListRow,
 	Masthead,
-	ReadBlock,
 	RecordStack,
 	type RecordStackItem,
 	recordStackText,
@@ -90,6 +89,8 @@ type FunnelCompany = {
 	days_since_reply?: number | null;
 	deal?: Deal;
 	closed?: Closed;
+	task?: { due?: unknown; reading?: unknown; subject?: unknown } | null;
+	note?: { date?: unknown; text?: unknown } | null;
 };
 type FunnelStage = {
 	key?: unknown;
@@ -246,11 +247,16 @@ function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackI
 		if (deal && jqToString(alt(deal.close, "")) !== "") {
 			clock.push(`${key === "customer" ? "signed" : "closes"} ${jqToString(deal.close)}`);
 		}
-		if (statusWord(company.status) !== "") clock.push(statusWord(company.status).toLowerCase());
-		return { title: jqToString(company.name), url: company.url, meta, note: clock.join(" · ") || undefined };
+		return {
+			title: jqToString(company.name),
+			url: company.url,
+			badge: statusWord(company.status) || undefined,
+			meta,
+			note: clock.join(" · ") || undefined,
+			callout: nextStep(company),
+		};
 	}
 	const meta = [
-		statusWord(company.status),
 		count(alt(company.touches, 0), "touch"),
 		company.opens === null || company.opens === undefined ? "untracked" : count(company.opens, "open"),
 	].filter((m) => m !== "");
@@ -260,7 +266,37 @@ function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackI
 	}
 	if (ago(company.days_since_open) !== "") clock.push(`opened ${ago(company.days_since_open)}`);
 	if (ago(company.days_since_reply) !== "") clock.push(`replied ${ago(company.days_since_reply)}`);
-	return { title: jqToString(company.name), url: company.url, meta, note: clock.join(" · ") || undefined };
+	return {
+		title: jqToString(company.name),
+		url: company.url,
+		badge: statusWord(company.status) || undefined,
+		meta,
+		note: clock.join(" · ") || undefined,
+		callout: nextStep(company),
+	};
+}
+
+/** The next step on the record, as the orange callout under the name: a park with its date, a task due, or the newest note. */
+function nextStep(company: FunnelCompany): { eyebrow: string; text: string } | undefined {
+	const task = company.task;
+	if (task && jqToString(alt(task.subject, "")) !== "") {
+		const due = jqToString(alt(task.due, ""));
+		const reading = jqToString(alt(task.reading, ""));
+		const eyebrow =
+			reading === "parked" ? `Parked until ${due}` : reading === "stale" ? `Task overdue since ${due}` : due === "" ? "Task" : `Task due ${due}`;
+		return { eyebrow, text: jqToString(task.subject) };
+	}
+	const note = company.note;
+	if (note && jqToString(alt(note.text, "")) !== "") {
+		return { eyebrow: `Note ${jqToString(alt(note.date, ""))}`.trim(), text: jqToString(note.text) };
+	}
+	return undefined;
+}
+
+/** The five kinds of touch owed as a strip, in the desk block's order. */
+function owedStats(draft: PipelineDraft): StatStripEntry[] {
+	const owed = alt(draft.owed, {});
+	return OWED_KINDS.map((kind) => ({ n: alt(owed[kind.key], []).length, label: kind.label }));
 }
 
 /** The numbers under an owed name, from the sweep, in the same slots for every kind. */
@@ -353,16 +389,14 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 		preheader: jqToString(alt(draft.preheader, "")),
 		children: (
 			<>
-				<Masthead title="Pipeline" />
-				<TitleCard
-					eyebrowText={`Week ${weekNumber(context.week)} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}`}
-					headlineLines={alt(draft.headline, [])}
-					lede=""
+				<Masthead
+					title="Pipeline"
+					meta={`Week ${weekNumber(context.week)} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}`}
 				/>
+				<TitleCard eyebrowText="The read" headlineLines={alt(draft.headline, [])} lede={jqToString(alt(draft.lede, ""))} />
 
-				<Eyebrow text="The pipeline" />
+				<Eyebrow text="The pipeline" strong={true} />
 				<Card>
-					<ReadBlock text={jqToString(alt(draft.lede, ""))} divider={true} />
 					{funnel === null ? (
 						<EmptyRow text="The portal sweep carried no funnel this run." />
 					) : (
@@ -387,7 +421,7 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 				{listed.map((stage, index) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
 					<Fragment key={index}>
-						<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} />
+						<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} strong={true} />
 						<Card>
 							{alt(stage.companies, []).length === 0 ? (
 								<EmptyRow text="Nobody here this week." />
@@ -400,24 +434,30 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					</Fragment>
 				))}
 
-				<Eyebrow text="This week" />
+				<Eyebrow text="This week" strong={true} />
 				<Card>
 					{owedKinds.length === 0 ? (
 						<EmptyRow text="Nothing is owed this week." />
 					) : (
-						owedKinds.map((kind, index) => (
-							// biome-ignore lint/suspicious/noArrayIndexKey: a kind's position is its identity
-							<Fragment key={index}>
-								<SubEyebrow text={`${kind.label} · ${numberString(kind.names.length)}`} />
-								<Row last={index === owedKinds.length - 1}>
-									<RecordStack records={owedRecords(kind.key, kind.names)} />
-								</Row>
-							</Fragment>
-						))
+						<Row last={true}>
+							<StatStrip stats={owedStats(draft)} />
+						</Row>
 					)}
 				</Card>
 
-				<Eyebrow text="The groom" />
+				{owedKinds.map((kind, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a kind's position is its identity
+					<Fragment key={index}>
+						<Eyebrow text={`${kind.label} · ${numberString(kind.names.length)}`} strong={true} />
+						<Card>
+							<Row last={true}>
+								<RecordStack records={owedRecords(kind.key, kind.names)} />
+							</Row>
+						</Card>
+					</Fragment>
+				))}
+
+				<Eyebrow text="The groom" strong={true} />
 				<Card>
 					<Row last={moves.length === 0 && left.length === 0}>
 						<DimLine text={groomLine(draft.groom ?? null)} />
@@ -458,17 +498,17 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
 
-	let out = `ATELIC · PIPELINE · WEEK ${number}\n`;
-	out += `Week ${number} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}\n\n`;
+	let out = `ATELIC · PIPELINE · WEEK ${number} · ${shortDate(context.monday)} TO ${shortDate(context.sunday)}\n\n`;
 	out += `${asciiUpcase(alt(draft.headline, []).join("\n"))}\n`;
-
 	const lede = unindent(jqToString(alt(draft.lede, "")));
-	out += textSection("The Pipeline") + (lede === "" ? "" : textRead(lede));
+	if (lede !== "") out += `\n${textRead(lede)}`;
+
+	out += textSection("The Pipeline");
 	if (funnel === null) {
-		out += `${lede === "" ? "" : "\n"}  The portal sweep carried no funnel this run.\n`;
+		out += "  The portal sweep carried no funnel this run.\n";
 	} else {
 		const strip = stripStats(funnel);
-		out += `\n${textTable(["Stage", "Now", "Change"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
+		out += `${textTable(["Stage", "Now", "Change"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
 		const lines = funnelLines(funnel);
 		if (lines.length > 0) out += `\n${lines.map((line) => wrap(line)).join("\n")}\n`;
 		for (const stage of listed) {
@@ -481,8 +521,10 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	out += textSection("This Week");
 	const owedKinds = owedKindsOf(draft);
 	if (owedKinds.length === 0) out += "  Nothing is owed this week.\n";
+	else out += `${textTable(["Touch", "Owed"], owedStats(draft).map((s) => [s.label, numberString(Number(s.n))]), [1])}\n`;
 	for (const kind of owedKinds) {
-		out += `${kind.label} · ${numberString(kind.names.length)}\n${recordStackText(owedRecords(kind.key, kind.names))}\n`;
+		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
+		out += recordStackText(owedRecords(kind.key, kind.names));
 	}
 
 	out += textSection("The Groom");

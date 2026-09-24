@@ -739,6 +739,10 @@ async function sweep(argv) {
     for (const t of tasks) {
         for (const ct of t.contacts) taskIndex.set(ct, [...(taskIndex.get(ct) || []), t]);
     }
+    const noteIndex = new Map();
+    for (const n of notes) {
+        for (const ct of n.contacts) noteIndex.set(ct, [...(noteIndex.get(ct) || []), n]);
+    }
     const byCompany = (list) => {
         const m = new Map();
         for (const x of list) for (const co of x.companies) m.set(co, [...(m.get(co) || []), x]);
@@ -960,6 +964,25 @@ async function sweep(argv) {
         return open.length ? open.sort((a, b) => LADDER_OPEN.indexOf(b) - LADDER_OPEN.indexOf(a))[0] : (seen[0] || "");
     };
     const weekAgoMs = refMs - 7 * MS_DAY;
+    const nextTask = (co) => {
+        const own = [...(tasksByCompany.get(co.id) || []), ...co.contacts.flatMap((id) => taskIndex.get(id) || [])];
+        const seen = new Set();
+        const open = own
+            .filter((t) => !seen.has(t.id) && seen.add(t.id))
+            .filter((t) => t.subject)
+            .sort((a, b) => (a.due || "9999").localeCompare(b.due || "9999"));
+        const t = open[0];
+        return t ? { due: t.due, reading: t.reading, subject: t.subject } : null;
+    };
+    const recentNote = (co) => {
+        const own = [...(notesByCompany.get(co.id) || []), ...co.contacts.flatMap((id) => noteIndex.get(id) || [])];
+        const seen = new Set();
+        const n = own
+            .filter((x) => !seen.has(x.id) && seen.add(x.id))
+            .filter((x) => x.date && x.body && daysSince(`${x.date}T12:00:00Z`) >= 0 && daysSince(`${x.date}T12:00:00Z`) <= 14)
+            .sort((a, b) => b.date.localeCompare(a.date))[0];
+        return n ? { date: n.date, text: n.body.split("\n")[0].slice(0, 160) } : null;
+    };
     const funnelRow = (co) => {
         const t = companyTouches(co);
         const deal = dealByCompany.get(co.id);
@@ -971,6 +994,10 @@ async function sweep(argv) {
             days_since_send: t.lastSend ? daysSince(`${t.lastSend}T12:00:00Z`) : null,
             last_open: t.lastOpen, days_since_open: t.lastOpen ? daysSince(`${t.lastOpen}T12:00:00Z`) : null,
             days_since_reply: t.lastReply ? daysSince(`${t.lastReply}T12:00:00Z`) : null,
+            // The next step on the record, for the callout under the name: the
+            // nearest open task (a park with its date), else the newest note
+            // of the last two weeks (a decision or a quote), else nothing.
+            task: nextTask(co), note: recentNote(co),
             deal: deal ? { name: deal.properties.dealname || "", stage: stageLabels[deal.properties.dealstage] || deal.properties.dealstage || "", amount: deal.properties.amount ? Number(deal.properties.amount) : null, close: denverDate(deal.properties.closedate) } : null,
             closed: co.disqualification_reason ? { reason: co.disqualification_reason, date: denverDate(co.closed_at) } : null,
         };
