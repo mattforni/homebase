@@ -524,7 +524,7 @@ const SWEEP_DEAL_PROPS = ["dealname", "dealstage", "amount", "closedate", "hs_is
 const CONTACT_PROPS = [
     "firstname", "lastname", "email", "phone", "jobtitle", "hs_lead_status", "lifecyclestage",
     "associatedcompanyid", "notes_last_contacted", "hs_email_last_send_date",
-    "hs_email_last_open_date", "hs_email_last_reply_date",
+    "hs_email_last_open_date", "hs_email_last_reply_date", "hs_sales_email_last_opened",
 ];
 const SWEEP_EMAIL_PROPS = [
     ...EMAIL_PROPS, "hs_email_status", "hs_email_text",
@@ -872,6 +872,11 @@ async function sweep(argv) {
             address: [co.address, co.city].filter(Boolean).join(", "), company_phone: co.phone || "",
             touches, replies, last_send: lastSend, days_since_send: dSend, days_since_first: dFirst,
             opens, tracked_sends: tracked, last_reply: lastReplyDay,
+            // The extension stamps a sales email's opens on the contact as
+            // hs_sales_email_last_opened; hs_email_last_open_date is the
+            // marketing email's and stays empty for this motion.
+            last_open: denverDate(c.hs_sales_email_last_opened || c.hs_email_last_open_date),
+            days_since_open: (c.hs_sales_email_last_opened || c.hs_email_last_open_date) ? daysSince(c.hs_sales_email_last_opened || c.hs_email_last_open_date) : null,
             last_contacted: denverDate(c.notes_last_contacted),
             tasks: ownTasks.map((t) => t.id), section, why,
         });
@@ -923,18 +928,24 @@ async function sweep(argv) {
     for (const r of reads) readsByCompany.set(r.company_id, [...(readsByCompany.get(r.company_id) || []), r]);
     const companyTouches = (co) => {
         const days = new Set();
-        let opens = 0, tracked = 0, lastSend = "", lastReply = "";
+        let opens = 0, tracked = 0, lastSend = "", lastReply = "", lastOpen = "";
         for (const r of readsByCompany.get(co.id) || []) {
             for (const t of r.touches) { days.add(t.date); if (t.tracked) { tracked += 1; opens += t.opens || 0; } if (t.date > lastSend) lastSend = t.date; }
             for (const x of r.replies) if (x.date > lastReply) lastReply = x.date;
+            if (r.last_open && r.last_open > lastOpen) lastOpen = r.last_open;
         }
-        return { days: [...days].sort(), opens, tracked, lastSend, lastReply };
+        return { days: [...days].sort(), opens, tracked, lastSend, lastReply, lastOpen };
     };
     const ts = (v) => (v ? Date.parse(v) : null);
+    const NOW_STAGE = { marketingqualifiedlead: "mql", salesqualifiedlead: "sql", opportunity: "opportunity", customer: "customer" };
     const stageAt = (co, atMs) => {
         const closedAt = ts(co.closed_at);
         if (co.disqualification_reason && (closedAt === null || closedAt <= atMs)) return "closed";
-        for (const [stage, prop] of ENTERED) { const t = ts(co[prop]); if (t !== null && t <= atMs) return stage; }
+        // Now is the lifecycle as it stands, groom included; a moment in the
+        // past is read off the entered dates, which the groom's own writes
+        // stamp after the build clock was taken.
+        if (atMs >= refMs && NOW_STAGE[co.lifecyclestage]) return NOW_STAGE[co.lifecyclestage];
+        if (atMs < refMs) for (const [stage, prop] of ENTERED) { const t = ts(co[prop]); if (t !== null && t <= atMs) return stage; }
         const enteredLead = ts(co.hs_v2_date_entered_lead) ?? ts(co.createdate);
         if (enteredLead !== null && enteredLead > atMs) return null;
         const first = companyTouches(co).days[0];
@@ -955,6 +966,8 @@ async function sweep(argv) {
             status: warmest(co), last_touch: kind, last_send: t.lastSend, touches: t.days.length,
             opens: t.tracked ? t.opens : null, replied: t.lastReply,
             days_since_send: t.lastSend ? daysSince(`${t.lastSend}T12:00:00Z`) : null,
+            last_open: t.lastOpen, days_since_open: t.lastOpen ? daysSince(`${t.lastOpen}T12:00:00Z`) : null,
+            days_since_reply: t.lastReply ? daysSince(`${t.lastReply}T12:00:00Z`) : null,
             deal: deal ? { name: deal.properties.dealname || "", stage: stageLabels[deal.properties.dealstage] || deal.properties.dealstage || "", amount: deal.properties.amount ? Number(deal.properties.amount) : null, close: denverDate(deal.properties.closedate) } : null,
             closed: co.disqualification_reason ? { reason: co.disqualification_reason, date: denverDate(co.closed_at) } : null,
         };

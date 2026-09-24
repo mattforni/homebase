@@ -17,30 +17,69 @@ The Read
   owed, then the first touches.
 
   Stage     Now  Change
-  New        41  +3 · +8%
-  Lead       22  -3 · -12%
-  MQL         7  +3 · +75%
-  SQL         3  +1 · +50%
+  Lead       22  -3 (12%)
+  MQL         7  +3 (75%)
+  SQL         3  +1 (50%)
   Oppty       1  0
   Customer    2  0
-  Closed      9  +1 · +13%
+  Closed      9  +1 (13%)
 
-  New 41, +3 · +8%: 3 in, 0 out this week.
-  Lead 22, -3 · -12%: 1 in, 4 out this week.
-  Closed 9, +1 · +13%: 1 in, 0 out this week.
+  41 names waiting for a first send: 3 in and 0 out this week.
+  Lead 22, -3 (12%): 1 in and 4 out this week.
+  Closed 9, +1 (13%): 1 in and 0 out this week.
 
+
+================================================================
 MQL · 7
-  Nobody here this week.
+================================================================
 
+  Blue Heron Plumbing
+    Contacted · 2 touches · 6 opens
+    bump 9 days ago · opened 2 days ago
+
+  Sunridge Dental
+    Contacted · 1 touch · 4 opens
+    first 4 days ago · opened 3 days ago
+
+  Old Mill Roasters
+    Contacted · 2 touches · 3 opens
+    bump 11 days ago · opened 4 days ago
+
+================================================================
 SQL · 3
-  Nobody here this week.
+================================================================
 
-Oppty · 1
-  Nobody here this week.
+  Granite Peak Tile
+    Engaged · 2 touches · 5 opens
+    bump 6 days ago · opened 2 days ago · replied 3 days ago
 
-Customer · 2
-  Nobody here this week.
+  Northwind Outfitters
+    Connected · 3 touches · 2 opens
+    visit 19 days ago · opened 3 days ago · replied 3 days ago
 
+  Silver Sage Counseling
+    Engaged · 1 touch · 1 open
+    first 24 days ago · opened 4 days ago · replied 3 days ago
+
+================================================================
+OPPTY · 1
+================================================================
+
+  Rivermark Kitchen and Bath
+    Proposal · $8,500
+    closes 2026-10-31 · qualified
+
+================================================================
+CUSTOMER · 2
+================================================================
+
+  Alder and Oak Physical Therapy
+    Closed Won · $9,090
+    signed 2026-09-17 · qualified
+
+  Westbrook Skylights
+    Closed Won · $7,500
+    signed 2026-08-20 · qualified
 
 ================================================================
 THIS WEEK
@@ -48,29 +87,33 @@ THIS WEEK
 
 Reply to · 2
   Salley Wilson
-    Pinewood Cabinetry
+    Pinewood Cabinetry · replied 2026-09-18 · 2 touches · 5 opens ·
+    opened yesterday
     Owed a number since Tuesday, sending as Atelic, graded A, and
     she asked twice whether the audit could be walked through in
     person at the shop rather than over a call.
 
   Dov Marchetti
-    Harbor Line Plumbing
+    Harbor Line Plumbing · replied 2026-09-18 · 2 touches · 5 opens
+    · opened yesterday
 Bump · 1
   Renata Oyelaran
-    Sable Creek Landscaping
+    Sable Creek Landscaping · sent 9 days ago · 1 touch · 6 opens ·
+    opened 2 days ago
     Day 9 on the first send, no open yet.
-Visit · 1
-  Marguerite Bell
-    Thistle Lane Florist
-    Walkable, open until 17:00.
 First touch · 2
   Ines Ferreira
-    Harbor Lane Bakery and Provisions of Old Town
+    Harbor Lane Bakery and Provisions of Old Town · fit 17 · owner
+    direct
     audit led, owner direct, graded A minus
 
   Tobias Wren
-    Ridgeback Fencing
+    Ridgeback Fencing · fit 17 · shared inbox
     heads up on the hours mismatch, graded A
+Visit · 1
+  Marguerite Bell
+    Thistle Lane Florist · sent 14 days ago · 2 touches · 0 opens
+    Walkable, open until 17:00.
 
 
 ================================================================
@@ -94,15 +137,6 @@ Left for you · 3
   merge them
   Harbor Line Plumbing reads NEW with a reply on the record.
   Ridgeline Glass has a send that never logged.
-
-
-================================================================
-IN THE ROSTER
-================================================================
-
-  1 claim could not be verified today, and 1 name was left off on
-  purpose. Every draft, each name's full line, and both lists are in
-  the attached roster.
 
 
 12m 04s · $0.42 · 9 turns · claude-sonnet

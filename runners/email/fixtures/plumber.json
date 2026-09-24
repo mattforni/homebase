@@ -12,14 +12,32 @@
 				"company": "Pinewood Cabinetry",
 				"contact_url": "https://app.example.test/contacts/1/record/0-1/101",
 				"company_url": "https://app.example.test/contacts/1/record/0-2/201",
-				"note": "Owed a number since Tuesday, sending as Atelic, graded A, and she asked twice whether the audit could be walked through in person at the shop rather than over a call."
+				"note": "Owed a number since Tuesday, sending as Atelic, graded A, and she asked twice whether the audit could be walked through in person at the shop rather than over a call.",
+				"metrics": {
+					"days_since_send": 3,
+					"touches": 2,
+					"opens": 5,
+					"days_since_open": 1,
+					"last_reply": "2026-09-18",
+					"fit": 15,
+					"email": "x@example.test"
+				}
 			},
 			{
 				"person": "Dov Marchetti",
 				"company": "Harbor Line Plumbing",
 				"contact_url": null,
 				"company_url": null,
-				"note": ""
+				"note": "",
+				"metrics": {
+					"days_since_send": 3,
+					"touches": 2,
+					"opens": 5,
+					"days_since_open": 1,
+					"last_reply": "2026-09-18",
+					"fit": 15,
+					"email": ""
+				}
 			}
 		],
 		"bump": [
@@ -28,7 +46,16 @@
 				"company": "Sable Creek Landscaping",
 				"contact_url": "https://app.example.test/contacts/1/record/0-1/102",
 				"company_url": "",
-				"note": "Day 9 on the first send, no open yet."
+				"note": "Day 9 on the first send, no open yet.",
+				"metrics": {
+					"days_since_send": 9,
+					"touches": 1,
+					"opens": 6,
+					"days_since_open": 2,
+					"last_reply": "",
+					"fit": 14,
+					"email": "x@example.test"
+				}
 			}
 		],
 		"visit": [
@@ -37,7 +64,16 @@
 				"company": "Thistle Lane Florist",
 				"contact_url": "https://app.example.test/contacts/1/record/0-1/103",
 				"company_url": "https://app.example.test/contacts/1/record/0-2/203",
-				"note": "Walkable, open until 17:00."
+				"note": "Walkable, open until 17:00.",
+				"metrics": {
+					"days_since_send": 14,
+					"touches": 2,
+					"opens": 0,
+					"days_since_open": null,
+					"last_reply": "",
+					"fit": 13,
+					"email": ""
+				}
 			}
 		],
 		"first_touch": [
@@ -46,14 +82,32 @@
 				"company": "Harbor Lane Bakery and Provisions of Old Town",
 				"contact_url": "https://app.example.test/contacts/1/record/0-1/301",
 				"company_url": "https://app.example.test/contacts/1/record/0-2/401",
-				"note": "audit led, owner direct, graded A minus"
+				"note": "audit led, owner direct, graded A minus",
+				"metrics": {
+					"days_since_send": null,
+					"touches": 0,
+					"opens": null,
+					"days_since_open": null,
+					"last_reply": "",
+					"fit": 17,
+					"email": "x@example.test"
+				}
 			},
 			{
 				"person": "Tobias Wren",
 				"company": "Ridgeback Fencing",
 				"contact_url": "https://app.example.test/contacts/1/record/0-1/302",
 				"company_url": "https://app.example.test/contacts/1/record/0-2/402",
-				"note": "heads up on the hours mismatch, graded A"
+				"note": "heads up on the hours mismatch, graded A",
+				"metrics": {
+					"days_since_send": null,
+					"touches": 0,
+					"opens": null,
+					"days_since_open": null,
+					"last_reply": "",
+					"fit": 17,
+					"email": ""
+				}
 			}
 		],
 		"decide": []
@@ -98,84 +152,7 @@
 					"Two Pines Chiropractic"
 				],
 				"left": [],
-				"top": [
-					{
-						"id": "0",
-						"name": "Harbor Lane Bakery and Provisions of Old Town",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": 17,
-						"status": "NEW",
-						"last_touch": "",
-						"last_send": "",
-						"touches": 0,
-						"opens": null,
-						"replied": "",
-						"days_since_send": null,
-						"deal": null,
-						"closed": null
-					},
-					{
-						"id": "0",
-						"name": "Ridgeback Fencing",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": 16,
-						"status": "NEW",
-						"last_touch": "",
-						"last_send": "",
-						"touches": 0,
-						"opens": null,
-						"replied": "",
-						"days_since_send": null,
-						"deal": null,
-						"closed": null
-					},
-					{
-						"id": "0",
-						"name": "Two Pines Chiropractic",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": 15,
-						"status": "NEW",
-						"last_touch": "",
-						"last_send": "",
-						"touches": 0,
-						"opens": null,
-						"replied": "",
-						"days_since_send": null,
-						"deal": null,
-						"closed": null
-					},
-					{
-						"id": "0",
-						"name": "Copperline Electric",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": 14,
-						"status": "NEW",
-						"last_touch": "",
-						"last_send": "",
-						"touches": 0,
-						"opens": null,
-						"replied": "",
-						"days_since_send": null,
-						"deal": null,
-						"closed": null
-					},
-					{
-						"id": "0",
-						"name": "Mesa Verde Movers",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": 13,
-						"status": "NEW",
-						"last_touch": "",
-						"last_send": "",
-						"touches": 0,
-						"opens": null,
-						"replied": "",
-						"days_since_send": null,
-						"deal": null,
-						"closed": null
-					}
-				],
-				"more": 36
+				"companies": []
 			},
 			{
 				"key": "lead",
@@ -193,54 +170,7 @@
 					"Old Mill Roasters",
 					"Granite Peak Tile"
 				],
-				"top": [
-					{
-						"id": "0",
-						"name": "Pinewood Cabinetry and Custom Millwork Studio",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": null,
-						"status": "CONTACTED",
-						"last_touch": "First",
-						"last_send": "2026-09-16",
-						"touches": 1,
-						"opens": 0,
-						"replied": "",
-						"days_since_send": 5,
-						"deal": null,
-						"closed": null
-					},
-					{
-						"id": "0",
-						"name": "Cobalt Auto Body",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": null,
-						"status": "CONTACTED",
-						"last_touch": "Bump",
-						"last_send": "2026-09-11",
-						"touches": 2,
-						"opens": 0,
-						"replied": "",
-						"days_since_send": 10,
-						"deal": null,
-						"closed": null
-					},
-					{
-						"id": "0",
-						"name": "Lark Street Yoga",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": null,
-						"status": "CONTACTED",
-						"last_touch": "First",
-						"last_send": "2026-09-15",
-						"touches": 1,
-						"opens": 0,
-						"replied": "",
-						"days_since_send": 6,
-						"deal": null,
-						"closed": null
-					}
-				],
-				"more": 19
+				"companies": []
 			},
 			{
 				"key": "mql",
@@ -257,7 +187,7 @@
 				"left": [
 					"Granite Peak Tile"
 				],
-				"top": [
+				"companies": [
 					{
 						"id": "0",
 						"name": "Blue Heron Plumbing",
@@ -271,7 +201,10 @@
 						"replied": "",
 						"days_since_send": 9,
 						"deal": null,
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 2,
+						"days_since_reply": null
 					},
 					{
 						"id": "0",
@@ -286,7 +219,10 @@
 						"replied": "",
 						"days_since_send": 4,
 						"deal": null,
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 3,
+						"days_since_reply": null
 					},
 					{
 						"id": "0",
@@ -301,10 +237,12 @@
 						"replied": "",
 						"days_since_send": 11,
 						"deal": null,
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 4,
+						"days_since_reply": null
 					}
-				],
-				"more": 4
+				]
 			},
 			{
 				"key": "sql",
@@ -317,7 +255,7 @@
 					"Granite Peak Tile"
 				],
 				"left": [],
-				"top": [
+				"companies": [
 					{
 						"id": "0",
 						"name": "Granite Peak Tile",
@@ -331,7 +269,10 @@
 						"replied": "2026-09-18",
 						"days_since_send": 6,
 						"deal": null,
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 2,
+						"days_since_reply": 3
 					},
 					{
 						"id": "0",
@@ -346,7 +287,10 @@
 						"replied": "2026-09-09",
 						"days_since_send": 19,
 						"deal": null,
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 3,
+						"days_since_reply": 3
 					},
 					{
 						"id": "0",
@@ -361,10 +305,12 @@
 						"replied": "2026-08-30",
 						"days_since_send": 24,
 						"deal": null,
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 4,
+						"days_since_reply": 3
 					}
-				],
-				"more": 0
+				]
 			},
 			{
 				"key": "opportunity",
@@ -375,7 +321,7 @@
 				"pct": 0,
 				"entered": [],
 				"left": [],
-				"top": [
+				"companies": [
 					{
 						"id": "0",
 						"name": "Rivermark Kitchen and Bath",
@@ -394,10 +340,12 @@
 							"amount": 8500,
 							"close": "2026-10-31"
 						},
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 2,
+						"days_since_reply": 3
 					}
-				],
-				"more": 0
+				]
 			},
 			{
 				"key": "customer",
@@ -408,7 +356,7 @@
 				"pct": 0,
 				"entered": [],
 				"left": [],
-				"top": [
+				"companies": [
 					{
 						"id": "0",
 						"name": "Alder and Oak Physical Therapy",
@@ -427,7 +375,10 @@
 							"amount": 9090,
 							"close": "2026-09-17"
 						},
-						"closed": null
+						"closed": null,
+						"last_open": "",
+						"days_since_open": null,
+						"days_since_reply": 3
 					},
 					{
 						"id": "0",
@@ -447,10 +398,12 @@
 							"amount": 7500,
 							"close": "2026-08-20"
 						},
-						"closed": null
+						"closed": null,
+						"last_open": "2026-09-19",
+						"days_since_open": 3,
+						"days_since_reply": 3
 					}
-				],
-				"more": 0
+				]
 			},
 			{
 				"key": "closed",
@@ -463,27 +416,7 @@
 					"Foothills Home Inspection"
 				],
 				"left": [],
-				"top": [
-					{
-						"id": "0",
-						"name": "Foothills Home Inspection",
-						"url": "https://app.example.test/contacts/1/record/0-2/9",
-						"fit": null,
-						"status": "UNQUALIFIED",
-						"last_touch": "First",
-						"last_send": "2026-09-02",
-						"touches": 1,
-						"opens": 2,
-						"replied": "2026-09-03",
-						"days_since_send": null,
-						"deal": null,
-						"closed": {
-							"reason": "NOT_A_FIT",
-							"date": "2026-09-17"
-						}
-					}
-				],
-				"more": 0
+				"companies": []
 			}
 		]
 	},

@@ -30,25 +30,40 @@ import type { RenderContext } from "./types";
 /*
  * The Pipeline email: the state of the pipeline first, then what the week
  * owes. Reshaped 2026-09-24 on the retro's Atelic section (ATE-551), after
- * the board first layout read to Forni as the same email in different words.
+ * the board first layout read to Forni as the same email in different words,
+ * then tuned the same morning off his phone: relative times instead of ISO
+ * dates on a record, the last open beside the last touch, a strip that holds
+ * two rows (New left off it and read as a line), one card per listed stage
+ * so the boundaries show, and every record on the same two lines so the eye
+ * learns where each number sits.
  *
- * The runner, not the model, supplies the funnel and the groom: the sweep
- * reads the groom's seven buckets now and seven days ago off HubSpot's own
- * entered dates, moves every stage and status the record justifies, and the
- * entrypoint folds both into the draft before the render. The model writes
- * the read, the names owed, and up to five flags. New, Lead and Closed are
- * read as a count and a change; MQL, SQL, Oppty and Customer list every
- * company, on a RecordStack so a name never squashes on a phone. Everything
- * the email leaves out (the drafts, each name's full line, the could not
- * verify list, the names left off on purpose) lives in the attached roster.
+ * The runner, not the model, supplies the funnel, the groom and the numbers
+ * on the owed names: the sweep reads the groom's seven buckets now and seven
+ * days ago off HubSpot's own entered dates, moves every stage and status the
+ * record justifies, and the entrypoint folds all of it into the draft before
+ * the render. The model writes the read, the names owed with a note each,
+ * and up to five flags. New, Lead and Closed are read as a count and a
+ * change; MQL, SQL, Oppty and Customer list every company on a RecordStack so
+ * a name never squashes on a phone. Everything the email leaves out lives in
+ * the attached roster.
  */
 
+type Metrics = {
+	days_since_send?: number | null;
+	touches?: number | null;
+	opens?: number | null;
+	days_since_open?: number | null;
+	last_reply?: unknown;
+	fit?: number | null;
+	email?: unknown;
+} | null;
 type Name = {
 	person?: unknown;
 	company?: unknown;
 	contact_url?: string | null;
 	company_url?: string | null;
 	note?: unknown;
+	metrics?: Metrics;
 };
 type Owed = {
 	reply?: Name[] | null;
@@ -71,6 +86,8 @@ type FunnelCompany = {
 	opens?: number | null;
 	replied?: unknown;
 	days_since_send?: number | null;
+	days_since_open?: number | null;
+	days_since_reply?: number | null;
 	deal?: Deal;
 	closed?: Closed;
 };
@@ -110,14 +127,17 @@ export type PipelineDraft = {
 
 /* ---------- shared readings ---------- */
 
+/** The desk block's order: replies first, then bumps, then the new names, then Thursday's visits, then the calls only Forni makes. */
 const OWED_KINDS: { key: keyof Owed; label: string }[] = [
 	{ key: "reply", label: "Reply to" },
 	{ key: "bump", label: "Bump" },
-	{ key: "visit", label: "Visit" },
 	{ key: "first_touch", label: "First touch" },
+	{ key: "visit", label: "Visit" },
 	{ key: "decide", label: "Decide" },
 ];
 
+/** The strip: the funnel Forni works. New is the pool waiting for a first send and reads as a line beneath. */
+const STRIP_STAGES = ["lead", "mql", "sql", "opportunity", "customer", "closed"];
 const LISTED_STAGES = new Set(["mql", "sql", "opportunity", "customer"]);
 
 const STAGE_WORD: Record<string, string> = {
@@ -137,32 +157,62 @@ function signed(n: number): string {
 	return n > 0 ? `+${numberString(n)}` : numberString(n);
 }
 
-/** "+3 · +12%", or "0" when nothing moved, or the count alone when there was nothing a week ago. */
+/** "+6 (15%)", "+9" when there was nothing a week ago, or "0" when nothing moved. */
 function deltaText(stage: FunnelStage): string {
 	const delta = alt(stage.delta, 0);
 	const pct = stage.pct;
 	if (delta === 0) return "0";
-	return pct === null || pct === undefined ? signed(delta) : `${signed(delta)} · ${signed(pct)}%`;
+	return pct === null || pct === undefined ? signed(delta) : `${signed(delta)} (${numberString(Math.abs(pct))}%)`;
 }
 
 function stripStats(funnel: Funnel): StatStripEntry[] {
-	return alt(funnel?.stages, []).map((stage) => ({
-		n: alt(stage.now, 0),
-		label: jqToString(stage.label),
-		delta: deltaText(stage),
-	}));
+	return alt(funnel?.stages, [])
+		.filter((stage) => STRIP_STAGES.includes(jqToString(stage.key)))
+		.map((stage) => ({ n: alt(stage.now, 0), label: jqToString(stage.label), delta: deltaText(stage) }));
 }
 
-/** One line for a stage read as a count: what came in and what went out this week. */
-function countLine(stage: FunnelStage): string {
-	const label = jqToString(stage.label);
+function plural(count: number, noun: string): string {
+	if (count === 1) return `${numberString(count)} ${noun}`;
+	return `${numberString(count)} ${noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`}`;
+}
+
+/** "today", "yesterday", "3 days ago"; empty when there is no date. */
+function ago(days: number | null | undefined): string {
+	if (days === null || days === undefined) return "";
+	if (days <= 0) return "today";
+	if (days === 1) return "yesterday";
+	return `${numberString(days)} days ago`;
+}
+
+function stageOf(funnel: Funnel, key: string): FunnelStage | undefined {
+	return alt(funnel?.stages, []).find((stage) => jqToString(stage.key) === key);
+}
+
+/** New as the pool: how many names wait for a first send and how the week moved it. */
+function poolLine(stage: FunnelStage | undefined): string {
+	if (stage === undefined) return "";
 	const entered = alt(stage.entered, []).length;
 	const left = alt(stage.left, []).length;
-	const movement =
-		entered === 0 && left === 0
-			? "nothing moved this week"
-			: `${numberString(entered)} in, ${numberString(left)} out this week`;
-	return `${label} ${numberString(alt(stage.now, 0))}, ${deltaText(stage) === "0" ? "unchanged" : deltaText(stage)}: ${movement}.`;
+	return `${plural(alt(stage.now, 0), "name")} waiting for a first send: ${numberString(entered)} in and ${numberString(left)} out this week.`;
+}
+
+/** Lead and Closed as one line each: the count, the change, what came in and went out. */
+function countLine(stage: FunnelStage): string {
+	const entered = alt(stage.entered, []).length;
+	const left = alt(stage.left, []).length;
+	const change = deltaText(stage) === "0" ? "unchanged" : deltaText(stage);
+	return `${jqToString(stage.label)} ${numberString(alt(stage.now, 0))}, ${change}: ${numberString(entered)} in and ${numberString(left)} out this week.`;
+}
+
+/** The pool line and the two count lines, in the order the funnel runs. */
+function funnelLines(funnel: Funnel): string[] {
+	const lead = stageOf(funnel, "lead");
+	const closed = stageOf(funnel, "closed");
+	return [
+		poolLine(stageOf(funnel, "new")),
+		lead === undefined ? "" : countLine(lead),
+		closed === undefined ? "" : countLine(closed),
+	].filter((line) => line !== "");
 }
 
 function statusWord(value: unknown): string {
@@ -175,42 +225,76 @@ function money(amount: number | null | undefined): string {
 	return `$${Math.round(amount).toLocaleString("en-US")}`;
 }
 
-/** A company on a stage list: the name, then what the record says about it. */
-function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackItem {
-	const key = jqToString(stage.key);
-	const meta: string[] = [];
-	if (key === "opportunity" || key === "customer") {
-		const deal = company.deal;
-		if (deal) {
-			if (jqToString(deal.stage) !== "") meta.push(jqToString(deal.stage));
-			if (money(deal.amount) !== "") meta.push(money(deal.amount));
-			if (jqToString(deal.close) !== "") meta.push(`${key === "customer" ? "signed" : "closes"} ${jqToString(deal.close)}`);
-		} else {
-			meta.push("no deal on the record");
-		}
-		if (statusWord(company.status) !== "") meta.push(statusWord(company.status));
-	} else {
-		if (statusWord(company.status) !== "") meta.push(statusWord(company.status));
-		const touches = alt(company.touches, 0);
-		if (jqToString(company.last_touch) !== "" && jqToString(company.last_send) !== "") {
-			meta.push(`${jqToString(company.last_touch).toLowerCase()} on ${jqToString(company.last_send)}`);
-		}
-		meta.push(`${numberString(touches)} ${touches === 1 ? "touch" : "touches"}`);
-		if (company.opens !== null && company.opens !== undefined) {
-			meta.push(`${numberString(company.opens)} ${company.opens === 1 ? "open" : "opens"}`);
-		}
-		if (jqToString(company.replied) !== "") meta.push(`replied ${jqToString(company.replied)}`);
-	}
-	return { title: jqToString(company.name), url: company.url, meta };
+function count(n: number, noun: string): string {
+	return `${numberString(n)} ${n === 1 ? noun : `${noun}${noun.endsWith("ch") ? "es" : "s"}`}`;
 }
 
-function owedRecords(names: Name[]): RecordStackItem[] {
-	return names.map((name) => ({
-		title: jqToString(name.person),
-		url: name.contact_url,
-		meta: [jqToString(alt(name.company, ""))].filter((m) => m !== ""),
-		note: jqToString(alt(name.note, "")) === "" ? undefined : jqToString(name.note),
-	}));
+/*
+ * A company on a stage list, on the same two lines every time. The meta line
+ * is the state (status, touches, opens); the note line is the clock (the last
+ * touch and when, the last open, the reply). A deal stage reads the deal
+ * instead: its stage and the money, then the date and the status.
+ */
+function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackItem {
+	const key = jqToString(stage.key);
+	if (key === "opportunity" || key === "customer") {
+		const deal = company.deal;
+		const meta = deal
+			? [jqToString(alt(deal.stage, "")), money(deal.amount)].filter((m) => m !== "")
+			: ["no deal on the record"];
+		const clock: string[] = [];
+		if (deal && jqToString(alt(deal.close, "")) !== "") {
+			clock.push(`${key === "customer" ? "signed" : "closes"} ${jqToString(deal.close)}`);
+		}
+		if (statusWord(company.status) !== "") clock.push(statusWord(company.status).toLowerCase());
+		return { title: jqToString(company.name), url: company.url, meta, note: clock.join(" · ") || undefined };
+	}
+	const meta = [
+		statusWord(company.status),
+		count(alt(company.touches, 0), "touch"),
+		company.opens === null || company.opens === undefined ? "untracked" : count(company.opens, "open"),
+	].filter((m) => m !== "");
+	const clock: string[] = [];
+	if (jqToString(alt(company.last_touch, "")) !== "" && ago(company.days_since_send) !== "") {
+		clock.push(`${jqToString(company.last_touch).toLowerCase()} ${ago(company.days_since_send)}`);
+	}
+	if (ago(company.days_since_open) !== "") clock.push(`opened ${ago(company.days_since_open)}`);
+	if (ago(company.days_since_reply) !== "") clock.push(`replied ${ago(company.days_since_reply)}`);
+	return { title: jqToString(company.name), url: company.url, meta, note: clock.join(" · ") || undefined };
+}
+
+/** The numbers under an owed name, from the sweep, in the same slots for every kind. */
+function metricsLine(kind: keyof Owed, m: Metrics): string {
+	if (m === null || m === undefined) return "";
+	if (kind === "first_touch") {
+		const parts: string[] = [];
+		if (m.fit !== null && m.fit !== undefined) parts.push(`fit ${numberString(m.fit)}`);
+		parts.push(jqToString(alt(m.email, "")) === "" ? "shared inbox" : "owner direct");
+		return parts.join(" · ");
+	}
+	const parts: string[] = [];
+	if (kind === "reply") {
+		if (jqToString(alt(m.last_reply, "")) !== "") parts.push(`replied ${jqToString(m.last_reply)}`);
+	} else if (ago(m.days_since_send) !== "") {
+		parts.push(`sent ${ago(m.days_since_send)}`);
+	}
+	parts.push(count(alt(m.touches, 0), "touch"));
+	parts.push(m.opens === null || m.opens === undefined ? "untracked" : count(m.opens, "open"));
+	if (ago(m.days_since_open) !== "") parts.push(`opened ${ago(m.days_since_open)}`);
+	return parts.join(" · ");
+}
+
+function owedRecords(kind: keyof Owed, names: Name[]): RecordStackItem[] {
+	return names.map((name) => {
+		const company = jqToString(alt(name.company, ""));
+		const metrics = metricsLine(kind, name.metrics ?? null);
+		return {
+			title: jqToString(name.person),
+			url: name.contact_url,
+			meta: [company, metrics].filter((m) => m !== ""),
+			note: jqToString(alt(name.note, "")) === "" ? undefined : jqToString(name.note),
+		};
+	});
 }
 
 function moveRecords(groom: Groom): RecordStackItem[] {
@@ -237,31 +321,20 @@ function leftForYou(draft: PipelineDraft): string[] {
 	return [...proposed, ...flags].filter((line) => line !== "");
 }
 
-function plural(count: number, noun: string): string {
-	if (count === 1) return `${numberString(count)} ${noun}`;
-	return `${numberString(count)} ${noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`}`;
-}
-
-/** The one line that stands in for the two lists the roster carries at its foot. */
-function rosterTail(unverified: number, notInBlock: number): string {
-	const could =
-		unverified === 0
-			? "Everything on the roster was verified"
-			: `${plural(unverified, "claim")} could not be verified today`;
-	const left =
-		notInBlock === 0
-			? "nothing was left off on purpose"
-			: `${plural(notInBlock, "name")} ${notInBlock === 1 ? "was" : "were"} left off on purpose`;
-	return `${could}, and ${left}. Every draft, each name's full line, and both lists are in the attached roster.`;
-}
-
 function groomLine(groom: Groom): string {
 	const stages = alt(groom?.companies, []).length;
 	const contacts = alt(groom?.contacts, []).length;
 	if (groom === null || groom === undefined) return "The groom did not run this week.";
-	if (groom.applied === false) return `Read only this run: ${plural(stages, "stage move")} and ${plural(contacts, "status move")} were computed and nothing was written.`;
+	if (groom.applied === false) {
+		return `Read only this run: ${plural(stages, "stage move")} and ${plural(contacts, "status move")} were computed and nothing was written.`;
+	}
 	if (stages === 0 && contacts === 0) return "The portal already said what was true; nothing moved.";
 	return `The groom moved ${plural(stages, "company")} and ${plural(contacts, "contact")} to match what the record already showed.`;
+}
+
+function owedKindsOf(draft: PipelineDraft) {
+	const owed = alt(draft.owed, {});
+	return OWED_KINDS.map((kind) => ({ ...kind, names: alt(owed[kind.key], []) })).filter((kind) => kind.names.length > 0);
 }
 
 /* ---------- html ---------- */
@@ -269,17 +342,11 @@ function groomLine(groom: Groom): string {
 export function pipelineHTML(input: unknown, context: RenderContext): string {
 	const draft = input as PipelineDraft;
 	const funnel = draft.funnel ?? null;
-	const stages = alt(funnel?.stages, []);
-	const counted = stages.filter((stage) => !LISTED_STAGES.has(jqToString(stage.key)));
-	const listed = stages.filter((stage) => LISTED_STAGES.has(jqToString(stage.key)));
-	const owed = alt(draft.owed, {});
-	const owedKinds = OWED_KINDS.map((kind) => ({ ...kind, names: alt(owed[kind.key], []) })).filter(
-		(kind) => kind.names.length > 0,
-	);
+	const listed = alt(funnel?.stages, []).filter((stage) => LISTED_STAGES.has(jqToString(stage.key)));
+	const lines = funnelLines(funnel);
+	const owedKinds = owedKindsOf(draft);
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
-	const unverified = alt(draft.unverified, []).length;
-	const notInBlock = alt(draft.not_in_block, []).length;
 
 	return renderEmail({
 		title: `${context.week} Pipeline`,
@@ -300,33 +367,38 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						<EmptyRow text="The portal sweep carried no funnel this run." />
 					) : (
 						<>
-							<Row last={false}>
+							<Row last={lines.length === 0}>
 								<StatStrip stats={stripStats(funnel)} />
 							</Row>
-							<Row last={listed.length === 0}>
-								<List fontSize="13px">
-									{counted.map((stage, index) => (
-										// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
-										<ListRow key={index}>{countLine(stage)}</ListRow>
-									))}
-								</List>
-							</Row>
-							{listed.map((stage, index) => (
-								// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
-								<Fragment key={index}>
-									<SubEyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} />
-									<Row last={index === listed.length - 1}>
-										{alt(stage.companies, []).length === 0 ? (
-											<DimLine text="Nobody here this week." />
-										) : (
-											<RecordStack records={alt(stage.companies, []).map((c) => companyRecord(stage, c))} />
-										)}
-									</Row>
-								</Fragment>
-							))}
+							{lines.length === 0 ? null : (
+								<Row last={true}>
+									<List fontSize="13px">
+										{lines.map((line, index) => (
+											// biome-ignore lint/suspicious/noArrayIndexKey: a line's position is its identity
+											<ListRow key={index}>{line}</ListRow>
+										))}
+									</List>
+								</Row>
+							)}
 						</>
 					)}
 				</Card>
+
+				{listed.map((stage, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
+					<Fragment key={index}>
+						<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} />
+						<Card>
+							{alt(stage.companies, []).length === 0 ? (
+								<EmptyRow text="Nobody here this week." />
+							) : (
+								<Row last={true}>
+									<RecordStack records={alt(stage.companies, []).map((c) => companyRecord(stage, c))} />
+								</Row>
+							)}
+						</Card>
+					</Fragment>
+				))}
 
 				<Eyebrow text="This week" />
 				<Card>
@@ -338,7 +410,7 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 							<Fragment key={index}>
 								<SubEyebrow text={`${kind.label} · ${numberString(kind.names.length)}`} />
 								<Row last={index === owedKinds.length - 1}>
-									<RecordStack records={owedRecords(kind.names)} />
+									<RecordStack records={owedRecords(kind.key, kind.names)} />
 								</Row>
 							</Fragment>
 						))
@@ -370,13 +442,6 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					)}
 				</Card>
 
-				<Eyebrow text="In the roster" />
-				<Card>
-					<Row last={true}>
-						<DimLine text={rosterTail(unverified, notInBlock)} />
-					</Row>
-				</Card>
-
 				<Footer meta={context.meta} />
 			</>
 		),
@@ -389,10 +454,7 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	const draft = input as PipelineDraft;
 	const number = weekNumber(context.week);
 	const funnel = draft.funnel ?? null;
-	const stages = alt(funnel?.stages, []);
-	const counted = stages.filter((stage) => !LISTED_STAGES.has(jqToString(stage.key)));
-	const listed = stages.filter((stage) => LISTED_STAGES.has(jqToString(stage.key)));
-	const owed = alt(draft.owed, {});
+	const listed = alt(funnel?.stages, []).filter((stage) => LISTED_STAGES.has(jqToString(stage.key)));
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
 
@@ -405,29 +467,22 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	if (funnel === null) {
 		out += `${lede === "" ? "" : "\n"}  The portal sweep carried no funnel this run.\n`;
 	} else {
-		out += `\n${textTable(
-			["Stage", "Now", "Change"],
-			stages.map((stage) => [jqToString(stage.label), numberString(alt(stage.now, 0)), deltaText(stage)]),
-			[1],
-		)}\n`;
-		out += `\n${counted.map((stage) => wrap(countLine(stage))).join("\n")}\n`;
+		const strip = stripStats(funnel);
+		out += `\n${textTable(["Stage", "Now", "Change"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
+		const lines = funnelLines(funnel);
+		if (lines.length > 0) out += `\n${lines.map((line) => wrap(line)).join("\n")}\n`;
 		for (const stage of listed) {
-			out += `\n${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}\n`;
+			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
 			const companies = alt(stage.companies, []);
-			out +=
-				companies.length === 0
-					? "  Nobody here this week.\n"
-					: recordStackText(companies.map((c) => companyRecord(stage, c)));
+			out += companies.length === 0 ? "  Nobody here this week.\n" : recordStackText(companies.map((c) => companyRecord(stage, c)));
 		}
 	}
 
 	out += textSection("This Week");
-	const owedKinds = OWED_KINDS.map((kind) => ({ ...kind, names: alt(owed[kind.key], []) })).filter(
-		(kind) => kind.names.length > 0,
-	);
+	const owedKinds = owedKindsOf(draft);
 	if (owedKinds.length === 0) out += "  Nothing is owed this week.\n";
 	for (const kind of owedKinds) {
-		out += `${kind.label} · ${numberString(kind.names.length)}\n${recordStackText(owedRecords(kind.names))}\n`;
+		out += `${kind.label} · ${numberString(kind.names.length)}\n${recordStackText(owedRecords(kind.key, kind.names))}\n`;
 	}
 
 	out += textSection("The Groom");
@@ -436,9 +491,6 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	if (left.length > 0) {
 		out += `\nLeft for you · ${numberString(left.length)}\n${left.map((line) => wrap(line)).join("\n")}\n`;
 	}
-
-	out += textSection("In the Roster");
-	out += `${wrap(rosterTail(alt(draft.unverified, []).length, alt(draft.not_in_block, []).length))}\n`;
 
 	out += `\n\n${context.meta}\n`;
 	return out;
