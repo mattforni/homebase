@@ -972,7 +972,7 @@ async function sweep(argv) {
     };
     const recentNote = (co) => {
         const n = (notesByCompany.get(co.id) || [])
-            .filter((x) => x.date && daysSince(`${x.date}T12:00:00Z`) >= 0 && daysSince(`${x.date}T12:00:00Z`) <= 14)
+            .filter((x) => x.date && x.body && daysSince(`${x.date}T12:00:00Z`) >= 0 && daysSince(`${x.date}T12:00:00Z`) <= 14)
             .sort((a, b) => b.date.localeCompare(a.date))[0];
         return n ? { date: n.date, text: n.body.split("\n")[0].slice(0, 160) } : null;
     };
