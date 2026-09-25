@@ -84,7 +84,7 @@ require_tools claude jq curl node xargs timeout git || exit 1
 EUDY="${EUDY:-$HOME/Eudaimonia}"
 EUDY_REPO="${EUDY_REPO:-git@github.com:mattforni/Eudaimonia.git}"
 ATELIC="${ATELIC:-$EUDY/Craft/Vocation/Atelic}"
-ATELIC_REPO="${ATELIC_REPO:-git@github.com:mattforni/atelic.git}"
+ATELIC_REPO="${ATELIC_REPO:-git@github.com:atelic-action/atelic.git}"
 ONE_PAGER_ID="${ONE_PAGER_ID:-1SraHDzvUebGSpAW54AV78tKpCi4_PqeXQvG6FHCOVtg}"
 PULLS="$WORK/pulls"
 SITES="$PULLS/sites"
