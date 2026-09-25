@@ -140,43 +140,60 @@ send_email() {
         return 1
     fi
 
+    # Every large value moves through a file, never an argument. Linux caps a
+    # single argv string at 128 KB, and a full week's roster attached to its
+    # rendered report blew past it: curl died with "Argument list too long"
+    # and the report never left the container (plumber, 2026-09-25). So jq
+    # reads the html, the text, and the attachment with --rawfile, and curl
+    # sends the payload with --data-binary @file. Keep it that way for any
+    # runner that mails through here.
+    local tmp
+    tmp="$(mktemp -d -t runner-resend.XXXXXX)" || { echo "email: mktemp failed"; return 1; }
+    printf '%s' "$body" > "$tmp/html"
+    printf '%s' "$text" > "$tmp/text"
+    : > "$tmp/attachment"
+
     # An optional file rides along as an attachment, base64 on one line
     # (GNU base64 wraps at 76 columns unless told not to; BSD's never does).
-    local payload attachments='[]'
+    local attachment_name=""
     if [[ -n "$attachment" ]]; then
         if [[ ! -r "$attachment" ]]; then
             echo "email: attachment $attachment is not readable"
+            rm -rf "$tmp"
             return 1
         fi
-        attachments="$(jq -n --arg name "$(basename "$attachment")" --arg content "$(base64 < "$attachment" | tr -d '\n')" \
-            '[{filename: $name, content: $content}]')" || {
+        attachment_name="$(basename "$attachment")"
+        base64 < "$attachment" | tr -d '\n' > "$tmp/attachment" || {
             echo "email: could not encode the attachment"
+            rm -rf "$tmp"
             return 1
         }
     fi
-    payload="$(jq -n --arg from "$sender" --arg to "$REPORT_RECIPIENT" \
-        --arg subject "$subject" --arg html "$body" --arg text "$text" --argjson attachments "$attachments" \
+    jq -n --arg from "$sender" --arg to "$REPORT_RECIPIENT" --arg subject "$subject" \
+        --arg name "$attachment_name" \
+        --rawfile html "$tmp/html" --rawfile text "$tmp/text" --rawfile content "$tmp/attachment" \
         '{from: $from, to: [$to], subject: $subject, html: $html}
          + (if $text != "" then {text: $text} else {} end)
-         + (if ($attachments | length) > 0 then {attachments: $attachments} else {} end)')" || {
+         + (if $name != "" then {attachments: [{filename: $name, content: $content}]} else {} end)' \
+        > "$tmp/payload" || {
         echo "email: could not build the Resend payload"
+        rm -rf "$tmp"
         return 1
     }
 
-    local resp code
-    resp="$(mktemp -t runner-resend.XXXXXX)" || { echo "email: mktemp failed"; return 1; }
-    code="$(curl -sS --max-time 30 -o "$resp" -w '%{http_code}' \
+    local code
+    code="$(curl -sS --max-time 60 -o "$tmp/resp" -w '%{http_code}' \
         -X POST https://api.resend.com/emails \
         -H "Authorization: Bearer $RESEND_API_KEY" \
         -H "Content-Type: application/json" \
-        -d "$payload")"
+        --data-binary @"$tmp/payload")"
     if [[ "$code" =~ ^2 ]]; then
         echo "email: sent \"$subject\" to $REPORT_RECIPIENT"
-        rm -f "$resp"
+        rm -rf "$tmp"
         return 0
     fi
-    echo "email: Resend returned HTTP $code: $(head -c 300 "$resp")"
-    rm -f "$resp"
+    echo "email: Resend returned HTTP $code: $(head -c 300 "$tmp/resp" 2>/dev/null)"
+    rm -rf "$tmp"
     return 1
 }
 
