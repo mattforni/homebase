@@ -7,7 +7,7 @@
 -- it and brings it back with the port after a crash. If the agent is not
 -- loaded (booted out on purpose to close the port), open Brave normally.
 
-if (do shell script "pgrep -xq 'Brave Browser' && echo yes || echo no") is "yes" then
+if (do shell script "pgrep -xq -u $(id -u) 'Brave Browser' && echo yes || echo no") is "yes" then
 	do shell script "open -a 'Brave Browser'"
 else
 	try
