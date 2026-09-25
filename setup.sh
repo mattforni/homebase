@@ -417,6 +417,67 @@ setup_agent_browser() {
   fi
 }
 
+install_brave_launcher() {
+  header "Brave launcher"
+
+  # Compiles launchd/brave-launcher.applescript into ~/Applications/Brave.app
+  # with Brave's icon, for the Dock in place of Brave itself. A launch from the
+  # Dock otherwise goes through LaunchServices with no --remote-debugging-port.
+  # The app is built rather than tracked, since osacompile output is binary.
+  local src="$DIR/launchd/brave-launcher.applescript"
+  local app="$HOME/Applications/Brave.app"
+  local icon="/Applications/Brave Browser.app/Contents/Resources/app.icns"
+  # Outside the bundle: a file added inside it would break its signature.
+  local stamp="$HOME/.local/state/homebase/brave-launcher.sha"
+
+  if [[ ! -d "/Applications/Brave Browser.app" ]]; then
+    warn "Brave not installed, skipping the launcher"
+    return 0
+  fi
+
+  local sha
+  sha=$(shasum -a 256 "$src" | cut -d' ' -f1)
+  if [[ "$FORCE" != true ]] && [[ -f "$stamp" ]] && [[ "$(cat "$stamp")" == "$sha" ]]; then
+    info "Brave launcher already built"
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" == true ]]; then
+    dry "BUILD $app from $src"
+    return 0
+  fi
+
+  mkdir -p "$HOME/Applications"
+  rm -rf "$app"
+  if ! osacompile -o "$app" "$src"; then
+    warn "osacompile failed for the Brave launcher"
+    return 1
+  fi
+  # osacompile ships its icon in Assets.car, which outranks applet.icns, so
+  # the catalog goes and Brave's icns takes its place. Editing the bundle
+  # voids osacompile's ad hoc signature, and codesign refuses a bundle
+  # carrying Finder attributes, so clear them and sign again.
+  if [[ -f "$icon" ]]; then
+    rm -f "$app/Contents/Resources/Assets.car"
+    /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$app/Contents/Info.plist" 2>/dev/null || true
+    cp "$icon" "$app/Contents/Resources/applet.icns"
+  fi
+  xattr -cr "$app"
+  codesign --force --sign - "$app" 2>/dev/null
+  touch "$app"
+
+  # Prove the bundle is sound rather than trusting osacompile's exit code.
+  if [[ -x "$app/Contents/MacOS/applet" ]] && codesign --verify "$app" 2>/dev/null; then
+    mkdir -p "$(dirname "$stamp")"
+    printf '%s\n' "$sha" > "$stamp"
+    info "Built $app (drag it into the Dock in place of Brave)"
+    SUMMARY+=("Brave launcher built at $app")
+  else
+    warn "Brave launcher bundle has no executable"
+    return 1
+  fi
+}
+
 ###############################################################################
 # Home reconciliation
 #
@@ -1394,6 +1455,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     run_phase install_bun_globals
     run_phase setup_agent_browser
     run_phase install_launchagents
+    run_phase install_brave_launcher
     run_phase install_ide_extensions
     run_phase install_claude_plugins
     run_phase install_mcp_servers

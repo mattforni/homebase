@@ -8,6 +8,7 @@ before launchd sees it.
 | Agent | What It Does |
 |---|---|
 | `me.atelic.brave-debug-port.plist` | Starts Brave at login with the CDP remote debugging port open on 9222 |
+| `brave-launcher.applescript` | Not an agent: compiled into `~/Applications/Brave.app`, the Dock icon that opens Brave through the agent above |
 
 ## Why Brave Needs the Port
 
@@ -69,7 +70,18 @@ stays quittable.
 
 The gap that leaves: after you quit Brave deliberately, the next launch from the
 Dock or from a link has no port, because LaunchServices starts it without the
-flag. Fix it for that session by reloading the agent:
+flag.
+
+**The Dock half is closed by `~/Applications/Brave.app`**, a launcher that
+`setup.sh` compiles from `brave-launcher.applescript` and dresses in Brave's
+icon. Pin it in the Dock in place of Brave itself (a one time drag, by hand).
+When Brave is running it just brings it forward; when it is not, it starts
+Brave through this agent, so the port is open and launchd supervises it. The
+running Brave still shows its own Dock icon beside the launcher, since the two
+are separate apps.
+
+**The link half stays open.** Clicking a link in Slack or Mail while Brave is
+closed still launches it bare. Fix it for that session by reloading the agent:
 
 ```bash
 launchctl kickstart -k "gui/$(id -u)/me.atelic.brave-debug-port"
