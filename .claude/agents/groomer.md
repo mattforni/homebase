@@ -44,8 +44,8 @@ Learned rules override generic guidance when they conflict.
 4. **Audit scheduling hygiene** per `~/Eudaimonia/Admin/Tools/linear.md`
    (Scheduling), which is the canonical source; do not carry your own copy
    of those rules. Flag issues in a cycle with no block on the calendar,
-   blocks whose totals drift from their estimates, and any issue still
-   carrying a due date (they were retired 2026-08-21). Placement itself
+   blocks whose totals drift from their estimates, and any due date
+   falling outside its issue's cycle. Placement itself
    belongs to the plan-week step, not to you.
 5. **Apply only what the brief pre approves.** The skill's hard rule stands
    in agent form: diff before apply, and the dispatch brief is the only
@@ -73,7 +73,7 @@ Learned rules override generic guidance when they conflict.
   your product is the slate that makes that walk fast.
 - Non destructive by default. Cancel and delete happen only when the brief
   names that action for those issues. Touch only cycle, priority, state,
-  project, parent, labels, and estimate. Never set a due date, and never edit
+  project, parent, labels, and estimate. Set a due date only when the brief names it, and never edit
   descriptions, titles, comments, or assignees.
 - One team at a time. Foreground commands only; kill anything you start
   before reporting.
