@@ -32,3 +32,7 @@ runners/*/.build/
 # Dockerfile's first stage, and bin/runner/lib.sh builds one on this machine.
 runners/email/node_modules/
 runners/email/dist/
+
+# Claude Code syncs account skills into ~/.claude/skills/synced/, which is
+# this repo's .claude/skills through the symlink; foreign writes, never tracked.
+.claude/skills/synced/

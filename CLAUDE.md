@@ -82,7 +82,7 @@ The two house standards (chill for client sites, assertive for own code) live in
 
 ## Landing Changes: Decide by the Heuristic
 
-Pick the path from the change; do not ask (Forni delegated this 2026-08-24, having noticed he was not reading the question). **Direct to main** when all three hold: under roughly 20 lines changed, prose only, and touching nothing executable and no plugin version. **A pull request** otherwise, and always for anything that runs: `setup.sh`, `bin/`, `plugins/`, `.claude/settings.json`, the shell rc files, and any new skill. The heuristic was derived from 117 commits over six weeks and reproduces Forni's observed choices.
+Pick the path from the change; do not ask (Forni delegated this 2026-08-24, having noticed he was not reading the question). **Direct to main** when all three hold: under roughly 20 lines changed, prose only, and touching nothing executable and no plugin version. A `.gitignore` change also lands direct, whatever its size (Forni, 2026-09-25). **A pull request** otherwise, and always for anything that runs: `setup.sh`, `bin/`, `plugins/`, `.claude/settings.json`, the shell rc files, and any new skill. The heuristic was derived from 117 commits over six weeks and reproduces Forni's observed choices.
 
 **Fetch `origin/main` and compare against it immediately before landing, never against the base the branch was cut from.** Concurrent sessions land here often, and a plugin version bump makes staleness silently destructive: two branches that both bump to the same version merge clean and publish the second change under a version already released, where no installed copy will ever see it. Cut follow up branches fresh from `origin/main` immediately before the bump commit.
 
