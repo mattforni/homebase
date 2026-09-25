@@ -43,8 +43,8 @@ Keep the context architecture honest. The failure this skill exists to fix is **
 - **Repo CLAUDE.md chains**: per repo and nested, loaded when working in that repo.
 - **Skill files**: `SKILL.md` and `learned-rules.md` per skill in the `assist` plugin (`.claude/local-skills/plugins/assist/skills/*`) and the `skillset` plugins (`sdlc`, `linear-lifecycle`). Loaded on invocation; the description alone sits in every session.
 - **Hooks** (`~/.claude/hooks/`, wired in `.claude/settings.json`): the enforcement layer. Not prose, but every process gate in prose is measured against whether one of these could carry it instead.
-- **Tool docs**: `~/Eudaimonia/Admin/Tools/<tool>.md`, reference loaded on relevance.
-- **Auto memory**: `MEMORY.md` (first 200 lines or 25 KB load every session, the rest is silently dropped) plus topic files loaded on demand. A first class layer since 2026-07-04; groom it for staleness and for duplication against the repo file layers, but its existence is not a smell.
+- **Tool docs**: `~/Eudaimonia/Admin/Tools/<tool>.md`, plus a repo's own `Tools/` for a tool that exists only for that repo; reference loaded on relevance.
+- **Auto memory**: every project's store under `~/.claude/projects/*/memory/`, each with its own `MEMORY.md` (first 200 lines or 25 KB load every session, the rest is silently dropped) plus topic files loaded on demand. A first class layer since 2026-07-04; groom it for staleness and for duplication against the repo file layers, but its existence is not a smell. Hold each index under 140 lines: move tool gotchas into the tool's doc, delete memories a repo file already states in full, then merge what is related (2026-09-25, ATE-576).
 
 ## Workflow
 
@@ -76,7 +76,7 @@ For each load bearing process gate, ask "what actually makes me follow this?" A 
 
 ### Step 7: Size
 
-Last, and only after the steps above. Measure the always loaded files (`wc -lc`) against the ratchet caps and Anthropic's 200 line target, and against the `MEMORY.md` cutoff. Recommend one bounded cut per file at most, and lower the cap in `bin/lint/context-size` when a homebase owned file shrinks so the reduction locks in. The 200 line figure is a target with no published measurement behind it; do not cut a compatible, load bearing line to reach it.
+Last, and only after the steps above. Measure the always loaded files (`wc -lc`) against the ratchet caps and Anthropic's 200 line target, and every project's `MEMORY.md` against the 140 line target. Recommend one bounded cut per file at most, and lower the cap in `bin/lint/context-size` when a homebase owned file shrinks so the reduction locks in. The 200 line figure is a target with no published measurement behind it; do not cut a compatible, load bearing line to reach it.
 
 ### Step 8: Present a Diff for Approval
 

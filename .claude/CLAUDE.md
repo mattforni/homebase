@@ -2,7 +2,7 @@
 
 ## About This File
 
-This is "GC" (Global Claude), and when Forni says "GC" he means this file: his private global instructions, loaded in every session everywhere. It holds behavioral conventions and pointers; depth lives one hop away, in `~/Eudaimonia/Admin/Tools/<tool>.md` for a tool, in a repo's CLAUDE.md or `.claude/rules/` for a repo.
+This is "GC" (Global Claude), and when Forni says "GC" he means this file: his private global instructions, loaded in every session everywhere. It holds behavioral conventions and pointers; depth lives one hop away, in the tool's own doc for a tool, in a repo's CLAUDE.md or `.claude/rules/` for a repo.
 
 ## Koans
 

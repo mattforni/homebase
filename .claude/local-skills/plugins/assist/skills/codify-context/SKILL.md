@@ -52,7 +52,7 @@ Apply the placement rule: name the trigger, read the destination off the routing
 - **A path scoped rule** (`.claude/rules/<topic>.md` with `paths:` frontmatter, project or user level): depth that matters only when a particular file is being edited.
 - **A skill's `learned-rules.md`**: a correction to how a skill decides. Never learned rule content inside SKILL.md; every skill carries the separate file, and SKILL.md's own `## Learned Rules` section holds only the pointer to it.
 - **A hook**: anything that must happen every time or must never happen. Propose the hook; writing `settings.json` is `update-config` work and needs its own yes.
-- **A tool doc** (`~/Eudaimonia/Admin/Tools/<tool>.md`): a tool's mechanics, gotchas, costs, and the reason we picked it, in the one pager shape of `Admin/Tools/CLAUDE.md`.
+- **A tool doc** (the tool's own doc, wherever the placement rule's table puts it: Eudy `Admin/Tools/` or the owning repo's `Tools/`): a tool's mechanics, gotchas, costs, and the reason we picked it, in the one pager shape of `Admin/Tools/CLAUDE.md`.
 - **Auto memory**: a Claude discovered learning that need not survive a machine swap. Usually already saved by the time Forni says codify; check before duplicating.
 - **Nowhere**: anything derivable from the code, git history, or the tool's own help.
 
