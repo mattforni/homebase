@@ -24,13 +24,13 @@ judgment.
   path is given. You run no git, so writing into the session's worktree is
   safe. Codified 2026-09-08 after the W37 build had to override every path
   by hand.
-- **The method**: `~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/README.md`.
+- **The method**: `~/Eudaimonia/Craft/Vocation/Atelic/Outreach/README.md`.
   The ICP as thesis, the entry rule (mailbox first), the three touch unit
   (send, bump at about seven days with the visit offer, visit or call at
   about fourteen, close at about twenty one), the email skeleton and its
   grading rubric, the bump shape, the week's fixed order, and the kill
   switch. The folder's `CLAUDE.md` holds the three rules that never bend.
-- **The worked example**: `Pipeline/Voice/2026-08-28-just-heat-pumps-xerxes.md`
+- **The worked example**: `Outreach/Voice/2026-08-28-just-heat-pumps-xerxes.md`
   in the same repo, the cold two lane first touch in Forni's own voice. Read
   it before drafting anything cold, and read the sample nearest each
   situation (the folder's siblings, indexed in `Brand/Voice/README.md`).
@@ -69,16 +69,16 @@ judgment.
   `nonprofit`; untagged means cold; `bench` retired 2026-08-26, unscored is
   `fit` unknown), and the queue derivation: lifecycle Lead is the funnel,
   the contact's Lead Status is where they stand, `fit` is the order, and the
-  Next Up and Unscored views carry it (Pipeline/README.md, The Queue).
-- **The board**: `~/Eudaimonia/Craft/Vocation/Atelic/Leads/README.md` for
-  the fit order and the build schedule; per engagement folders under `Leads/` (or `Customers/`)
+  Next Up and Unscored views carry it (Outreach/README.md, The Queue).
+- **The board**: `~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/Leads/README.md` for
+  the fit order and the build schedule; per engagement folders under `Pipeline/Leads/` (or `Pipeline/Opportunities/`, `Pipeline/Customers/`)
   for anyone with an engagement record. **A client README is the engagement
   (wedge, build, artifacts, lessons), never the relationship timeline.**
   Where they stand, what was sent, who visited whom and when, all of that
   is read from HubSpot and only from HubSpot (decided 2026-08-26 after two
   READMEs rotted while the CRM stayed right). Never propose a README status
   row; propose a HubSpot meeting or note instead.
-- **The roster**: `Pipeline/<ISO week>-roster.md` in the Atelic repo, one file
+- **The roster**: `Outreach/<ISO week>-roster.md` in the Atelic repo, one file
   per week, written once and never edited after. It is a snapshot, not a
   record: it was true the morning it was built and goes stale by design, which
   is why it can live in the repo at all. HubSpot stays canonical for every
@@ -104,7 +104,7 @@ judgment.
 ## Method
 
 **Read this week's file before step 1.** If
-`Pipeline/<ISO week>-roster.md` opens with **Not yet built**, it is the
+`Outreach/<ISO week>-roster.md` opens with **Not yet built**, it is the
 skeleton: run every step, and in step 6 write the roster over everything above
 `## Placed Ahead`, giving each entry under that heading a fully worked line in
 its section and leaving the entries where they are. If the file is already
@@ -119,7 +119,7 @@ When a step needs several commands' worth of logic, write a short python
 script to the scratchpad and run that one file.
 
 1. **Read last week's roster.** The previous week's
-   `Pipeline/<ISO week>-roster.md` in the Atelic repo, if one exists. Every
+   `Outreach/<ISO week>-roster.md` in the Atelic repo, if one exists. Every
    line on it is a claim to verify, not a fact, and it is a week stale by
    construction.
    For any name with a meeting on its HubSpot record, read the Granola link
@@ -253,7 +253,7 @@ script to the scratchpad and run that one file.
      hours, and the owner's name, so Thursday's walkabout is a route. Anyone
      not walkable gets a call line with the number instead. Who gets a
      visit, a paper drop off, or a call line is decided by the method
-     (Pipeline/README.md, The Visit), read fresh each run; never apply a
+     (Outreach/README.md, The Visit), read fresh each run; never apply a
      visit rule from this file.
    - **Closes due**: three touches run and about twenty one days silent.
      List them with every touch that ran; Forni decides the close on the
@@ -268,7 +268,7 @@ script to the scratchpad and run that one file.
      draft against the skeleton. Grade against the rubric and iterate until
      every row is A minus or better; record the grade. Five is a full week;
      name the stretch.
-6. **Write the roster** into `Pipeline/<ISO week>-roster.md` in the Atelic
+6. **Write the roster** into `Outreach/<ISO week>-roster.md` in the Atelic
    repo, replacing the skeleton's notice and everything above `## Placed
    Ahead`, as markdown, opening with the date it was built and the standing
    note that it is a snapshot and HubSpot is canonical. **Then the weekly scoreboard**,
