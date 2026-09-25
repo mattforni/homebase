@@ -94,7 +94,7 @@ The Done archive is a separate pass. Linear's archive is UI-only as of CLI v2.0.
 ## Hard Rules
 
 - **Scheduling rules are not defined here.** `~/Eudaimonia/Admin/Tools/linear.md` (Scheduling) is the canonical source for cycles, due dates, and what counts as triaged. Read it rather than trusting a copy, and do not restate its rules in this skill.
-- **Untriaged is always a Decision, never a silent Keep.** An issue counts as triaged only when it carries every field named in `~/Eudaimonia/Admin/Tools/linear.md` (Scheduling, What Counts as Triaged). Read the definition there rather than from memory; missing any one field makes an issue untriaged no matter what its state says. An issue still carrying a due date is drift to flag.
+- **Untriaged is always a Decision, never a silent Keep.** An issue counts as triaged only when it carries every field named in `~/Eudaimonia/Admin/Tools/linear.md` (Scheduling, What Counts as Triaged). Read the definition there rather than from memory; missing any one field makes an issue untriaged no matter what its state says. A due date falling outside its issue's cycle is drift to flag.
 - **The cycle equals the week (cycle mode).** An active cycle should contain exactly the work intended for that week. Anything unfittable or unowned goes to Backlog so the board stays readable. Two drifts break this quietly; see learned-rules.md.
 - **Non destructive by default.** Prefer move, reprioritize, or backlog over cancel/delete. Never silently destroy.
 - **Diff before apply.** Always present the proposed slate as a table and wait for explicit approval. Auto apply is reserved for the Keep bucket (which by definition changes nothing).
