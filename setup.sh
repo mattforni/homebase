@@ -437,7 +437,8 @@ install_brave_launcher() {
 
   local sha
   sha=$(shasum -a 256 "$src" | cut -d' ' -f1)
-  if [[ "$FORCE" != true ]] && [[ -d "$app" ]] && [[ -f "$stamp" ]] && [[ "$(cat "$stamp")" == "$sha" ]]; then
+  if [[ "$FORCE" != true ]] && [[ -x "$app/Contents/MacOS/applet" ]] && codesign --verify "$app" 2>/dev/null \
+    && [[ -f "$stamp" ]] && [[ "$(cat "$stamp")" == "$sha" ]]; then
     info "Brave launcher already built"
     return 0
   fi
