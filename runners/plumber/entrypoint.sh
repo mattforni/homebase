@@ -44,7 +44,7 @@
 #   SWEEP_GROOM               0 makes the portal sweep read only: the groom's
 #                             moves are computed and reported, nothing is
 #                             written. The default writes, per The Weekly
-#                             Groom in Pipeline/README.md (2026-09-24)
+#                             Groom in Outreach/README.md (2026-09-24)
 # fail_reason, result, status and ATTACHMENT cross into the scaffold in
 # lib/runner.sh (its EXIT trap and runner_render read them), which static
 # analysis cannot see across files.
@@ -318,9 +318,9 @@ ALLOWED_TOOLS=(
 )
 
 checkout_ready "$EUDY" "$EUDY_REPO" "VOICE.md" EUDY_DEPLOY_KEY eudy_deploy_key || exit 1
-checkout_ready "$ATELIC" "$ATELIC_REPO" "Pipeline/README.md" ATELIC_DEPLOY_KEY atelic_deploy_key || exit 1
-if [[ ! -f "$ATELIC/Pipeline/$WEEK-roster.md" ]]; then
-    fail_reason="the Atelic repo has no skeleton at Pipeline/$WEEK-roster.md; cut one first"
+checkout_ready "$ATELIC" "$ATELIC_REPO" "Outreach/README.md" ATELIC_DEPLOY_KEY atelic_deploy_key || exit 1
+if [[ ! -f "$ATELIC/Outreach/$WEEK-roster.md" ]]; then
+    fail_reason="the Atelic repo has no skeleton at Outreach/$WEEK-roster.md; cut one first"
     exit 1
 fi
 if [[ "$SKIP_PULLS" == "1" ]]; then

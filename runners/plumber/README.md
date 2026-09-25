@@ -15,7 +15,7 @@ Then a write probe (`runner_probe_write`, a one line Haiku call with the same ag
 **The roster rides as the attachment, and Forni places it.** The runner writes nothing into either checkout. After a run the file is copied into the repo and committed by hand:
 
 ```bash
-cp runners/plumber/out/2026-W38-roster.md ~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/
+cp runners/plumber/out/2026-W38-roster.md ~/Eudaimonia/Craft/Vocation/Atelic/Outreach/
 ```
 
 **What stays out, for now.** The browser walk. The method already says machine verified is not verified and that the Google captures for a bump come from Forni's own browser, so the runner drafts each bump and first touch from the pulled evidence and marks on the roster line which claims still need a capture; the Tuesday block finishes it. Putting Chromium in the image is a follow up once this version has run a few weeks. The HubSpot writes (auditing a prospect, parking a name) stay interactive too; those are things Forni asks for by name.
