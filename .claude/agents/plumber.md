@@ -70,7 +70,7 @@ judgment.
   `fit` unknown), and the queue derivation: lifecycle Lead is the funnel,
   the contact's Lead Status is where they stand, `fit` is the order, and the
   Next Up and Unscored views carry it (Outreach/README.md, The Queue).
-- **The board**: `~/Eudaimonia/Craft/Vocation/Atelic/Leads/README.md` for
+- **The board**: `~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/Leads/README.md` for
   the fit order and the build schedule; per engagement folders under `Pipeline/Leads/` (or `Pipeline/Opportunities/`, `Pipeline/Customers/`)
   for anyone with an engagement record. **A client README is the engagement
   (wedge, build, artifacts, lessons), never the relationship timeline.**
