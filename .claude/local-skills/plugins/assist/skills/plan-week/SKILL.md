@@ -192,7 +192,7 @@ Prioritize the full task slate, work first, then place the survivors.
 
 **Prioritize.** Prune hard: the filter routinely surfaces far too many items, so default to aggressively deleting notes, deferring the non critical, and combining duplicates rather than slotting everything. This is a collaborative pass through all tasks to:
 
-1. **Identify notes vs tasks**: Forni uses Todoist as a quick notepad. Items that are bookmarks, quotes, links, or ideas get moved to their proper home (Notion, Eudaimonia koans, etc.) and **deleted** from Todoist (not completed, since they were never real tasks). Use Notion MCP for pages like AI Research, and write files to Eudaimonia for things like koans.
+1. **Identify notes vs tasks**: Forni uses Todoist as a quick notepad. Items that are bookmarks, quotes, links, or ideas get moved to their proper home in Eudaimonia (koans, the Substack ideas list, etc.) and **deleted** from Todoist (not completed, since they were never real tasks).
 2. **Combine related tasks**: When multiple tasks are clearly part of the same effort (e.g., "Rebalance Portfolio" and "Update 1% Donation" both being financial), suggest merging them into a single task with details in a comment. Merge only on Forni's explicit yes to that specific fold; a board reply that addresses the umbrella and not the fold is not a yes (2026-08-30: four house tasks were folded and deleted on such a reply and had to be recreated).
 3. **Reprioritize**: Review priorities and flag anything that looks off. Use best judgment, then confirm with the user.
 4. **Clear p4**: All p4 tasks either get bumped to a real priority or punted to the next planning Monday. p4 items do not get slotted into the current week.

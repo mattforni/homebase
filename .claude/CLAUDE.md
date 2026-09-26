@@ -94,10 +94,6 @@ Read Google Workspace links (Docs/Sheets/Slides/Drive) and work Gmail through th
 - **`coderabbit review --base <base> --committed --agent` is the review gate, every repo, before a merge** (2026-08-29). Never wait on the PR bot: on a private repo it summarizes and never reviews. It stays a public repo fallback. Depth: `~/Eudaimonia/Admin/Tools/coderabbit.md`.
 - **Triage findings, do not comply blindly.** Fix genuine bugs, adopt good suggestions, decline false positives with a reason and anything conflicting with an explicit directive or tested behavior. Address only NEW or UNRESOLVED comments; ask if unclear which are new. Converge rather than loop. The merge gate hook and `sdlc:land` enforce it; per repo setup lives in that repo's CLAUDE.md.
 
-## MCP Servers
-
-Notion connects via the native claude.ai connector; details in `~/Eudaimonia/Admin/Tools/notion.md`.
-
 ## Linear Ticket Preferences
 
 **Linear is the tracker for engineering and development work; Todoist is for personal and operational tasks.** Anything code (bugs, tech debt, features, follow ups from a build session) goes to Linear, never Todoist, and Todoist is never offered for dev follow ups.

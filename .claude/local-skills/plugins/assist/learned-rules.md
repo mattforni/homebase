@@ -20,7 +20,7 @@ The email routing rule sets (Sender Rules, Topic Rules, Subject Rules, Star Sema
 
 ## Todoist Rules
 
-- When triaging notes/bookmarks that get moved to their proper location (Notion, Eudaimonia, etc.), delete the Todoist task. Do not complete it. These were never real tasks.
+- When triaging notes/bookmarks that get moved to their proper location (Eudaimonia, etc.), delete the Todoist task. Do not complete it. These were never real tasks.
 - Task titles: emoji prefix + short linked title (e.g., "📧 [Follow Up with Jeff](link)"). Details go in a comment, not the description.
 
 ## Calendar Rules

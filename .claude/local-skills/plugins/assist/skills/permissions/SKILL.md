@@ -37,7 +37,7 @@ Before hoisting, collapse similar permissions into wildcards:
 These are safe to promote to user level because they are useful across projects:
 
 - **Common CLI tools**: Standard unix commands, package managers, language runtimes, dev tools. If it is a general purpose command line tool, hoist it.
-- **MCP service wildcards**: After collapsing individual MCP actions into service-level wildcards, hoist them. Services like Gmail, Calendar, Slack, Linear, Todoist, and Notion are used across projects.
+- **MCP service wildcards**: After collapsing individual MCP actions into service-level wildcards, hoist them. Services like Gmail, Calendar, Slack, Linear, and Todoist are used across projects.
 - **WebFetch domains**: General purpose sites (docs sites, major platforms like medium.com, drive.google.com, npm registries). Hoist these.
 - **WebSearch**: Always general purpose. Hoist.
 - **Skills**: Skill permissions are user-level by nature. Hoist.
