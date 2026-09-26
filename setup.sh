@@ -269,9 +269,17 @@ install_npm_globals() {
   # in every session and can only ever reach one account; the HubSpot one was
   # bound to the TPF portal, leaving Atelic unreachable through it. Both CLIs
   # cost nothing until invoked and resolve their account per directory.
+  # lighthouse and playwright (2026-09-26, ATE-586) serve the practice's audit
+  # scripts: pagespeed.mjs renders Google's PageSpeed run into Lighthouse's own
+  # report page through the package's ReportGenerator, and shot.js pictures a
+  # page at phone width through Playwright's Chromium. Both resolve the module
+  # from the global node_modules beside the node binary, on the desk as in the
+  # cloud, so a session no longer installs them into a scratchpad that vanishes.
   local globals=(
     "@doist/todoist-cli"
     "@hubspot/cli"
+    "lighthouse"
+    "playwright"
     "typescript"
     "vercel"
     "yarn"
@@ -313,6 +321,15 @@ install_npm_globals() {
       SUMMARY+=("$name $want installed")
     fi
   done
+
+  # The playwright module installs by npm; the browser it drives does not.
+  # shot.js needs Playwright's Chromium under ~/Library/Caches/ms-playwright,
+  # and `playwright install` is idempotent: it downloads once and then answers
+  # in a second, so it runs every time rather than behind a version check.
+  if command -v playwright &>/dev/null; then
+    info "Ensuring Playwright's Chromium..."
+    playwright install chromium >/dev/null || warn "playwright install chromium failed; shot.js has no browser until it succeeds"
+  fi
 }
 
 update_claude_code() {
