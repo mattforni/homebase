@@ -47,4 +47,6 @@ Every skill that makes decisions on behalf of the user should include a `learned
 - Model per agent is a failure asymmetry call, not a cost call; the heuristic lives in `~/Eudaimonia/Admin/Tools/claude-code.md` (Models).
 - Worked examples: `plugins/lead/agents/auditor.md` in the atelic repo, paired with the `audit-prospect` skill; `.claude/agents/sharpener.md` here, paired with `assist:sharpen-saws`.
 
+**Where search before build looks.** Before writing a skill, check the official Claude Code plugins, then the [Agent Skills Directory](https://skills.sh) for a community skill that already covers it. Added 2026-09-26 from the retired Notion AI Research page.
+
 **Link out.** Subagents: <https://code.claude.com/docs/en/sub-agents.md> · Plugins (agent layout and namespacing): <https://code.claude.com/docs/en/plugins.md>

@@ -82,7 +82,7 @@ Cross-reference each sender/subject against triage-rules.md and email-rules.md, 
 - **Waiting on someone** → note a green star, keep in inbox.
 - **Already triaged** (has user labels/stars from a prior pass, still in inbox) → set aside; do not re-process. But another message **in this same snapshot** may resolve a prior item (an appointment completed, a reply received, a filing confirmed); surface those during review and close them (clear the star, archive). A genuinely new post-snapshot arrival is not a closure trigger; it stays in the next batch. Recap the rest at the end.
 
-As they surface, also note two inline side actions to raise during review: a sender appearing 3+ times that is worth a **filter**, and any sender with a **Notion or Calendar** side action in email-rules.md. If there is something to update, do it during review; if not, skip it.
+As they surface, also note two inline side actions to raise during review: a sender appearing 3+ times that is worth a **filter**, and any sender with a **Calendar** side action in email-rules.md. If there is something to update, do it during review; if not, skip it.
 
 Do not act or present a bulk plan in this phase. Prep only.
 
@@ -136,7 +136,7 @@ gws gmail users settings filters create --params '{"userId":"me"}' --json '{"cri
 
 ### Side actions
 
-Some senders route content elsewhere (patterns in email-rules.md), e.g. Claude Team emails get linked on the Notion AI Research page via `notion-fetch` then `notion-update-page`. Complete a side action before archiving its email.
+Some senders route content elsewhere (patterns in email-rules.md). Complete a side action before archiving its email.
 
 **Keeper documents** (policies, legal docs, statements worth retaining) get filed to Google Drive, not just labeled. The doc is often a portal/download link in the body, not an attachment, so follow the link (confirm it resolves to the file, e.g. `application/pdf`). Find the matching project folder, read its existing filenames to learn the naming schema (e.g. `YYYY-MM-DD - NN - Description`), then upload with that schema, verify, and archive the email:
 
