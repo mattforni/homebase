@@ -328,7 +328,7 @@ install_npm_globals() {
   # in a second, so it runs every time rather than behind a version check.
   if command -v playwright &>/dev/null; then
     info "Ensuring Playwright's Chromium..."
-    playwright install chromium >/dev/null 2>&1 || warn "playwright install chromium failed; shot.js has no browser until it succeeds"
+    playwright install chromium >/dev/null || warn "playwright install chromium failed; shot.js has no browser until it succeeds"
   fi
 }
 
