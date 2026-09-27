@@ -113,3 +113,13 @@ Atelic budget policy (session 2026-07-23, tree rebuilt with an accountant's hat;
 - **Gusto service fees are 🔖 Fees and Filings, not 💵 Salary.** Salary is only actual payroll. Wyoming Secretary of State annual reports also land in Fees and Filings.
 - **History recategorization is management books, not tax amendment.** Filed returns are untouched by YNAB moves; do not agonize over closed years when reclassifying history.
 - The mechanics rule above (write through the CLI behind the shim, approve as the final step, hard refresh open clients) applies doubly here: **the web app's stale delta sync will claim categories still have transactions after CLI moves; hard refresh the page before deleting categories in the app.** Category create and delete are app only, driven via agent-browser attached to Forni's Brave (`--cdp 9222`), pinned to the YNAB tab with `--pin-tab` and its URL read back before each create or delete; rename and move go through `ynab categories update <id> --name --category-group-id` with history intact.
+
+Atelic payee corrections (session 2026-09-27):
+
+- `Cloudflare`, `Google Cloud` -> `🖥️ Infrastructure`. `Google Workspace` -> `🧰 Productivity`. `Granola` -> `🤖 AI Tools`.
+- `Corporate Filings` (the billing name of Registered Agents Inc) and `Colorado Secretary of State` -> `🔖 Fees and Filings`.
+- `ACH Deposit ... MONEYLINE` (Fidelity MoneyLine) -> `Inflow: Ready to Assign`, a funding move from the RYLLC Fidelity account, not revenue. Every deposit mints a new payee name, so match the pattern.
+- `Venmo` on Atelic is always a question. Tax preparation is `🔖 Fees and Filings` with a memo naming the preparer (precedent: $400 to Jeff, CPA, for the 2025 business return).
+- A purchase made to test a prospect's own checkout is `📦 Supplies`, memo naming the prospect (precedent: Outdoors Geek).
+- Parking, fares, and in flight wifi on a prospecting trip are `🛫 Travel`, memo naming the trip (precedents: Aspen parking, the August airport A Line fare and Alaska wifi). The legs of one trip follow the trip.
+- A transfer from FirstTech Operating to `BofA Checking` (the Atelic Bank of America account ending 6605, opened September 2026 and linked 2026-09-27) is company cash between business accounts, never an owner draw: match the legs as a transfer, or skip with a memo when unmatched.
