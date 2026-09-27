@@ -119,6 +119,7 @@ Atelic payee corrections (session 2026-09-27):
 - `Cloudflare`, `Google Cloud` -> `🖥️ Infrastructure`. `Google Workspace` -> `🧰 Productivity`. `Granola` -> `🤖 AI Tools`.
 - `Corporate Filings` (the billing name of Registered Agents Inc) and `Colorado Secretary of State` -> `🔖 Fees and Filings`.
 - `ACH Deposit ... MONEYLINE` (Fidelity MoneyLine) -> `Inflow: Ready to Assign`, a funding move from the RYLLC Fidelity account, not revenue. Every deposit mints a new payee name, so match the pattern.
+- `Improper City` on Atelic is `🤝 Client Meals`, memo `☕️ Client Coffee`: it is where Forni buys coffee for clients, never solo coffee (Forni, 2026-09-27, when all 27 charges since 2025-10 moved off `🙋 Personal`). Ask who was there while it is fresh and put the name in the memo; the generic memo stands when nobody can say. On the Personal budget it stays `☕️ Cafés`.
 - `Venmo` on Atelic is always a question. Tax preparation is `🔖 Fees and Filings` with a memo naming the preparer (precedent: $400 to Jeff, CPA, for the 2025 business return).
 - A purchase made to test a prospect's own checkout is `📦 Supplies`, memo naming the prospect (precedent: Outdoors Geek).
 - Parking, fares, and in flight wifi on a prospecting trip are `🛫 Travel`, memo naming the trip (precedents: Aspen parking, the August airport A Line fare and Alaska wifi). The legs of one trip follow the trip.
