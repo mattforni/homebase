@@ -10,6 +10,9 @@
 # By default this refuses to promote a runner whose files are not committed,
 # because an image built from a dirty tree is a production artifact nobody can
 # reproduce or reason about later. --dirty is the deliberate override.
+#
+# Once the job points at the new image, every other image of the runner is
+# deleted from the registry.
 set -euo pipefail
 
 LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
@@ -22,7 +25,7 @@ while (( $# )); do
     case "$1" in
         --dirty)   allow_dirty=1; shift ;;
         --tag)     tag="${2:-}"; shift 2 ;;
-        -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         -*)        die "unknown option $1" ;;
         *)         [[ -z "$name" ]] || die "unexpected argument $1"; name="$1"; shift ;;
     esac
@@ -57,5 +60,26 @@ gcloud builds submit "$context" --tag "$image" --project="$RUNNER_PROJECT"
 
 echo "pointing the job at it"
 gcloud run jobs update "$name" --project="$RUNNER_PROJECT" --region="$RUNNER_REGION" --image="$image"
+
+# Every earlier image goes the moment the new one is live (Forni, 2026-09-27):
+# nothing rolls back to an old digest, and keeping them left about 10 GB in
+# the registry, billed past the free half gigabyte. The prune keys on the digest
+# the job now runs, not on a tag, and a failure here only warns, since the
+# promote itself has already succeeded.
+prune_old_images() {
+    local current digest
+    current="$(gcloud artifacts docker images describe "$image" --project="$RUNNER_PROJECT" \
+        --format='value(image_summary.digest)')" || return 1
+    [[ -n "$current" ]] || return 1
+    while read -r digest; do
+        [[ -n "$digest" && "$digest" != "$current" ]] || continue
+        gcloud artifacts docker images delete "$RUNNER_REGISTRY/$name@$digest" \
+            --project="$RUNNER_PROJECT" --delete-tags --quiet >/dev/null 2>&1 || return 1
+        echo "pruned $name@${digest:7:12}"
+    done < <(gcloud artifacts docker images list "$RUNNER_REGISTRY/$name" --project="$RUNNER_PROJECT" \
+        --format='value(version)')
+}
+echo "pruning earlier images"
+prune_old_images || echo "WARNING: pruning the earlier $name images did not finish; the promote stands, and the next one retries"
 
 echo "promoted $name. Fire it with: bin/runner/fire $name"
