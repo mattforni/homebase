@@ -67,17 +67,18 @@ gcloud run jobs update "$name" --project="$RUNNER_PROJECT" --region="$RUNNER_REG
 # the job now runs, not on a tag, and a failure here only warns, since the
 # promote itself has already succeeded.
 prune_old_images() {
-    local current digest
+    local current digest versions
     current="$(gcloud artifacts docker images describe "$image" --project="$RUNNER_PROJECT" \
         --format='value(image_summary.digest)')" || return 1
     [[ -n "$current" ]] || return 1
+    versions="$(gcloud artifacts docker images list "$RUNNER_REGISTRY/$name" --project="$RUNNER_PROJECT" \
+        --format='value(version)')" || return 1
     while read -r digest; do
         [[ -n "$digest" && "$digest" != "$current" ]] || continue
         gcloud artifacts docker images delete "$RUNNER_REGISTRY/$name@$digest" \
             --project="$RUNNER_PROJECT" --delete-tags --quiet >/dev/null 2>&1 || return 1
         echo "pruned $name@${digest:7:12}"
-    done < <(gcloud artifacts docker images list "$RUNNER_REGISTRY/$name" --project="$RUNNER_PROJECT" \
-        --format='value(version)')
+    done <<< "$versions"
 }
 echo "pruning earlier images"
 prune_old_images || echo "WARNING: pruning the earlier $name images did not finish; the promote stands, and the next one retries"

@@ -86,7 +86,7 @@ vault, because the vault copy belongs to the container.
 | `run-local <name>` | Runs the real `entrypoint.sh` against those real secrets, rendering the email into `out/` instead of sending. `--week` drafts another week, `--reuse` skips the pulls, `--send` actually delivers. A runner with no `.env.local` is fine and falls back to the Keychain. |
 | `run-scheduled <name>` | The same execution path, sending for real and logging to `~/.claude/debug/runner-<name>.log`. This is what a LaunchAgent points at, and the only thing a plist needs to know is the runner's name. |
 | `render-local <name>` | Pushes the saved `out/<name>.json` (or `out/result.json` for a runner with no draft) back through the node renderer with the shared design and the saved run's footer line. No network, no model. |
-| `promote <name>` | Cloud Build builds the image, the job is pointed at it, and every earlier image of that runner is deleted from the registry. Refuses a dirty tree without `--dirty`. |
+| `promote <name>` | Cloud Build builds the image, the job is pointed at it, and promotion attempts to delete every earlier image of that runner from the registry (a failure here only warns; the promote itself has already succeeded). Refuses a dirty tree without `--dirty`. |
 | `fire <name>` | Executes the job now and prints its log. `--week` is applied, used, and cleared again. |
 | `mail <name>` | Mails whatever is rendered in `out/` to the production recipient, so a draft can be read in Gmail rather than a browser. Preview only; production sending stays in the runner. |
 
