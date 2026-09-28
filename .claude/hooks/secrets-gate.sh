@@ -39,7 +39,11 @@ grep -qE "$guarded" <<<"$cmd" || exit 0
 # Split on pipes and separators (a lone & included, since `sleep 1 & cat file`
 # is two commands), and judge each simple command on its own, so
 # `wc -c runners/x/.env.local` passes while `cat runners/x/.env.local | wc -c`
-# does not (the cat already printed, whatever consumed it).
+# does not (the cat already printed, whatever consumed it). A shell wrapper
+# (`bash -c '...'`, `sh -lc`, `/bin/zsh -c`) becomes a separator first, so the
+# quoted command inside it is judged by its own verb rather than passing as
+# `bash`; its closing quote rides along harmlessly on the last word.
+wrapper='(^|[[:space:];&|(])([^[:space:];&|(]*/)?(ba|z|da|k)?sh[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-[A-Za-z]*c[[:space:]]+['"'"'"]?'
 deny=0
 while IFS= read -r simple; do
   [[ -z "${simple// /}" ]] && continue
@@ -60,7 +64,7 @@ while IFS= read -r simple; do
   grep -qE '\$\([^)]*(cat|head|tail|cut|sed|awk|<)[^)]*'"$guarded" <<<"$simple" && deny=1
   # `< file` as the input of a printing command.
   grep -qE '<[[:space:]]*[^[:space:]]*'"$guarded" <<<"$simple" && case "$verb" in wc|grep|egrep|fgrep|rg|python|python3|node|gcloud|curl) ;; *) deny=1 ;; esac
-done < <(sed -E 's/\|\|/\n/g; s/&&/\n/g; s/[|;&]/\n/g' <<<"$cmd")
+done < <(sed -E "s#$wrapper#\\1;#g" <<<"$cmd" | sed -E 's/\|\|/\n/g; s/&&/\n/g; s/[|;&]/\n/g')
 
 if [[ $deny -eq 1 ]]; then
   cat <<'JSON'
