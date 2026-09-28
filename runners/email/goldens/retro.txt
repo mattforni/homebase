@@ -85,32 +85,42 @@ The Funnel
   Closed    3
 
 Lead · 2
-  Company                  Status           Last Touch           Touches  Opens  Replied
-  Sable Creek Landscaping  New              Walk in                           1
-  Ridgeline Glass          New              Email Send                 1      0
+  Sable Creek Landscaping [New]
+    1 open
+    Last touch: Walk in
+
+  Ridgeline Glass [New]
+    1 touch · 0 opens
+    Last touch: Email Send
 
 MQL · 1
-  Company                  Status           Last Touch           Touches  Opens  Replied
-  Harbor Line Plumbing     Contacted        Notes From the Call        2      -
+  Harbor Line Plumbing [Contacted]
+    2 touches · untracked
+    Last touch: Notes From the Call
 
 SQL · 1
-  Company                  Status           Last Touch           Touches  Opens  Replied
-  Pinewood Cabinetry       In Conversation  Email Send                 4      7  Yes
+  Pinewood Cabinetry [In Conversation]
+    4 touches · 7 opens · replied
+    Last touch: Email Send
 
 Opportunity · 2
-  Company                 Stage              Cash
-  Alder Court Dental      Proposal        $12,000
-  Fernwood Bakery         No stage set
+  Alder Court Dental
+    Proposal · $12,000
+
+  Fernwood Bakery
+    no stage set
 
 Customer · 1
-  Company                 Stage              Cash
-  Copper Kettle Catering  Closed Won       $4,500
+  Copper Kettle Catering
+    Closed Won · $4,500
 
 Closed · 3
-  Company                 Outcome       Reason
-  Quarry Road Auto        Closed Lost
-  Lantern Hill Roofing    Unqualified   Not a Fit
-  Thistle Lane Florist    Unqualified
+  Quarry Road Auto [Closed Lost]
+
+  Lantern Hill Roofing [Unqualified]
+    Not a Fit
+
+  Thistle Lane Florist [Unqualified]
 
 
 ================================================================
