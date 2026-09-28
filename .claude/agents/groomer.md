@@ -35,7 +35,10 @@ Learned rules override generic guidance when they conflict.
 1. **Scope with the CLI.** Confirm workspace auth (`linear auth list`), pull
    the cycle or backlog as JSON to a file, and default the working set to
    issues assigned to Forni. Capture counts and the priority, label, and
-   estimate distribution before touching anything.
+   estimate distribution before touching anything. Estimates are points on
+   the exponential scale, never hours: 1 point is 30 minutes, 2 is an hour,
+   4 is two hours, 8 is four hours. Convert before any capacity arithmetic;
+   on 2026-09-28 a slate read as twice its real size.
 2. **Catch drift.** Grep the team's main repo for ticket keys merged since
    cycle start. Shipped but still Todo goes on the slate as "verified
    shipped, mark Done?" with the PR reference.

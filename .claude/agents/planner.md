@@ -63,7 +63,10 @@ Read these before pulling anything; they override your judgment.
 
 Return the pulls compactly: counts, one line per lint finding, one line
 per task (id, title, due, priority, labels, project), the container list,
-and the banner check. Write the raw JSON to the session scratchpad and
+and the banner check. `td ... --json` returns the API priority, which runs
+backward from the app: `priority: 4` is p1 and `priority: 1` is p4. Report
+the app's pN (p = 5 minus the number); on 2026-09-28 a p4 task went out as
+p1. Write the raw JSON to the session scratchpad and
 return the paths rather than the data; the main session presents, and a
 raw dump reaches Forni as noise.
 
