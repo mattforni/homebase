@@ -11,14 +11,14 @@
 # The email renderer, built in its own stage: the three runner pages as React
 # over the shared @atelic-action/ui component library, bundled by esbuild into
 # one CommonJS file. CommonJS and not ESM on purpose, because the ESM bundle
-# dies here at runtime on "Dynamic require of util is not supported". Only that
+# died at runtime on node 20 with "Dynamic require of util is not supported". Only that
 # one file is copied forward, so the final image gains no node_modules.
-FROM node:20-slim AS email
+FROM node:24-slim AS email
 WORKDIR /email
 COPY email/ /email/
 RUN npm ci && npm run build
 
-FROM node:20-slim
+FROM node:24-slim
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl jq tzdata git openssh-client \
