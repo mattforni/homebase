@@ -5,7 +5,7 @@
   "description": "The runner email renderer: the three runner pages as React, bundled to one CommonJS file the entrypoints call",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "esbuild render.tsx --bundle --platform=node --format=cjs --target=node20 --jsx=automatic '--define:process.env.NODE_ENV=\"production\"' --minify-syntax --outfile=dist/render.cjs",
+    "build": "esbuild render.tsx --bundle --platform=node --format=cjs --target=node24 --jsx=automatic '--define:process.env.NODE_ENV=\"production\"' --minify-syntax --outfile=dist/render.cjs",
     "typecheck": "tsc --noEmit",
     "goldens": "node tst/update-goldens.mjs",
     "pretest": "npm run build",

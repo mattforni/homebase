@@ -96,7 +96,7 @@ vault, because the vault copy belongs to the container.
 
 **The secret mapping is never written down twice.** `fetch-env` reads it back out of the deployed job rather than keeping a copy in the repo, so a local run cannot quietly become an older version of production. The cost is that a brand new runner has to be created in Cloud Run before its local loop works.
 
-**The container's jq is older than yours.** The image is `node:20-slim` on Debian bookworm, which ships jq 1.6; a Homebrew mac is on 1.8. The scaffold still reads every result and every draft with jq, so an expression that compiles here can still fail in the cloud at the very last step, after every pull and the whole Claude call have been paid for. The trap that caught us on 2026-08-29 was `label`, a jq keyword that 1.8 tolerates as a `$label` parameter name and 1.6 rejects outright. Prefer plain names. The email itself is out of reach of this since the renderer became node (ATE-563), and the way to catch a renderer that only works here is a container run, `bin/runner/run-local <name>`, which builds the bundle the way the image does.
+**The container's jq is older than yours.** The image is `node:24-slim` (ATE-565), still on Debian bookworm, which ships jq 1.6; a Homebrew mac is on 1.8. The scaffold still reads every result and every draft with jq, so an expression that compiles here can still fail in the cloud at the very last step, after every pull and the whole Claude call have been paid for. The trap that caught us on 2026-08-29 was `label`, a jq keyword that 1.8 tolerates as a `$label` parameter name and 1.6 rejects outright. Prefer plain names. The email itself is out of reach of this since the renderer became node (ATE-563), and the way to catch a renderer that only works here is a container run, `bin/runner/run-local <name>`, which builds the bundle the way the image does.
 
 **A local run still rotates the real Strava token.** Strava invalidates a refresh token the moment it issues the next one, so a local run that pulls Strava has to write the new one back to the vault or the next cloud run cannot refresh at all. `entrypoint.sh` falls back to the operator's own gcloud credentials when there is no metadata server to ask. This is the one thing a local run changes in the outside world, and it is not optional.
 
@@ -113,11 +113,11 @@ A runner's page (`runners/email/<name>.tsx`) composes what the package exports: 
 The build is one esbuild call, and it is CommonJS on purpose:
 
 ```bash
-esbuild render.tsx --bundle --platform=node --format=cjs --target=node20 --jsx=automatic \
+esbuild render.tsx --bundle --platform=node --format=cjs --target=node24 --jsx=automatic \
     '--define:process.env.NODE_ENV="production"' --minify-syntax --outfile=dist/render.cjs
 ```
 
-**Do not switch the format to ESM.** It was tried under `node:20-slim` on node 20.20.2 and the bundle dies at startup with `Dynamic require of util is not supported`: React's server renderer reaches for a CommonJS require that an ESM bundle cannot answer. CommonJS runs. Every image builds its own copy in a first stage (`FROM node:20-slim AS email`, `npm ci`, `npm run build`) and copies exactly one file forward to `/home/runner/lib/render.cjs`, so the final image gains no `node_modules`.
+**Do not switch the format to ESM.** It was tried under `node:20-slim` on node 20.20.2 and the bundle died at startup with `Dynamic require of util is not supported`: React's server renderer reaches for a CommonJS require that an ESM bundle cannot answer. CommonJS runs. Every image builds its own copy in a first stage (`FROM node:24-slim AS email`, `npm ci`, `npm run build`) and copies exactly one file forward to `/home/runner/lib/render.cjs`, so the final image gains no `node_modules`.
 
 **When the renderer cannot start.** The scaffold looks for the bundle beside the shared library and then in the repo's own build, and when it is missing, exits non zero, or writes an empty file, it says so on one loud `RENDERER:` line and fails the run, which mails the failure page. That page is the one thing with a fallback left: it renders through the same bundle (`render.cjs failure html`, the log's tail on stdin) and drops to a bare `<pre>` if even that cannot run, because it mails at the moment everything else is already broken.
 
