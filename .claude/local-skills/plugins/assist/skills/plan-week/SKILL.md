@@ -107,7 +107,7 @@ Look back at the week that closed yesterday, read as a **compass, not a verdict*
 
 - **Name what stands out**, two or three sentences, lightly.
 - **Ask the felt sense** as an open prose question, never an option menu (a word or two for the week), and follow the live thread. The email's headline is a grade against the block; the felt sense is the story, and it can turn the grade over (on 2026-08-30 "skipped the plan entirely" was, lived, the first weekend home after a month of racing). The numbers are numbers; his read is the read.
-- **Fill the blind spots** the email names for itself (the weigh in, how the heel and body felt, whether Sunday's holds happened) in one factual ask, and carry the answers into Plan Training.
+- **Fill the blind spots** the email names for itself (how the heel and body felt, whether Sunday's holds happened) in one factual ask, and carry the answers into Plan Training.
 - **Settle the carry forward**, the one thing the week ahead is for; it seeds Set Intention.
 
 **Fallback.** When the email is missing or reports that the run failed, make the two light pulls the runner would have made: Strava for the just closed ISO week (`mcp__claude_ai_Strava__list_activities` with `range_start` and `range_end`; metric in, imperial out, miles = m / 1609.344, feet = m * 3.28084) and the Gmail takeout tally (`GWS_FORCE_PROFILE=personal gws gmail`, matching the planner's pull, with `(Domino OR "Illegal Pete" OR DoorDash OR Grubhub OR "Uber Eats" OR Postmates) after:YYYY/MM/DD before:YYYY/MM/DD`; `before:` is exclusive, so it is the Monday after the week; then confirm each hit is an order). Present them tightly, then run the same dialogue.
