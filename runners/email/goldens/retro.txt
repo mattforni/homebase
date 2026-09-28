@@ -118,8 +118,8 @@ BLIND SPOTS
 ================================================================
 
 The Read
-  This draft cannot see the weigh in, how the body felt, or anything
-  the sources do not carry.
+  This draft cannot see how the body felt, or anything the sources
+  do not carry.
 
 
 12m 04s · $0.42 · 9 turns · claude-sonnet

@@ -9,7 +9,6 @@ Training specific rules tied to current life shape. Read on every invocation. St
 - **4K Friday is retired (2026-09-14).** Friday is a deep work day every week, 07:00 to 13:00 with the Morning Routine kept; there is no alternation, no drive flanks, and no curtailed deep work. The Friday lift lands at 15:30. The Tuesday 08:00 run is called Diego, a named social run, 4 miles max; SPRC is always 5 easy.
 - **Yoga is four standing holds** (2026-08-19): Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Hatha 09:30, Sun Yin 16:15. Hatha and Yin are no longer opportunistic. Traveling still means skip without guilt; `n/a` in retros when away, never a miss. Week planning sits at 11:15, behind Hatha's return flank.
 - **Heel guardrail: intensity is the trigger, not volume.** The heel flares after hard efforts (the 6:27 DRC mile, 2026-08-04), not easy miles. Conversational is the default; at most one hard effort a week; skip hard efforts entirely the week after any flare; any heel signal drops the next hard or trail effort. PT is a named focus of the block, form is the fix.
-- **Scale trend is directional.** Sunday reads only for the log; single reads are noise. A 2 to 3 lb rebound through mid August is glycogen and water, not failure; the trend restarts from the first standard Sunday reads.
 - **All three lifts sit at 15:30** (Mon, Wed, Fri, Movement RiNo), moved out of the midday on 2026-08-19 for consistency. Strength is always the late afternoon.
 - **Fitbod programs the strength work; do not program it here.** Three sessions a week, core every session, emphasis on upper body and core, lower body on maintenance after the run block. The block doc holds the emphasis and the session count, nothing more. A short lived experiment in Claude owned programming ran 2026-08-05 to 2026-08-10 and was retired as a distraction; do not propose reviving it, and do not offer to build tooling around lift delivery or logging.
 
@@ -35,7 +34,7 @@ Training specific rules tied to current life shape. Read on every invocation. St
 - **Strava distances are metric; convert.** miles = meters / 1609.34, feet = meters * 3.28084.
 - **Interrogate significant deltas, don't just record them.** The cause drives the adjustment more than the numbers do; ask category, then leave room for detail. Codified 2026-05-18 (the Wk 2 heel injury read as "fell off" until interrogated).
 - **PAH is transit, not training.** The Wednesday bike commute to Project Angel Heart is logistics; mark PAH `n/a` in coverage. Codified 2026-05-25.
-- **Coverage misses drive schedule repair, not target step downs.** There is no volume ladder in this block; a missed session means the slot needs moving or shrinking, and only a two week weight stall touches nutrition (the 18:30 close lever, proposed not imposed).
+- **Coverage misses drive schedule repair, not target step downs.** There is no volume ladder in this block; a missed session means the slot needs moving or shrinking.
 
 ## Reference Library
 
@@ -43,7 +42,7 @@ Training specific rules tied to current life shape. Read on every invocation. St
 
 ## Weekly Summary
 
-- **Every training pass ends with the one look weekly summary before anything else gets discussed**: sessions by modality and the weight trend in one line, then the day by day table. Surfaced 2026-07-19; reshaped 2026-08-05 from mileage to modality. It is presented, not written: the week banner stopped carrying it 2026-09-07 ("I don't look in the banner for the training block").
+- **Every training pass ends with the one look weekly summary before anything else gets discussed**: sessions by modality in one line, then the day by day table. Surfaced 2026-07-19; reshaped 2026-08-05 from mileage to modality. It is presented, not written: the week banner stopped carrying it 2026-09-07 ("I don't look in the banner for the training block").
 
 ## Retro Weight (2026-08-24)
 

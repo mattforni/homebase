@@ -21,7 +21,7 @@ Help Forni schedule the week's training from the active block plan, run the week
 
 1. Read [learned-rules.md](learned-rules.md) in this directory
 2. Read the canonical training context:
-   - `~/Eudaimonia/Constitution/Fitness/2026-recomp-block.md` — active block (target, weekly shape, strength emphasis, guardrails, checkpoints, weigh-in log)
+   - `~/Eudaimonia/Constitution/Fitness/2026-recomp-block.md` — active block (target, weekly shape, strength emphasis, guardrails, checkpoints)
    - `~/Eudaimonia/Constitution/Fitness/CLAUDE.md` — training conventions
    - `~/Eudaimonia/schedule.md` — weekly skeleton (held loosely by design)
 3. Determine the target week. Default to the current ISO week. Use `date +"%G-W%V"` for the week identifier.
@@ -48,7 +48,7 @@ These constraints exist for real physiological and practical reasons. They are n
 
 **Thursday mornings**: no prayer, meditation, or journaling on Thursdays. That time is reserved for getting to SPRC at 06:00, which rotates locations.
 
-**Fasting window adjacency**: last meal 19:30, first meal 07:30. The 18:30 close is the named first lever if the weight trend stalls two consecutive weeks; propose it, never impose it.
+**Fasting window adjacency**: last meal 19:30, first meal 07:30.
 
 ## Calendar Event Conventions
 
@@ -63,7 +63,7 @@ The Monday morning training pass. Runs as part of `/assist:plan-week` plan mode 
 
 ### Phase 1: Retrospective on the Previous Week
 
-The emailed retro (the runner's `YYYY-Www Retro`, consumed by `assist:plan-week` Review Week) is the coverage read: lifts, social runs, and yoga against the block doc, plus the takeout count. Add only what it cannot see, the Sunday weigh in and how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
+The emailed retro (the runner's `YYYY-Www Retro`, consumed by `assist:plan-week` Review Week) is the coverage read: lifts, social runs, and yoga against the block doc, plus the takeout count. Add only what it cannot see, how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
 
 ### Phase 2: Detect Existing Placeholders
 
@@ -71,14 +71,14 @@ Fetch the week's calendar events (Monday through Sunday). Do not overwrite or du
 
 | Cadence | Items | Action |
 |---------|-------|--------|
-| Recurring (assumed on calendar) | Mon/Wed/Fri lift 15:30, Tue Diego 08:00, Tue DRC 18:00, Thu SPRC 06:00, Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Weigh In 05:45, Sun Hatha 09:30, Sun Yin 16:15 | Skip if present; surface if missing (may be intentional) |
+| Recurring (assumed on calendar) | Mon/Wed/Fri lift 15:30, Tue Diego 08:00, Tue DRC 18:00, Thu SPRC 06:00, Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Hatha 09:30, Sun Yin 16:15 | Skip if present; surface if missing (may be intentional) |
 | Opportunistic / optional | A fourth lift, extra mobility, an added social run | Surface as options, never auto create |
 
 ### Phase 3: Week Shape
 
 Lay out the week as one small table: day, session, purpose. Place yoga against the actual Movement schedule for the week (the skeleton is a default; studio schedules change). Verify the studio still holds the assumed slots when in doubt.
 
-**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here) and the weight trend in one line. Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
+**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here). Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
 
 ### Phase 4: Special Week Handling
 
@@ -100,11 +100,11 @@ When moving recurring events for one week, modify only that occurrence. Permanen
 
 ## Mode: retro
 
-Look back on a completed week. Compare planned vs actual coverage and the weight trend. Append the result as a new `### Wk N` subsection under a **Weekly Retrospectives** section of `2026-recomp-block.md` (create the section on first use, immediately before References), chronological order, `####` inner headings.
+Look back on a completed week. Compare planned vs actual coverage. Append the result as a new `### Wk N` subsection under a **Weekly Retrospectives** section of `2026-recomp-block.md` (create the section on first use, immediately before References), chronological order, `####` inner headings.
 
 ### Phase 1: Determine the Target Week
 
-Default: the most recently completed ISO week. Natural cadence is Monday morning, after Sunday's weigh-in. Heading format: `### Wk N: ISO YYYY-WNN (Mon Date to Sun Date)`, numbering from the block start (2026-W33 = Wk 1).
+Default: the most recently completed ISO week. Natural cadence is Monday morning. Heading format: `### Wk N: ISO YYYY-WNN (Mon Date to Sun Date)`, numbering from the block start (2026-W33 = Wk 1).
 
 ### Phase 2: Gather Data
 
@@ -122,7 +122,6 @@ One row per planned session: Mon lift, Tue Diego, Tue DRC, Tue Align and Flow, W
 | Lifts | count vs 3 |
 | Runs | sessions + total miles (informational, no target) |
 | Yoga | count vs 4 standing holds |
-| Weight | Sunday weigh-in, trend vs the 0.5 to 0.7 lb/wk arc |
 
 Run mileage carries no target and no ceiling; it is context, not a grade. Mileage and vert ceilings retired with the FPL block.
 
@@ -137,7 +136,7 @@ Reshaped for the recomp block; run every retro:
 
 ### Phase 6: Interrogate Significant Deltas
 
-When coverage shows meaningful misses (a modality at zero, two consecutive weeks of the same miss, weight trend off arc), interrogate cause before writing: injury or body, schedule or life, motivation or state, conditions. One focused question, then room for detail. Medical causes prompt for provider notes worth capturing.
+When coverage shows meaningful misses (a modality at zero, two consecutive weeks of the same miss), interrogate cause before writing: injury or body, schedule or life, motivation or state, conditions. One focused question, then room for detail. Medical causes prompt for provider notes worth capturing.
 
 ### Phase 7: Write the Retro Subsection
 
@@ -145,11 +144,11 @@ Skeleton: Coverage, Numbers, Load Check, The Read (2 to 4 short paragraphs, dire
 
 ### Phase 8: Adjustment Check
 
-Coverage misses drive schedule repair (move the slot, shrink the commitment), not target step downs; there is no volume ladder in this block. A weight trend stall of two consecutive weeks triggers the nutrition lever proposal (18:30 close). A load check flag tightens the next week's run shape. Skip only when the week landed clean.
+Coverage misses drive schedule repair (move the slot, shrink the commitment), not target step downs; there is no volume ladder in this block. A load check flag tightens the next week's run shape. Skip only when the week landed clean.
 
 ### Phase 9: Surface Trends
 
-Scan the prior 1 to 2 retros for patterns: repeated misses, weight trend drift, a modality quietly fading. One or two sentences, only when the data is there.
+Scan the prior 1 to 2 retros for patterns: repeated misses, a modality quietly fading. One or two sentences, only when the data is there.
 
 ## Retired with the FPL Block
 
