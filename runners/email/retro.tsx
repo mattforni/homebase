@@ -12,10 +12,13 @@ import {
 	GroupRow,
 	Masthead,
 	ReadBlock,
+	RecordStack,
+	type RecordStackItem,
 	Records,
 	type RecordsCell,
 	type RecordsColumn,
 	Row,
+	recordStackText,
 	rpad,
 	Scoreboard,
 	StatStrip,
@@ -24,7 +27,6 @@ import {
 	textRead,
 	textSection,
 	textTable,
-	textTableGrid,
 	textTarget,
 	TitleCard,
 	WhatMoved,
@@ -33,7 +35,6 @@ import {
 import { renderEmail } from "@atelic-action/ui/email/render";
 import {
 	alt,
-	codepoints,
 	fromDate,
 	isoDate,
 	jqToString,
@@ -292,127 +293,70 @@ function funnel(draft: RetroDraft): Staged[] {
 }
 
 /*
- * Two families of tables, each on one fixed grid so Lead, MQL, and SQL line up
- * with each other, and Opportunity, Customer, and Closed with each other; the
- * Company column takes whatever width is left.
+ * Every stage lists its companies on a RecordStack, the name on its own line
+ * so it wraps instead of squashing on a phone, the way the plumber lists its
+ * stages. A fixed column table left the name a letter wide at phone width.
+ * A lead reads its status as the badge, its counts on the meta line, and its
+ * last touch as the note; a deal reads its stage and its cash; a closed lead
+ * reads its outcome and its reason.
  */
-const LEAD_COLS: RecordsColumn[] = [
-	{ label: "Company", keep: true },
-	{ label: "Status", right: true, width: 92, keep: true },
-	{ label: "Last Touch", right: true, width: 92, keep: true },
-	{ label: "Touches", right: true, width: 66, keep: true },
-	{ label: "Opens", right: true, width: 56, keep: true },
-	{ label: "Replied", right: true, width: 62, keep: true },
-];
 
-const DEAL_COLS: RecordsColumn[] = [
-	{ label: "Company", keep: true },
-	{ label: "Stage", right: true, width: 130, keep: true },
-	{ label: "Cash", right: true, width: 110, keep: true },
-];
-
-const CLOSED_COLS: RecordsColumn[] = [
-	{ label: "Company", keep: true },
-	{ label: "Outcome", right: true, width: 130, keep: true },
-	{ label: "Reason", right: true, width: 110, keep: true },
-];
-
-function leadCells(row: FunnelRow): RecordsCell[] {
-	return [
-		{ value: jqToString(row.company) },
-		{ value: titlecase(row.status) },
-		{ value: titlecase(row.kind) },
-		{ value: jqToString(alt(row.touches, "")), mono: true },
-		{ value: jqToString(alt(row.opens, "-")), mono: true },
-		{ value: row.replied === "yes" ? "Yes" : "" },
-	];
+function count(n: number, noun: string): string {
+	return `${numberString(n)} ${n === 1 ? noun : `${noun}${noun.endsWith("ch") ? "es" : "s"}`}`;
 }
 
-function dealCells(row: FunnelRow): RecordsCell[] {
+function leadRecord(row: FunnelRow): RecordStackItem {
+	const touches = row.touches === null || row.touches === undefined ? "" : count(Number(row.touches), "touch");
+	const opens = row.opens === null || row.opens === undefined ? "untracked" : count(Number(row.opens), "open");
+	const kind = titlecase(alt(row.kind, ""));
+	return {
+		title: jqToString(row.company),
+		badge: titlecase(alt(row.status, "")) || undefined,
+		meta: [touches, opens, row.replied === "yes" ? "replied" : ""],
+		note: kind === "" ? undefined : `Last touch: ${kind}`,
+	};
+}
+
+function dealRecord(row: FunnelRow): RecordStackItem {
 	const stage = alt(row.stage, "-");
 	const cash = alt(row.cash, "-");
-	return [
-		{ value: jqToString(row.company) },
-		stage === "-" ? { value: "No stage set", muted: true } : { value: stage },
-		{ value: cash === "-" ? "" : cash, mono: true },
-	];
+	return {
+		title: jqToString(row.company),
+		meta: [stage === "-" ? "no stage set" : stage, cash === "-" ? "" : cash],
+	};
 }
 
-function closedCells(row: FunnelRow): RecordsCell[] {
+function closedRecord(row: FunnelRow): RecordStackItem {
 	const reason = alt(row.reason, "-");
-	return [
-		{ value: jqToString(row.company) },
-		{ value: row.stage === "Closed Lost" ? "Closed Lost" : titlecase(row.status), hot: true },
-		{ value: reason === "-" ? "" : titlecase(reason) },
-	];
+	return {
+		title: jqToString(row.company),
+		badge: row.stage === "Closed Lost" ? "Closed Lost" : titlecase(alt(row.status, "")) || undefined,
+		meta: [reason === "-" ? "" : titlecase(reason)],
+	};
 }
 
 type Stage = {
 	name: string;
 	label: string;
-	cols: RecordsColumn[];
-	family: string;
-	right: number[];
 	rows: Staged[];
-	cells: RecordsCell[][];
+	records: RecordStackItem[];
 };
 
-/** Each stage with its rows, its columns, and the columns plain text aligns right. */
+/** Each stage with its rows and the records that list them. */
 function stages(draft: RetroDraft): Stage[] {
 	const all = funnel(draft);
-	const shapes: {
-		name: string;
-		label: string;
-		cols: RecordsColumn[];
-		cell: (row: FunnelRow) => RecordsCell[];
-		family: string;
-		right: number[];
-	}[] = [
-		{ name: "Lead", label: "Lead", cols: LEAD_COLS, cell: leadCells, family: "lead", right: [3, 4] },
-		{ name: "MQL", label: "MQL", cols: LEAD_COLS, cell: leadCells, family: "lead", right: [3, 4] },
-		{ name: "SQL", label: "SQL", cols: LEAD_COLS, cell: leadCells, family: "lead", right: [3, 4] },
-		{
-			name: "Opportunity",
-			label: "Oppty",
-			cols: DEAL_COLS,
-			cell: dealCells,
-			family: "deal",
-			right: [2],
-		},
-		{
-			name: "Customer",
-			label: "Customer",
-			cols: DEAL_COLS,
-			cell: dealCells,
-			family: "deal",
-			right: [2],
-		},
-		{
-			name: "Closed",
-			label: "Closed",
-			cols: CLOSED_COLS,
-			cell: closedCells,
-			family: "deal",
-			right: [],
-		},
+	const shapes: { name: string; label: string; record: (row: FunnelRow) => RecordStackItem }[] = [
+		{ name: "Lead", label: "Lead", record: leadRecord },
+		{ name: "MQL", label: "MQL", record: leadRecord },
+		{ name: "SQL", label: "SQL", record: leadRecord },
+		{ name: "Opportunity", label: "Oppty", record: dealRecord },
+		{ name: "Customer", label: "Customer", record: dealRecord },
+		{ name: "Closed", label: "Closed", record: closedRecord },
 	];
 	return shapes.map((shape) => {
 		const rows = all.filter((row) => row.funnel === shape.name);
-		return {
-			name: shape.name,
-			label: shape.label,
-			cols: shape.cols,
-			family: shape.family,
-			right: shape.right,
-			rows,
-			cells: rows.map(shape.cell),
-		};
+		return { name: shape.name, label: shape.label, rows, records: rows.map(shape.record) };
 	});
-}
-
-/** A stage's cells as the plain text tables read them: the value, or nothing. */
-function plainCells(stage: Stage): string[][] {
-	return stage.cells.map((row) => row.map((cell) => alt(cell.value, "")));
 }
 
 /* ---------- html ---------- */
@@ -557,7 +501,7 @@ export function retroHTML(input: unknown, context: RenderContext): string {
 						<Fragment key={index}>
 							<SubEyebrow text={`${stage.name} · ${stage.rows.length}`} />
 							<RecordsRow last={index === filled.length - 1}>
-								<Records columns={stage.cols} rows={stage.cells} />
+								<RecordStack records={stage.records} />
 							</RecordsRow>
 						</Fragment>
 					))}
@@ -634,32 +578,9 @@ export function retroText(input: unknown, context: RenderContext): string {
 	out += `\nThe Funnel\n${funnelStages
 		.map((stage) => `  ${rpad(stage.label, 10)}${stage.rows.length}`)
 		.join("\n")}\n`;
-	// One width per column per family, the widest header or cell across every
-	// table in it, so the plain text tables line up the way the html ones do.
-	const grid: Record<string, number[]> = {};
-	for (const stage of funnelStages) {
-		if (grid[stage.family] !== undefined) continue;
-		const family = funnelStages.filter((other) => other.family === stage.family);
-		grid[stage.family] = rangeOf(family[0].cols.length).map((index) =>
-			Math.max(
-				...family.flatMap((member) => [
-					codepoints(member.cols[index].label),
-					...plainCells(member).map((row) => codepoints(alt(row[index], ""))),
-				]),
-			),
-		);
-	}
 	out += funnelStages
 		.filter((stage) => stage.rows.length > 0)
-		.map(
-			(stage) =>
-				`\n${stage.name} · ${stage.rows.length}\n${textTableGrid(
-					stage.cols.map((column) => column.label),
-					plainCells(stage),
-					stage.right,
-					grid[stage.family],
-				)}\n`,
-		)
+		.map((stage) => `\n${stage.name} · ${stage.rows.length}\n${recordStackText(stage.records)}\n`)
 		.join("");
 
 	out += textSection("Blind Spots") + textRead(jqToString(alt(draft.blind_spots, "")));
