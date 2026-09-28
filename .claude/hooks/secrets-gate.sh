@@ -44,6 +44,12 @@ grep -qE "$guarded" <<<"$cmd" || exit 0
 # quoted command inside it is judged by its own verb rather than passing as
 # `bash`; its closing quote rides along harmlessly on the last word.
 wrapper='(^|[[:space:];&|(])([^[:space:];&|(]*/)?(ba|z|da|k)?sh[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-[A-Za-z]*c[[:space:]]+['"'"'"]?'
+# A command whose own verb is echo/printf only ever prints its arguments, so a
+# wrapper-looking string quoted inside it (e.g. `echo "run bash -c 'cat x'"`)
+# is text, not execution; skip the unwrap so it is not split into a fake
+# command. The existing echo/printf case below still catches the one way
+# such a command actually reads a file: a $(...) or backtick substitution.
+whole_verb=$(sed -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//; s/^(sudo|command|exec)[[:space:]]+//; s/^([^[:space:]]*\/)?([^[:space:]]+).*/\2/' <<<"$cmd")
 deny=0
 while IFS= read -r simple; do
   [[ -z "${simple// /}" ]] && continue
@@ -64,7 +70,10 @@ while IFS= read -r simple; do
   grep -qE '\$\([^)]*(cat|head|tail|cut|sed|awk|<)[^)]*'"$guarded" <<<"$simple" && deny=1
   # `< file` as the input of a printing command.
   grep -qE '<[[:space:]]*[^[:space:]]*'"$guarded" <<<"$simple" && case "$verb" in wc|grep|egrep|fgrep|rg|python|python3|node|gcloud|curl) ;; *) deny=1 ;; esac
-done < <(sed -E "s#$wrapper#\\1;#g" <<<"$cmd" | sed -E 's/\|\|/\n/g; s/&&/\n/g; s/[|;&]/\n/g')
+done < <(case "$whole_verb" in
+  echo|printf) echo "$cmd" ;;
+  *) sed -E "s#$wrapper#\1;#g" <<<"$cmd" ;;
+esac | sed -E 's/\|\|/\n/g; s/&&/\n/g; s/[|;&]/\n/g')
 
 if [[ $deny -eq 1 ]]; then
   cat <<'JSON'
