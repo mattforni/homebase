@@ -136,6 +136,12 @@ function nameRun(companies: FunnelCompany[]): { text: string; url?: string | nul
 	return companies.map((c) => ({ text: jqToString(c.name), url: c.url }));
 }
 
+/** The two deal stages keep a card for every name, waiting or not: the deal's stage and its money are the read. */
+function onDeal(stage: FunnelStage): boolean {
+	const key = jqToString(stage.key);
+	return key === "opportunity" || key === "customer";
+}
+
 /** A stage's companies under their next touch, empty groups dropped; a next the groups do not name lands in the last one. */
 function groupedByNext(companies: FunnelCompany[]): NextGroup[] {
 	const known = new Set(NEXT_GROUPS.map((g) => g.key));
@@ -200,10 +206,15 @@ export type PipelineDraft = {
 /**
  * A parked name (an open task dated past this week) is noise until its week,
  * whatever stage it sits in, so the stage lists leave it out (Forni,
- * 2026-09-29). It comes back the week its task falls due.
+ * 2026-09-29). It comes back the week its task falls due, or sooner when a
+ * reply lands on the record: the sweep reads that as the next touch, and a
+ * name whose next is not the park itself still shows, in its group, with
+ * the park as its callout.
  */
 function shownCompanies(stage: FunnelStage): FunnelCompany[] {
-	return alt(stage.companies, []).filter((company) => jqToString(alt(company.task?.reading, "")) !== "parked");
+	return alt(stage.companies, []).filter(
+		(company) => jqToString(alt(company.task?.reading, "")) !== "parked" || jqToString(alt(company.next, "")) !== "parked",
+	);
 }
 
 /**
@@ -499,7 +510,7 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 									<Fragment key={g}>
 										<SubEyebrow text={`${group.label} · ${numberString(group.companies.length)}`} />
 										<Row last={g === groups.length - 1}>
-											{group.key === "wait" ? (
+											{group.key === "wait" && !onDeal(stage) ? (
 												<NameRun names={nameRun(group.companies)} />
 											) : (
 												<RecordStack records={group.companies.map((c) => companyRecord(stage, c, notes))} />
@@ -599,7 +610,7 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 				.map(
 					(group) =>
 						`${asciiUpcase(group.label)} · ${numberString(group.companies.length)}\n\n${
-							group.key === "wait"
+							group.key === "wait" && !onDeal(stage)
 								? `${wrap(nameRun(group.companies).map((n) => n.text).join(", "))}\n`
 								: `${recordStackText(group.companies.map((c) => companyRecord(stage, c, notes)))}\n`
 						}`,
