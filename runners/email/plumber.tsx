@@ -55,12 +55,13 @@ import type { RenderContext } from "./types";
  *
  * The cards are the Company Cards IA (Forni, 2026-09-29): a thirty day
  * timeline of the sends and last open, the counts, and the open's age set
- * right. This Week follows the strip, broken out by the touch owed, each
- * person on that card with the model's note; the stage lists below carry
- * every company in the card's compact form (a New pill when it entered the
- * stage this week, no strip), the waiting names (nothing owed yet) as one
- * linked sentence at the foot, since a card each ran the mail past Gmail's
- * clip. The stage lists were grouped by the next touch for one afternoon and
+ * right. The strip is followed by the stage lists, every company in the
+ * card's compact form (a New pill when it entered the stage this week, no
+ * strip), the waiting names (nothing owed yet) as one linked sentence at the
+ * foot, since a card each ran the mail past Gmail's clip; then This Week,
+ * broken out by the touch owed, each person on the full card with the
+ * model's note (Forni, 2026-09-29: the pipeline, then all the businesses
+ * below it, then the individual actions to take). The stage lists were grouped by the next touch for one afternoon and
  * read as the same thing twice.
  */
 
@@ -450,29 +451,6 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					)}
 				</Card>
 
-				<Eyebrow text="This week" strong={true} />
-				<Card>
-					{owedKinds.length === 0 ? (
-						<EmptyRow text="Nothing is owed this week." />
-					) : (
-						<Row last={true}>
-							<StatStrip stats={owedStats(draft)} />
-						</Row>
-					)}
-				</Card>
-
-				{owedKinds.map((kind, index) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: a kind's position is its identity
-					<Fragment key={index}>
-						<Eyebrow text={`${kind.label} · ${numberString(kind.names.length)}`} strong={true} />
-						<Card>
-							<Row last={true}>
-								<RecordStack records={owedRecords(kind.key, kind.names)} />
-							</Row>
-						</Card>
-					</Fragment>
-				))}
-
 				{listed.map((stage, index) => {
 					const { carded, waiting } = splitWaiting(stage, listedCompanies(stage, funnel));
 					return (
@@ -496,6 +474,29 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						</Fragment>
 					);
 				})}
+
+				<Eyebrow text="This week" strong={true} />
+				<Card>
+					{owedKinds.length === 0 ? (
+						<EmptyRow text="Nothing is owed this week." />
+					) : (
+						<Row last={true}>
+							<StatStrip stats={owedStats(draft)} />
+						</Row>
+					)}
+				</Card>
+
+				{owedKinds.map((kind, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a kind's position is its identity
+					<Fragment key={index}>
+						<Eyebrow text={`${kind.label} · ${numberString(kind.names.length)}`} strong={true} />
+						<Card>
+							<Row last={true}>
+								<RecordStack records={owedRecords(kind.key, kind.names)} />
+							</Row>
+						</Card>
+					</Fragment>
+				))}
 
 				<Eyebrow text="The groom" strong={true} />
 				<Card>
@@ -554,15 +555,6 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 		out += `\n  # a send · o an open · @ both · | today · ${numberString(TIMELINE_DAYS)} days to today\n`;
 	}
 
-	out += textSection("This Week");
-	const owedKinds = owedKindsOf(draft);
-	if (owedKinds.length === 0) out += "  Nothing is owed this week.\n";
-	else out += `${textTable(["Touch", "Owed"], owedStats(draft).map((s) => [s.label, numberString(Number(s.n))]), [1])}\n`;
-	for (const kind of owedKinds) {
-		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
-		out += recordStackText(owedRecords(kind.key, kind.names));
-	}
-
 	if (funnel !== null) {
 		for (const stage of listed) {
 			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
@@ -571,6 +563,15 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 			if (carded.length > 0) out += `${recordStackText(carded.map((c) => companyRecord(stage, c)))}\n`;
 			if (waiting.length > 0) out += `\n${wrap(`Waiting on a send, ${numberString(waiting.length)}: ${nameRun(waiting).map((n) => n.text).join(", ")}`)}\n`;
 		}
+	}
+
+	out += textSection("This Week");
+	const owedKinds = owedKindsOf(draft);
+	if (owedKinds.length === 0) out += "  Nothing is owed this week.\n";
+	else out += `${textTable(["Touch", "Owed"], owedStats(draft).map((s) => [s.label, numberString(Number(s.n))]), [1])}\n`;
+	for (const kind of owedKinds) {
+		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
+		out += recordStackText(owedRecords(kind.key, kind.names));
 	}
 
 	out += textSection("The Groom");
