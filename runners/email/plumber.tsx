@@ -23,7 +23,7 @@ import {
 } from "@atelic-action/ui/email";
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, jqToString, numberString, shortDate, unindent, weekNumber } from "./jq";
-import { DimLine, Link } from "./local";
+import { DimLine, RosterLine, StripCaption } from "./local";
 import { recordCard, statusWord, type TouchLine } from "./records";
 import type { RenderContext } from "./types";
 
@@ -42,11 +42,15 @@ import type { RenderContext } from "./types";
  * days ago off HubSpot's own entered dates, moves every stage and status the
  * record justifies, and the entrypoint folds all of it into the draft before
  * the render. The model writes the read, the names owed with a note each,
- * and up to five flags. New, Lead and Closed are read as a count and a
- * change; MQL, SQL, Oppty and Customer list every company on a RecordStack so
- * a name never squashes on a phone. Everything the email leaves out lives in
- * the roster, which the runner commits into the Atelic repo and the title
- * card links (roster_url); a run that could not push attaches it instead.
+ * and up to five flags. New and Closed are read as a count and a week over
+ * week change on the strip; Lead lists the week's sends (the names in flight,
+ * nothing owed on them yet); MQL, SQL and Oppty list every company; Customer
+ * lists only a customer with activity this week, and the card stays out when
+ * there was none (Forni, 2026-09-29). Every list is a RecordStack so a name
+ * never squashes on a phone. Everything the email leaves out lives in the
+ * roster, which the runner commits into the Atelic repo and the read card
+ * links as its last line (roster_url); a run that could not push attaches it
+ * instead.
  */
 
 type Metrics = {
@@ -130,19 +134,6 @@ export type PipelineDraft = {
 	groom?: Groom;
 	/** Where the runner committed the roster; empty when it rode as the attachment instead. */
 	roster_url?: string | null;
-	/** Every name sent inside six days, from the sweep: nothing is owed on them yet, and they still belong on the pipeline (Forni, 2026-09-29). */
-	in_flight?: InFlight[] | null;
-};
-
-type InFlight = {
-	person?: unknown;
-	company?: unknown;
-	contact_url?: string | null;
-	company_url?: string | null;
-	days_since_send?: number | null;
-	touches?: number | null;
-	tracked?: number | null;
-	opens?: number | null;
 };
 
 /**
@@ -154,15 +145,37 @@ function shownCompanies(stage: FunnelStage): FunnelCompany[] {
 	return alt(stage.companies, []).filter((company) => jqToString(alt(company.task?.reading, "")) !== "parked");
 }
 
-function inFlightRecords(rows: InFlight[]): RecordStackItem[] {
-	return rows.map((row) =>
-		recordCard({
-			title: row.person,
-			url: row.contact_url,
-			lead: [row.company],
-			touch: { touches: row.touches, tracked: row.tracked, opens: row.opens, daysSinceSend: row.days_since_send },
-		}),
-	);
+/**
+ * A customer shows only with activity this week: a send or a reply inside
+ * the window, a note dated in it, or a deal closed in it. Without one the
+ * Customer card stays out of the mail altogether (Forni, 2026-09-29).
+ */
+function activeThisWeek(company: FunnelCompany, from: string): boolean {
+	const within = (days: number | null | undefined) => days !== null && days !== undefined && days <= 7;
+	if (within(company.days_since_send) || within(company.days_since_reply)) return true;
+	const note = jqToString(alt(company.note?.date, ""));
+	if (note !== "" && note >= from) return true;
+	const close = jqToString(alt(company.deal?.close, ""));
+	return close !== "" && close >= from;
+}
+
+/** The companies a stage card lists: parked names out everywhere, and on Customer only the active ones. */
+function listedCompanies(stage: FunnelStage, funnel: Funnel): FunnelCompany[] {
+	const shown = shownCompanies(stage);
+	if (jqToString(stage.key) !== "customer") return shown;
+	return shown.filter((company) => activeThisWeek(company, jqToString(alt(funnel?.from, ""))));
+}
+
+/** The line under the Lead card: the sweep lists the week's sends and counts the rest, whose touches sit under This Week. */
+function restLine(stage: FunnelStage): string {
+	const rest = alt(stage.now, 0) - alt(stage.companies, []).length;
+	if (jqToString(stage.key) !== "lead" || rest <= 0) return "";
+	return `${plural(rest, "more name")} sent a week or longer ago; the ones owed a touch are under This Week.`;
+}
+
+function emptyText(stage: FunnelStage): string {
+	if (alt(stage.companies, []).length > 0) return "Everyone here is parked until a later week.";
+	return jqToString(stage.key) === "lead" ? "No sends inside the week." : "Nobody here this week.";
 }
 
 /* ---------- shared readings ---------- */
@@ -180,9 +193,10 @@ const OWED_KINDS: { key: keyof Owed; label: string }[] = [
 	{ key: "visit", label: "Visit" },
 ];
 
-/** The strip: the funnel Forni works. New is the pool waiting for a first send and reads as a line beneath. */
+/** The strip: the funnel Forni works, each stage with its week over week change. New stays off it. */
 const STRIP_STAGES = ["lead", "mql", "sql", "opportunity", "customer", "closed"];
-const LISTED_STAGES = new Set(["mql", "sql", "opportunity", "customer"]);
+/** The stages that list their companies; Lead lists only the week's sends and Customer only the active ones. */
+const LISTED_STAGES = new Set(["lead", "mql", "sql", "opportunity", "customer"]);
 
 const STAGE_WORD: Record<string, string> = {
 	lead: "Lead",
@@ -224,38 +238,6 @@ function stripStats(funnel: Funnel): StatStripEntry[] {
 function plural(count: number, noun: string): string {
 	if (count === 1) return `${numberString(count)} ${noun}`;
 	return `${numberString(count)} ${noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`}`;
-}
-
-/** "today", "yesterday", "3 days ago"; empty when there is no date. */
-function stageOf(funnel: Funnel, key: string): FunnelStage | undefined {
-	return alt(funnel?.stages, []).find((stage) => jqToString(stage.key) === key);
-}
-
-/** New as the pool: how many names wait for a first send and how the week moved it. */
-function poolLine(stage: FunnelStage | undefined): string {
-	if (stage === undefined) return "";
-	const entered = alt(stage.entered, []).length;
-	const left = alt(stage.left, []).length;
-	return `${plural(alt(stage.now, 0), "name")} waiting for a first send: ${numberString(entered)} in and ${numberString(left)} out this week.`;
-}
-
-/** Lead and Closed as one line each: the count, the change, what came in and went out. */
-function countLine(stage: FunnelStage): string {
-	const entered = alt(stage.entered, []).length;
-	const left = alt(stage.left, []).length;
-	const change = deltaText(stage) === "0" ? "unchanged" : deltaText(stage);
-	return `${jqToString(stage.label)} ${numberString(alt(stage.now, 0))}, ${change}: ${numberString(entered)} in and ${numberString(left)} out this week.`;
-}
-
-/** The pool line and the two count lines, in the order the funnel runs. */
-function funnelLines(funnel: Funnel): string[] {
-	const lead = stageOf(funnel, "lead");
-	const closed = stageOf(funnel, "closed");
-	return [
-		poolLine(stageOf(funnel, "new")),
-		lead === undefined ? "" : countLine(lead),
-		closed === undefined ? "" : countLine(closed),
-	].filter((line) => line !== "");
 }
 
 /*
@@ -377,6 +359,13 @@ function groomLine(groom: Groom): string {
 	return `The groom moved ${plural(stages, "company")} and ${plural(contacts, "contact")} to match what the record already showed.`;
 }
 
+/** The stages that get a card: the listed set, minus Customer in a week no customer had activity. */
+function listedStages(funnel: Funnel): FunnelStage[] {
+	return alt(funnel?.stages, [])
+		.filter((stage) => LISTED_STAGES.has(jqToString(stage.key)))
+		.filter((stage) => jqToString(stage.key) !== "customer" || listedCompanies(stage, funnel).length > 0);
+}
+
 function owedKindsOf(draft: PipelineDraft) {
 	const owed = alt(draft.owed, {});
 	return OWED_KINDS.map((kind) => ({ ...kind, names: alt(owed[kind.key], []) })).filter((kind) => kind.names.length > 0);
@@ -387,13 +376,11 @@ function owedKindsOf(draft: PipelineDraft) {
 export function pipelineHTML(input: unknown, context: RenderContext): string {
 	const draft = input as PipelineDraft;
 	const funnel = draft.funnel ?? null;
-	const listed = alt(funnel?.stages, []).filter((stage) => LISTED_STAGES.has(jqToString(stage.key)));
-	const lines = funnelLines(funnel);
+	const listed = listedStages(funnel);
 	const owedKinds = owedKindsOf(draft);
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
 	const rosterUrl = jqToString(alt(draft.roster_url, ""));
-	const inFlight = alt(draft.in_flight, []);
 
 	return renderEmail({
 		title: `${context.week} Pipeline`,
@@ -404,54 +391,49 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					title="Pipeline"
 					meta={`Week ${weekNumber(context.week)} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}`}
 				/>
-				<TitleCard eyebrowText="The read" headlineLines={alt(draft.headline, [])} lede={jqToString(alt(draft.lede, ""))} />
-				{rosterUrl === "" ? null : (
-					<Card>
-						<Row last={true}>
-							<DimLine text="The roster, the long read, is in the repo: " />
-							<Link text={`Outreach/${context.week}-roster.md`} url={rosterUrl} />
-						</Row>
-					</Card>
-				)}
+				<TitleCard
+					eyebrowText="The read"
+					headlineLines={alt(draft.headline, [])}
+					lede={jqToString(alt(draft.lede, ""))}
+					stats={rosterUrl === "" ? undefined : <RosterLine url={rosterUrl} />}
+				/>
 
 				<Eyebrow text="The pipeline" strong={true} />
 				<Card>
 					{funnel === null ? (
 						<EmptyRow text="The portal sweep carried no funnel this run." />
 					) : (
-						<>
-							<Row last={lines.length === 0}>
-								<StatStrip stats={stripStats(funnel)} />
-							</Row>
-							{lines.length === 0 ? null : (
-								<Row last={true}>
-									<List fontSize="13px">
-										{lines.map((line, index) => (
-											// biome-ignore lint/suspicious/noArrayIndexKey: a line's position is its identity
-											<ListRow key={index}>{line}</ListRow>
-										))}
-									</List>
-								</Row>
-							)}
-						</>
+						<Row last={true}>
+							<StatStrip stats={stripStats(funnel)} />
+							<StripCaption text="WoW" />
+						</Row>
 					)}
 				</Card>
 
-				{listed.map((stage, index) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
-					<Fragment key={index}>
-						<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} strong={true} />
-						<Card>
-							{shownCompanies(stage).length === 0 ? (
-								<EmptyRow text={alt(stage.companies, []).length === 0 ? "Nobody here this week." : "Everyone here is parked until a later week."} />
-							) : (
-								<Row last={true}>
-									<RecordStack records={shownCompanies(stage).map((c) => companyRecord(stage, c))} />
-								</Row>
-							)}
-						</Card>
-					</Fragment>
-				))}
+				{listed.map((stage, index) => {
+					const companies = listedCompanies(stage, funnel);
+					const rest = restLine(stage);
+					return (
+						// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
+						<Fragment key={index}>
+							<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} strong={true} />
+							<Card>
+								{companies.length === 0 ? (
+									<EmptyRow text={emptyText(stage)} />
+								) : (
+									<Row last={rest === ""}>
+										<RecordStack records={companies.map((c) => companyRecord(stage, c))} />
+									</Row>
+								)}
+								{rest === "" ? null : (
+									<Row last={true}>
+										<DimLine text={rest} />
+									</Row>
+								)}
+							</Card>
+						</Fragment>
+					);
+				})}
 
 				<Eyebrow text="This week" strong={true} />
 				<Card>
@@ -475,17 +457,6 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						</Card>
 					</Fragment>
 				))}
-
-				{inFlight.length === 0 ? null : (
-					<>
-						<Eyebrow text={`In flight · ${numberString(inFlight.length)}`} strong={true} />
-						<Card>
-							<Row last={true}>
-								<RecordStack records={inFlightRecords(inFlight)} />
-							</Row>
-						</Card>
-					</>
-				)}
 
 				<Eyebrow text="The groom" strong={true} />
 				<Card>
@@ -524,7 +495,7 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	const draft = input as PipelineDraft;
 	const number = weekNumber(context.week);
 	const funnel = draft.funnel ?? null;
-	const listed = alt(funnel?.stages, []).filter((stage) => LISTED_STAGES.has(jqToString(stage.key)));
+	const listed = listedStages(funnel);
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
 
@@ -533,24 +504,21 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	const lede = unindent(jqToString(alt(draft.lede, "")));
 	if (lede !== "") out += `\n${textRead(lede)}`;
 	const rosterUrl = jqToString(alt(draft.roster_url, ""));
-	if (rosterUrl !== "") out += `\nThe roster, the long read, is in the repo: ${rosterUrl}\n`;
+	if (rosterUrl !== "") out += `\nThe full read is in the roster: ${rosterUrl}\n`;
 
 	out += textSection("The Pipeline");
 	if (funnel === null) {
 		out += "  The portal sweep carried no funnel this run.\n";
 	} else {
 		const strip = stripStats(funnel);
-		out += `${textTable(["Stage", "Now", "Change"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
-		const lines = funnelLines(funnel);
-		if (lines.length > 0) out += `\n${lines.map((line) => wrap(line)).join("\n")}\n`;
+		out += `${textTable(["Stage", "Now", "WoW"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
 		for (const stage of listed) {
 			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
-			const companies = shownCompanies(stage);
-			if (companies.length === 0) {
-				out += alt(stage.companies, []).length === 0 ? "  Nobody here this week.\n" : "  Everyone here is parked until a later week.\n";
-			} else {
-				out += recordStackText(companies.map((c) => companyRecord(stage, c)));
-			}
+			const companies = listedCompanies(stage, funnel);
+			if (companies.length === 0) out += `  ${emptyText(stage)}\n`;
+			else out += recordStackText(companies.map((c) => companyRecord(stage, c)));
+			const rest = restLine(stage);
+			if (rest !== "") out += `\n\n${wrap(rest)}\n`;
 		}
 	}
 
@@ -561,12 +529,6 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	for (const kind of owedKinds) {
 		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
 		out += recordStackText(owedRecords(kind.key, kind.names));
-	}
-
-	const inFlight = alt(draft.in_flight, []);
-	if (inFlight.length > 0) {
-		out += textSection(`In Flight · ${numberString(inFlight.length)}`);
-		out += recordStackText(inFlightRecords(inFlight));
 	}
 
 	out += textSection("The Groom");
