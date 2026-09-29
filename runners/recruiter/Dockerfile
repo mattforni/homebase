@@ -45,6 +45,7 @@ COPY --chown=runner:runner prompt.md /home/runner/prompt.md
 # The pull side: the listing table and the deny list (the page reducer,
 # text.mjs, ships with lib/).
 COPY --chown=runner:runner listings.jq /home/runner/listings.jq
+COPY --chown=runner:runner dedupe.jq /home/runner/dedupe.jq
 COPY --chown=runner:runner deny.txt /home/runner/deny.txt
 # The shared library: runner.sh for the entrypoint, the pull scripts beside it.
 COPY --chown=runner:runner lib/ /home/runner/lib/

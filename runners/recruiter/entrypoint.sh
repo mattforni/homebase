@@ -92,6 +92,9 @@ LEDGER_SEEN="$WORK/ledger.md"
 # fill_prompt sets TODAY too, but inside a command substitution, where it
 # never reaches this shell; set here so the activity and the prompt agree.
 TODAY="${TODAY:-$(date +%F)}"
+SEEN_JSON="$WORK/ledger-seen.json"
+GUARD_JSON="$WORK/dedupe-guard.json"
+MISSES_JSON="$WORK/dedupe-misses.json"
 POSTINGS_JSON="$WORK/postings.json"
 UPSERT_JSON="$WORK/upsert.json"
 ACTIVITY_JSON="$WORK/activity.json"
@@ -147,6 +150,7 @@ LISTINGS_MD="$WORK/listings.md"
 PULLS_MD="$WORK/pulls.md"
 TEXT="${TEXT:-$LIB_DIR/text.mjs}"
 LISTINGS_JQ="${LISTINGS_JQ:-$SELF_DIR/listings.jq}"
+DEDUPE_JQ="${DEDUPE_JQ:-$SELF_DIR/dedupe.jq}"
 DENY="${DENY:-$SELF_DIR/deny.txt}"
 FETCH_UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 FETCH_TIMEOUT="${FETCH_TIMEOUT:-40}"
@@ -301,6 +305,48 @@ pull_ledger() {
 # that silently kept its rows out of the ledger would chase every one of them
 # again next Monday.
 
+# The dedupe guard. The model is told to treat a key already in ledger.md as
+# a resurfaced dedupe, and it does for board cards, but a candidate found by
+# web search can skip the check: the W40 fire (2026-09-28) reported Dragos's
+# Principal Software Engineer, Backend as the top pick while the ledger held
+# it as applied since 2026-09-01, and the upsert then refreshed the applied
+# row's seen date and verdict (the API guards only the status). So before the
+# write, every sweep row's key is checked against the seen set pulled before
+# the model ran; a miss stays out of the upsert and dedupe.jq moves it off the
+# board into the rejected list, with a headline line and a source note. The
+# seen set is the table's Key column, normalized the way dedupe.jq normalizes
+# the sweep rows (lowercase, single spaces).
+build_seen_set() {
+    awk -F'|' 'NR > 2 && /^\|/ {
+        for (i = 1; i <= NF; i++) { gsub(/^[ \t]+|[ \t]+$/, "", $i) }
+        if ($2 ~ /^[0-9]+$/ && $8 != "") printf "%s\t%s\t%s\t%s\t%s\t%s\n", $8, $6, $3, $2, $4, $5
+    }' "$LEDGER_SEEN" \
+    | jq -Rn '[inputs | split("\t") | {
+            key: (.[0] | ascii_downcase | gsub("\\s+"; " ")),
+            value: {status: .[1], seen: .[2], id: .[3], company: .[4], title: .[5]}}]
+        | from_entries' > "$SEEN_JSON"
+}
+
+guard_dedupe() {
+    local dropped
+    if ! build_seen_set 2>"$PINOLE_ERR"; then
+        fail_reason="could not build the seen set from the ledger: $(head -c 300 "$PINOLE_ERR")"
+        return 1
+    fi
+    if ! jq --slurpfile seen "$SEEN_JSON" -f "$DEDUPE_JQ" "$DRAFT_JSON" > "$GUARD_JSON" 2>"$PINOLE_ERR"; then
+        fail_reason="dedupe guard failed: $(head -c 300 "$PINOLE_ERR")"
+        return 1
+    fi
+    jq '.dropped' "$GUARD_JSON" > "$MISSES_JSON" || return 1
+    jq '.draft' "$GUARD_JSON" > "$DRAFT_JSON.guarded" && mv "$DRAFT_JSON.guarded" "$DRAFT_JSON" || return 1
+    dropped="$(jq -r 'length' "$MISSES_JSON")"
+    if [[ "$dropped" == "0" ]]; then
+        echo "dedupe: every sweep row is new to the ledger"
+    else
+        echo "dedupe: $dropped sweep row(s) already in the ledger, kept out of the upsert and moved off the board: $(jq -r 'map("\(.company) \(.role) (\(.prior.status), first seen \(.prior.seen))") | join("; ")' "$MISSES_JSON")"
+    fi
+}
+
 # The ledger rows as postings for the API: the prompt's row names map onto
 # the entity's (date to first_seen_on, role to title, fit to fit_score) and
 # the rest pass through. The API matches each row by key, then fuzzily on
@@ -435,6 +481,7 @@ runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.rejected | type == "array") and (.sources | type == "array")
     and (.ledger | type == "array")' || exit 1
 
+guard_dedupe || exit 1
 upsert_postings || exit 1
 log_sweep_activity || exit 1
 
