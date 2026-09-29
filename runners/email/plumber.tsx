@@ -324,8 +324,9 @@ function companyRecord(stage: FunnelStage, company: FunnelCompany, notes: Map<st
 	const next = NEXT_GROUPS.find((g) => g.key === jqToString(alt(company.next, "")) && g.pill !== "");
 	// A waiting name owes nothing yet, so it reads compact: the New pill and
 	// the counts, no strip and no Wait pill, since its group already says so
-	// and Gmail clips a mail past about 100 KB.
-	const waiting = jqToString(alt(company.next, "")) === "wait";
+	// and Gmail clips a mail past about 100 KB. A deal stage keeps the strip,
+	// since a proposal out is a wait worth watching and there are few of them.
+	const waiting = jqToString(alt(company.next, "")) === "wait" && !onDeal;
 	const pills: RecordBadge[] = [];
 	if (company.entered === true) pills.push({ text: "New", tone: "accent" });
 	if (next && !waiting) pills.push({ text: next.pill, tone: next.tone });
