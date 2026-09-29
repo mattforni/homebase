@@ -882,6 +882,10 @@ async function sweep(argv) {
             door: co.door || "", segment: co.segment || "", disqualification: co.disqualification_reason || "",
             address: [co.address, co.city].filter(Boolean).join(", "), company_phone: co.phone || "",
             touches, replies, last_send: lastSend, days_since_send: dSend, days_since_first: dFirst,
+            // The Company Cards strip on a person: every send day and the last
+            // known open as day counts back from today.
+            touch_days: touches.map((t) => daysSince(`${t.date}T12:00:00Z`)),
+            open_days: (c.hs_sales_email_last_opened || c.hs_email_last_open_date) ? [daysSince(c.hs_sales_email_last_opened || c.hs_email_last_open_date)] : [],
             opens, tracked_sends: tracked, last_reply: lastReplyDay,
             // The extension stamps a sales email's opens on the contact as
             // hs_sales_email_last_opened; hs_email_last_open_date is the

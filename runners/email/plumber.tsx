@@ -53,14 +53,15 @@ import type { RenderContext } from "./types";
  * links as its last line (roster_url); a run that could not push attaches it
  * instead.
  *
- * The stage cards are the Company Cards IA (Forni, 2026-09-29): inside a
- * stage the names sit under the touch they owe next (Reply, Decide, Visit,
- * Bump, First touch, Waiting), each on the shared card with a New pill when
- * it entered the stage this week, the next touch as a pill, a thirty day
- * timeline of its sends and last open, the counts, and the open's age set
- * right. The model's note on an owed name rides on its company's card. So
- * This Week keeps its strip and the first touch list alone; every other owed
- * name already sits under its group in its stage.
+ * The cards are the Company Cards IA (Forni, 2026-09-29): a thirty day
+ * timeline of the sends and last open, the counts, and the open's age set
+ * right. This Week follows the strip, broken out by the touch owed, each
+ * person on that card with the model's note; the stage lists below carry
+ * every company in the card's compact form (a New pill when it entered the
+ * stage this week, no strip), the waiting names (nothing owed yet) as one
+ * linked sentence at the foot, since a card each ran the mail past Gmail's
+ * clip. The stage lists were grouped by the next touch for one afternoon and
+ * read as the same thing twice.
  */
 
 type Metrics = {
@@ -73,6 +74,9 @@ type Metrics = {
 	last_reply?: unknown;
 	fit?: number | null;
 	email?: unknown;
+	/** The person's sends and last open as day counts, for the strip on an owed card. */
+	touch_days?: number[] | null;
+	open_days?: number[] | null;
 } | null;
 type Name = {
 	person?: unknown;
@@ -118,19 +122,6 @@ type FunnelCompany = {
 	next?: unknown;
 };
 
-/** The groups inside a stage card, in the order the desk works them, with the pill each wears. */
-const NEXT_GROUPS: { key: string; label: string; pill: string; tone: RecordBadge["tone"] }[] = [
-	{ key: "reply", label: "Reply", pill: "Reply", tone: "ink" },
-	{ key: "decide", label: "Decide", pill: "Decide", tone: "ink" },
-	{ key: "visit", label: "Visit", pill: "Visit", tone: "ink" },
-	{ key: "bump", label: "Bump", pill: "Bump", tone: "ink" },
-	{ key: "first", label: "First touch", pill: "First", tone: "ink" },
-	{ key: "wait", label: "Waiting", pill: "Wait", tone: "faint" },
-	{ key: "", label: "Nothing owed", pill: "", tone: "faint" },
-];
-
-type NextGroup = { key: string; label: string; companies: FunnelCompany[] };
-
 /** The waiting names as one linked sentence; nothing is owed on them, so they take no card. */
 function nameRun(companies: FunnelCompany[]): { text: string; url?: string | null }[] {
 	return companies.map((c) => ({ text: jqToString(c.name), url: c.url }));
@@ -142,30 +133,11 @@ function onDeal(stage: FunnelStage): boolean {
 	return key === "opportunity" || key === "customer";
 }
 
-/** A stage's companies under their next touch, empty groups dropped; a next the groups do not name lands in the last one. */
-function groupedByNext(companies: FunnelCompany[]): NextGroup[] {
-	const known = new Set(NEXT_GROUPS.map((g) => g.key));
-	const nextOf = (c: FunnelCompany) => (known.has(jqToString(alt(c.next, ""))) ? jqToString(alt(c.next, "")) : "");
-	return NEXT_GROUPS.map((group) => ({
-		key: group.key,
-		label: group.label,
-		companies: companies.filter((c) => nextOf(c) === group.key),
-	})).filter((group) => group.companies.length > 0);
-}
-
-/** The notes the model wrote on the owed names, keyed by company url, so they ride on the stage cards. */
-function notesByCompany(draft: PipelineDraft): Map<string, string> {
-	const notes = new Map<string, string>();
-	for (const kind of OWED_KINDS) {
-		for (const name of alt(alt(draft.owed, {})[kind.key], [])) {
-			const url = jqToString(alt(name.company_url, ""));
-			const note = jqToString(alt(name.note, ""));
-			if (url === "" || note === "") continue;
-			const line = `${jqToString(alt(name.person, ""))}: ${note}`.replace(/^: /, "");
-			notes.set(url, notes.has(url) ? `${notes.get(url)} · ${line}` : line);
-		}
-	}
-	return notes;
+/** A stage's companies split into the ones that get a card and the waiting ones that read as a sentence. */
+function splitWaiting(stage: FunnelStage, companies: FunnelCompany[]): { carded: FunnelCompany[]; waiting: FunnelCompany[] } {
+	if (onDeal(stage)) return { carded: companies, waiting: [] };
+	const waiting = companies.filter((c) => jqToString(alt(c.next, "")) === "wait");
+	return { carded: companies.filter((c) => !waiting.includes(c)), waiting };
 }
 type FunnelStage = {
 	key?: unknown;
@@ -312,30 +284,21 @@ function plural(count: number, noun: string): string {
  * instead: its stage and the money, then the date and the status.
  */
 /**
- * A company on a stage list: the Company Card. New when it entered the stage
- * this week, the next touch as a pill, the timeline of its sends and last
- * open, the deal on the two deal stages and the touch line on the rest, the
- * model's note when one of its people is owed a touch, and a park as the
- * only callout.
+ * A company on a stage list: the shared card in its compact form. New when
+ * it entered the stage this week, the deal on the two deal stages and the
+ * touch line on the rest, a park as the only callout. The strip and the next
+ * touch live on the person's card under This Week; drawn here as well they
+ * ran the mail past Gmail's clip, and read as the same thing twice.
  */
-function companyRecord(stage: FunnelStage, company: FunnelCompany, notes: Map<string, string>): RecordStackItem {
+function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackItem {
 	const key = jqToString(stage.key);
 	const onDeal = key === "opportunity" || key === "customer";
-	const next = NEXT_GROUPS.find((g) => g.key === jqToString(alt(company.next, "")) && g.pill !== "");
-	// A waiting name owes nothing yet, so it reads compact: the New pill and
-	// the counts, no strip and no Wait pill, since its group already says so
-	// and Gmail clips a mail past about 100 KB. A deal stage keeps the strip,
-	// since a proposal out is a wait worth watching and there are few of them.
-	const waiting = jqToString(alt(company.next, "")) === "wait" && !onDeal;
 	const pills: RecordBadge[] = [];
 	if (company.entered === true) pills.push({ text: "New", tone: "accent" });
-	if (next && !waiting) pills.push({ text: next.pill, tone: next.tone });
 	return recordCard({
 		title: company.name,
 		url: company.url,
 		pills,
-		days: waiting ? undefined : { touches: company.touch_days, opens: company.open_days },
-		note: notes.get(jqToString(alt(company.url, ""))),
 		deal: onDeal
 			? company.deal
 				? { stage: company.deal.stage, amount: company.deal.amount, close: company.deal.close, signed: key === "customer" }
@@ -397,7 +360,8 @@ function owedRecords(kind: keyof Owed, names: Name[]): RecordStackItem[] {
 				lastReply: kind === "reply" ? m.last_reply : undefined,
 			};
 		}
-		return recordCard({ title: name.person, url: name.contact_url, lead, touch, note: name.note });
+		const days = m && kind !== "first_touch" ? { touches: m.touch_days, opens: m.open_days } : undefined;
+		return recordCard({ title: name.person, url: name.contact_url, lead, touch, days, note: name.note });
 	});
 }
 
@@ -448,11 +412,6 @@ function owedKindsOf(draft: PipelineDraft) {
 	return OWED_KINDS.map((kind) => ({ ...kind, names: alt(owed[kind.key], []) })).filter((kind) => kind.names.length > 0);
 }
 
-/** The owed lists the mail still prints: the first touches, whose names sit in no stage yet. */
-function listedKinds(draft: PipelineDraft) {
-	return owedKindsOf(draft).filter((kind) => kind.key === "first_touch");
-}
-
 /* ---------- html ---------- */
 
 export function pipelineHTML(input: unknown, context: RenderContext): string {
@@ -460,7 +419,6 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 	const funnel = draft.funnel ?? null;
 	const listed = listedStages(funnel);
 	const owedKinds = owedKindsOf(draft);
-	const notes = notesByCompany(draft);
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
 	const rosterUrl = jqToString(alt(draft.roster_url, ""));
@@ -481,48 +439,16 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					stats={rosterUrl === "" ? undefined : <RosterLine url={rosterUrl} />}
 				/>
 
-				<Eyebrow text="The pipeline" strong={true} />
+				<Eyebrow text="The pipeline" strong={true} aside={<RecordTimelineLegend days={TIMELINE_DAYS} />} />
 				<Card>
 					{funnel === null ? (
 						<EmptyRow text="The portal sweep carried no funnel this run." />
 					) : (
-						<>
-							<Row last={false}>
-								<StatStrip stats={stripStats(funnel)} />
-							</Row>
-							<Row last={true}>
-								<RecordTimelineLegend days={TIMELINE_DAYS} />
-							</Row>
-						</>
+						<Row last={true}>
+							<StatStrip stats={stripStats(funnel)} />
+						</Row>
 					)}
 				</Card>
-
-				{listed.map((stage, index) => {
-					const companies = listedCompanies(stage, funnel);
-					const groups = groupedByNext(companies);
-					return (
-						// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
-						<Fragment key={index}>
-							<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} strong={true} />
-							<Card>
-								{companies.length === 0 ? <EmptyRow text={emptyText(stage)} /> : null}
-								{groups.map((group, g) => (
-									// biome-ignore lint/suspicious/noArrayIndexKey: a group's position is its identity
-									<Fragment key={g}>
-										<SubEyebrow text={`${group.label} · ${numberString(group.companies.length)}`} />
-										<Row last={g === groups.length - 1}>
-											{group.key === "wait" && !onDeal(stage) ? (
-												<NameRun names={nameRun(group.companies)} />
-											) : (
-												<RecordStack records={group.companies.map((c) => companyRecord(stage, c, notes))} />
-											)}
-										</Row>
-									</Fragment>
-								))}
-							</Card>
-						</Fragment>
-					);
-				})}
 
 				<Eyebrow text="This week" strong={true} />
 				<Card>
@@ -535,7 +461,7 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					)}
 				</Card>
 
-				{listedKinds(draft).map((kind, index) => (
+				{owedKinds.map((kind, index) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: a kind's position is its identity
 					<Fragment key={index}>
 						<Eyebrow text={`${kind.label} · ${numberString(kind.names.length)}`} strong={true} />
@@ -546,6 +472,30 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						</Card>
 					</Fragment>
 				))}
+
+				{listed.map((stage, index) => {
+					const { carded, waiting } = splitWaiting(stage, listedCompanies(stage, funnel));
+					return (
+						// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
+						<Fragment key={index}>
+							<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} strong={true} />
+							<Card>
+								{carded.length === 0 && waiting.length === 0 ? <EmptyRow text={emptyText(stage)} /> : null}
+								{carded.length === 0 ? null : (
+									<Row last={waiting.length === 0}>
+										<RecordStack records={carded.map((c) => companyRecord(stage, c))} />
+									</Row>
+								)}
+								{waiting.length === 0 ? null : (
+									<Row last={true}>
+										<DimLine text={`Waiting on a send, ${numberString(waiting.length)}: `} />
+										<NameRun names={nameRun(waiting)} />
+									</Row>
+								)}
+							</Card>
+						</Fragment>
+					);
+				})}
 
 				<Eyebrow text="The groom" strong={true} />
 				<Card>
@@ -585,7 +535,6 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	const number = weekNumber(context.week);
 	const funnel = draft.funnel ?? null;
 	const listed = listedStages(funnel);
-	const notes = notesByCompany(draft);
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
 
@@ -603,30 +552,25 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 		const strip = stripStats(funnel);
 		out += `${textTable(["Stage", "Now", "Change"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
 		out += `\n  # a send · o an open · @ both · | today · ${numberString(TIMELINE_DAYS)} days to today\n`;
-		for (const stage of listed) {
-			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
-			const companies = listedCompanies(stage, funnel);
-			if (companies.length === 0) out += `  ${emptyText(stage)}\n`;
-			out += groupedByNext(companies)
-				.map(
-					(group) =>
-						`${asciiUpcase(group.label)} · ${numberString(group.companies.length)}\n\n${
-							group.key === "wait" && !onDeal(stage)
-								? `${wrap(nameRun(group.companies).map((n) => n.text).join(", "))}\n`
-								: `${recordStackText(group.companies.map((c) => companyRecord(stage, c, notes)))}\n`
-						}`,
-				)
-				.join("\n");
-		}
 	}
 
 	out += textSection("This Week");
 	const owedKinds = owedKindsOf(draft);
 	if (owedKinds.length === 0) out += "  Nothing is owed this week.\n";
 	else out += `${textTable(["Touch", "Owed"], owedStats(draft).map((s) => [s.label, numberString(Number(s.n))]), [1])}\n`;
-	for (const kind of listedKinds(draft)) {
+	for (const kind of owedKinds) {
 		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
 		out += recordStackText(owedRecords(kind.key, kind.names));
+	}
+
+	if (funnel !== null) {
+		for (const stage of listed) {
+			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
+			const { carded, waiting } = splitWaiting(stage, listedCompanies(stage, funnel));
+			if (carded.length === 0 && waiting.length === 0) out += `  ${emptyText(stage)}\n`;
+			if (carded.length > 0) out += `${recordStackText(carded.map((c) => companyRecord(stage, c)))}\n`;
+			if (waiting.length > 0) out += `\n${wrap(`Waiting on a send, ${numberString(waiting.length)}: ${nameRun(waiting).map((n) => n.text).join(", ")}`)}\n`;
+		}
 	}
 
 	out += textSection("The Groom");

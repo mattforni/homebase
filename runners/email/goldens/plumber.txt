@@ -29,70 +29,6 @@ THE PIPELINE
 
 
 ================================================================
-LEAD · 22
-================================================================
-
-WAITING · 2
-
-  Pinewood Cabinetry, Harbor Lane Bakery
-
-
-================================================================
-MQL · 7
-================================================================
-
-WAITING · 1
-
-  Sunridge Dental
-
-
-================================================================
-SQL · 3
-================================================================
-
-REPLY · 3
-
-  Granite Peak Tile [New] [Reply]
-    no send logged · replied 3 days ago
-
-  Northwind Outfitters [Reply]
-    30d [···#······#···············o···|]
-    3 touches · 2 opens · replied 3 days ago · opened 3d
-
-  Silver Sage Counseling [Reply]
-    30d [·····#···················o····|]
-    1 touch · 1 open · replied 3 days ago · opened 4d
-
-
-================================================================
-OPPTY · 1
-================================================================
-
-REPLY · 1
-
-  Rivermark Kitchen and Bath [Reply]
-    30d [···················#······#o··|]
-    Proposal · $8,500
-    closes 2026-10-31
-
-
-================================================================
-CUSTOMER · 2
-================================================================
-
-REPLY · 2
-
-  Alder and Oak Physical Therapy [Reply]
-    Closed Won · $9,090
-    signed 2026-09-17
-
-  Westbrook Skylights [Reply]
-    30d [··························o···|]
-    Closed Won · $7,500
-    signed 2026-08-20
-
-
-================================================================
 THIS WEEK
 ================================================================
 
@@ -116,6 +52,95 @@ FIRST TOUCH · 2
   Tobias Wren
     Ridgeback Fencing · fit 17 · shared inbox
     heads up on the hours mismatch, graded A
+
+================================================================
+BUMP · 1
+================================================================
+
+  Renata Oyelaran
+    30d [····················#······o··|]
+    Sable Creek Landscaping · 1 touch · 6 opens · opened 2d
+    Day 9 on the first send, no open yet.
+
+================================================================
+REPLY TO · 2
+================================================================
+
+  Salley Wilson
+    30d [··························#·o·|]
+    Pinewood Cabinetry · 2 touches · 5 opens · replied 2026-09-18 ·
+    opened 1d
+    Owed a number since Tuesday, sending as Atelic, graded A, and
+    she asked twice whether the audit could be walked through in
+    person at the shop rather than over a call.
+
+  Dov Marchetti
+    30d [··························#·o·|]
+    Harbor Line Plumbing · 2 touches · 5 opens · replied 2026-09-18
+    · opened 1d
+
+================================================================
+VISIT · 1
+================================================================
+
+  Marguerite Bell
+    30d [········#······#··············|]
+    Thistle Lane Florist · 2 touches · no opens yet
+    Walkable, open until 17:00.
+
+================================================================
+LEAD · 22
+================================================================
+
+
+  Waiting on a send, 2: Pinewood Cabinetry, Harbor Lane Bakery
+
+
+================================================================
+MQL · 7
+================================================================
+
+
+  Waiting on a send, 1: Sunridge Dental
+
+
+================================================================
+SQL · 3
+================================================================
+
+  Granite Peak Tile [New]
+    no send logged · replied 3 days ago
+
+  Northwind Outfitters
+    3 touches · 2 opens · visit 19 days ago · opened 3 days ago ·
+    replied 3 days ago
+
+  Silver Sage Counseling
+    1 touch · 1 open · first 24 days ago · opened 4 days ago ·
+    replied 3 days ago
+
+
+================================================================
+OPPTY · 1
+================================================================
+
+  Rivermark Kitchen and Bath
+    Proposal · $8,500
+    closes 2026-10-31
+
+
+================================================================
+CUSTOMER · 2
+================================================================
+
+  Alder and Oak Physical Therapy
+    Closed Won · $9,090
+    signed 2026-09-17
+
+  Westbrook Skylights
+    Closed Won · $7,500
+    signed 2026-08-20
+
 
 ================================================================
 THE GROOM
