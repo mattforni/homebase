@@ -1,4 +1,4 @@
-import type { RecordStackItem } from "@atelic-action/ui/email";
+import type { RecordAside, RecordAsideTone, RecordBadge, RecordStackItem, RecordTimeline } from "@atelic-action/ui/email";
 import { alt, jqToString, numberString, titlecase } from "./jq";
 
 /*
@@ -17,7 +17,14 @@ import { alt, jqToString, numberString, titlecase } from "./jq";
  *   the counts, so the whole history of a name sits in one place, and the
  *   mail's own sentence about the name stays the note beneath.
  * - A deal reads its stage and its cash; a closed name reads its reason.
+ * - A card with a timeline (the Company Cards IA, 2026-09-29) draws its sends
+ *   and its last open on the strip, sets "opened Nd" right on the meta line in
+ *   a freshness tone, and keeps only the reply on the clock, since the strip
+ *   already says when the sends went out.
  */
+
+/** The strip spans thirty days, today at the right edge. */
+export const TIMELINE_DAYS = 30;
 
 export type TouchLine = {
 	/** Sends logged on the record. */
@@ -51,7 +58,30 @@ export type RecordInput = {
 	/** A line under the meta, from the mail; the clock goes before it. */
 	note?: unknown;
 	callout?: { eyebrow: string; text: string } | null;
+	/** The Company Cards pills after the badge: New in the accent, the next touch in ink, Wait faint. */
+	pills?: RecordBadge[] | null;
+	/** The sends and the last open as day counts back from today; the card draws them when set. */
+	days?: { touches?: number[] | null; opens?: number[] | null } | null;
 };
+
+/** "opened 6d" set right on the meta line, its number by freshness: inside a week `up`, inside two `warm`, older `accent`. */
+export function openedAside(daysSinceOpen: number | null | undefined): RecordAside | undefined {
+	if (daysSinceOpen === null || daysSinceOpen === undefined) return undefined;
+	const tone: RecordAsideTone = daysSinceOpen <= 7 ? "up" : daysSinceOpen <= 14 ? "warm" : "accent";
+	return { text: "opened", strong: `${numberString(Math.max(daysSinceOpen, 0))}d`, tone };
+}
+
+/** The strip a card draws from its day counts; nothing when the record has no send and no open to place. */
+export function timelineOf(days: RecordInput["days"]): RecordTimeline | undefined {
+	if (!days) return undefined;
+	// Only what lands inside the window draws; a record whose every send is
+	// older than the strip keeps its clock on the meta line instead.
+	const inWindow = (d: number | null | undefined): d is number => d !== null && d !== undefined && d >= 0 && d < TIMELINE_DAYS;
+	const touches = (days.touches ?? []).filter(inWindow);
+	const opens = (days.opens ?? []).filter(inWindow);
+	if (touches.length === 0 && opens.length === 0) return undefined;
+	return { days: TIMELINE_DAYS, touches, opens };
+}
 
 export function count(n: number, noun: string): string {
 	return `${numberString(n)} ${n === 1 ? noun : `${noun}${noun.endsWith("ch") ? "es" : "s"}`}`;
@@ -99,6 +129,14 @@ export function touchMeta(touch: TouchLine | null | undefined): string[] {
 	return meta;
 }
 
+/** The reply on the clock: when they answered, as days or as the date the mail carries. */
+export function replyClock(touch: TouchLine | null | undefined): string {
+	if (!touch) return "";
+	if (ago(touch.daysSinceReply) !== "") return `replied ${ago(touch.daysSinceReply)}`;
+	if (jqToString(alt(touch.lastReply, "")) !== "") return `replied ${jqToString(touch.lastReply)}`;
+	return "";
+}
+
 /** The clock under the meta line: when it was sent, opened and answered. */
 export function touchClock(touch: TouchLine | null | undefined): string {
 	if (!touch) return "";
@@ -106,8 +144,8 @@ export function touchClock(touch: TouchLine | null | undefined): string {
 	const kind = jqToString(alt(touch.lastTouch, "")).toLowerCase();
 	if (ago(touch.daysSinceSend) !== "") clock.push(`${kind === "" ? "sent" : kind} ${ago(touch.daysSinceSend)}`);
 	if (ago(touch.daysSinceOpen) !== "") clock.push(`opened ${ago(touch.daysSinceOpen)}`);
-	if (ago(touch.daysSinceReply) !== "") clock.push(`replied ${ago(touch.daysSinceReply)}`);
-	else if (jqToString(alt(touch.lastReply, "")) !== "") clock.push(`replied ${jqToString(touch.lastReply)}`);
+	const reply = replyClock(touch);
+	if (reply !== "") clock.push(reply);
 	return clock.join(" · ");
 }
 
@@ -129,15 +167,21 @@ export function recordCard(input: RecordInput): RecordStackItem {
 	}
 	// The counts and the clock share the meta line, so touches, opens and when
 	// they happened read in one place; the mail's own sentence stays the note.
+	// A drawn card keeps only the reply on the clock and sets the open right.
 	meta.push(...touchMeta(input.touch));
-	const clock = touchClock(input.touch);
+	const timeline = timelineOf(input.days);
+	const clock = timeline ? replyClock(input.touch) : touchClock(input.touch);
 	if (clock !== "") meta.push(clock);
 	const note = jqToString(alt(input.note, ""));
 	if (note !== "") notes.push(note);
+	const pills = (input.pills ?? []).filter((p) => p.text !== "");
 	return {
 		title: jqToString(input.title),
 		url: input.url ?? undefined,
 		badge: statusWord(input.badge) || undefined,
+		badges: pills.length === 0 ? undefined : pills,
+		timeline,
+		aside: timeline ? openedAside(input.touch?.daysSinceOpen) : undefined,
 		meta: meta.filter((m) => m !== ""),
 		note: notes.length === 0 ? undefined : notes.join(" · "),
 		callout: input.callout ?? undefined,
