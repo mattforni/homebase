@@ -102,18 +102,6 @@ export function RosterLine({ url }: RosterLineProps) {
 	);
 }
 
-export type StripCaptionProps = { text: string };
-
-/** A caption under a strip's delta row, in the delta's own type: what the small numbers are (WoW, week over week). */
-export function StripCaption({ text }: StripCaptionProps) {
-	const { palette, fonts } = useEmailTheme();
-	return (
-		<div style={{ textAlign: "center", fontFamily: fonts.mono, fontSize: "11px", letterSpacing: "0.08em", color: palette.faint, paddingTop: "2px" }}>
-			{text}
-		</div>
-	);
-}
-
 export type DimLineProps = { text: string };
 
 /** One dim sentence filling a card row: the board's empty state. */
