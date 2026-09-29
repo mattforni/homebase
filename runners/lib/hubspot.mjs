@@ -987,6 +987,22 @@ async function sweep(argv) {
             .sort((a, b) => b.date.localeCompare(a.date))[0];
         return n ? { date: n.date, text: n.body.split("\n")[0].slice(0, 160) } : null;
     };
+    // The Company Cards fields (2026-09-29): every send day and the last
+    // known open as day counts back from today (HubSpot keeps one last open
+    // per contact, never one per open, so the timeline draws one dot), and
+    // the next touch the record owes, read off the most urgent of its
+    // contacts' sections.
+    // A NEW contact off the queue (new_off_queue) is not the company's next
+    // touch: a second name on an Oppty is not a first touch owed.
+    const NEXT_OF = {
+        replies_owed: "reply", closes_due: "decide", visits_due: "visit", bumps_due: "bump", tasks_due: "bump",
+        first_touch: "first", waiting: "wait", conversation: "wait", unlogged_send: "wait", parked: "parked",
+    };
+    const NEXT_ORDER = ["reply", "decide", "visit", "bump", "first", "wait", "parked"];
+    const nextOf = (co) => {
+        const nexts = (readsByCompany.get(co.id) || []).map((r) => NEXT_OF[r.section]).filter(Boolean);
+        return nexts.sort((a, b) => NEXT_ORDER.indexOf(a) - NEXT_ORDER.indexOf(b))[0] || "";
+    };
     const funnelRow = (co) => {
         const t = companyTouches(co);
         const deal = dealByCompany.get(co.id);
@@ -994,6 +1010,9 @@ async function sweep(argv) {
         return {
             id: co.id, name: co.name, url: companyUrl(co.id), fit: co.fit ? Number(co.fit) : null,
             status: warmest(co), last_touch: kind, last_send: t.lastSend, touches: t.days.length,
+            touch_days: t.days.map((d) => daysSince(`${d}T12:00:00Z`)),
+            open_days: t.lastOpen ? [daysSince(`${t.lastOpen}T12:00:00Z`)] : [],
+            next: nextOf(co),
             opens: t.tracked ? t.opens : null, replied: t.lastReply,
             days_since_send: t.lastSend ? daysSince(`${t.lastSend}T12:00:00Z`) : null,
             last_open: t.lastOpen, days_since_open: t.lastOpen ? daysSince(`${t.lastOpen}T12:00:00Z`) : null,
@@ -1028,13 +1047,13 @@ async function sweep(argv) {
         stages: STAGE_ORDER.map((key) => {
             const nowList = byStage.now.get(key) || [], thenList = byStage.then.get(key) || [];
             const thenIds = new Set(thenList.map((c) => c.id)), nowIds = new Set(nowList.map((c) => c.id));
-            // New and Closed are read as counts and movers alone; Lead lists
-            // the week's sends, the names in flight with nothing owed on them
-            // yet (Forni, 2026-09-29), and the four stages above it list every
-            // company (Forni, 2026-09-24).
+            // New and Closed are read as counts and movers alone; every stage
+            // from Lead to Customer lists its companies, grouped in the mail
+            // by the touch each owes next (Forni, 2026-09-29; the four above
+            // Lead since 2026-09-24). `entered` marks the New pill: the
+            // company was not in this stage a week ago.
             const listed = ["lead", "mql", "sql", "opportunity", "customer"].includes(key);
-            const inWeek = (co) => { const s = companyTouches(co).lastSend; return Boolean(s) && daysSince(`${s}T12:00:00Z`) < 6; };
-            const shown = (listed ? (key === "lead" ? nowList.filter(inWeek) : nowList) : []).map(funnelRow).sort(stageSort[key]);
+            const shown = (listed ? nowList : []).map((c) => ({ ...funnelRow(c), entered: !thenIds.has(c.id) })).sort(stageSort[key]);
             const delta = nowList.length - thenList.length;
             return {
                 key, label: STAGE_LABEL[key], now: nowList.length, then: thenList.length, delta,

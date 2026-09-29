@@ -190,7 +190,15 @@
             "days_since_open": 1,
             "days_since_reply": null,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [
+              2
+            ],
+            "open_days": [
+              1
+            ],
+            "entered": true,
+            "next": "wait"
           },
           {
             "id": "31",
@@ -210,7 +218,13 @@
             "days_since_open": null,
             "days_since_reply": null,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [
+              4
+            ],
+            "open_days": [],
+            "entered": false,
+            "next": "wait"
           }
         ]
       },
@@ -252,7 +266,16 @@
               "reading": "parked",
               "subject": "Reach back out to Priya Venkataraman about the rebuild"
             },
-            "note": null
+            "note": null,
+            "touch_days": [
+              16,
+              9
+            ],
+            "open_days": [
+              2
+            ],
+            "entered": true,
+            "next": "parked"
           },
           {
             "id": "0",
@@ -275,7 +298,15 @@
               "date": "2026-09-19",
               "text": "Quoted Foundation at $6,500 in the room; she is reviewing last year's numbers first."
             },
-            "task": null
+            "task": null,
+            "touch_days": [
+              4
+            ],
+            "open_days": [
+              3
+            ],
+            "entered": true,
+            "next": "wait"
           },
           {
             "id": "0",
@@ -299,7 +330,16 @@
               "reading": "parked",
               "subject": "Reach back out"
             },
-            "note": null
+            "note": null,
+            "touch_days": [
+              18,
+              11
+            ],
+            "open_days": [
+              4
+            ],
+            "entered": true,
+            "next": "parked"
           }
         ]
       },
@@ -333,7 +373,11 @@
             "days_since_open": null,
             "days_since_reply": 3,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [],
+            "open_days": [],
+            "entered": true,
+            "next": "reply"
           },
           {
             "id": "0",
@@ -353,7 +397,16 @@
             "days_since_open": 3,
             "days_since_reply": 3,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [
+              26,
+              19
+            ],
+            "open_days": [
+              3
+            ],
+            "entered": false,
+            "next": "reply"
           },
           {
             "id": "0",
@@ -373,7 +426,15 @@
             "days_since_open": 4,
             "days_since_reply": 3,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [
+              24
+            ],
+            "open_days": [
+              4
+            ],
+            "entered": false,
+            "next": "reply"
           }
         ]
       },
@@ -410,7 +471,16 @@
             "days_since_open": 2,
             "days_since_reply": 3,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [
+              10,
+              3
+            ],
+            "open_days": [
+              2
+            ],
+            "entered": false,
+            "next": "reply"
           }
         ]
       },
@@ -447,7 +517,11 @@
             "days_since_open": null,
             "days_since_reply": 3,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [],
+            "open_days": [],
+            "entered": false,
+            "next": "reply"
           },
           {
             "id": "0",
@@ -472,7 +546,13 @@
             "days_since_open": 3,
             "days_since_reply": 3,
             "task": null,
-            "note": null
+            "note": null,
+            "touch_days": [],
+            "open_days": [
+              3
+            ],
+            "entered": false,
+            "next": "reply"
           }
         ]
       },

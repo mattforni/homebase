@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { useEmailTheme } from "@atelic-action/ui/email";
 
 /*
@@ -99,6 +99,29 @@ export function RosterLine({ url }: RosterLineProps) {
 				The full read is in <Link text="the roster" url={url} />.
 			</td>
 		</tr>
+	);
+}
+
+export type NameRunProps = { names: { text: string; url?: string | null }[] };
+
+/**
+ * Names in one sentence, each linked, a comma between them. The waiting names
+ * in a stage read this way rather than as cards (Forni, 2026-09-29): nothing
+ * is owed on them, and a card each ran a sixty name mail past the hundred
+ * kilobytes where Gmail clips.
+ */
+export function NameRun({ names }: NameRunProps) {
+	const { palette } = useEmailTheme();
+	return (
+		<div style={{ fontSize: "14px", lineHeight: "1.6", color: palette.dim }}>
+			{names.map((name, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: a name's position is its identity
+				<Fragment key={i}>
+					{i === 0 ? null : ", "}
+					<Link text={name.text} url={name.url} />
+				</Fragment>
+			))}
+		</div>
 	);
 }
 
