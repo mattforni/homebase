@@ -59,7 +59,7 @@ The named label table and title formats live in `~/Eudaimonia/Admin/Tools/google
 
 ## Mode: week (default)
 
-The Monday morning training pass. Runs as part of `/assist:plan-week` plan mode (Phase 5), or standalone.
+The Monday morning training pass. Runs as part of `/assist:plan-week` plan mode (Phase 6), or standalone.
 
 ### Phase 1: Retrospective on the Previous Week
 

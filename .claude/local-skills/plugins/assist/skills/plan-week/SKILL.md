@@ -56,24 +56,26 @@ These constraints exist for real physiological and practical reasons. They are n
 
 ## Mode: plan (default)
 
-The Monday planning session, 07:00 to 08:00, first thing in the deep work block. This is the primary use case. It runs isolated in a worktree and moves through seven phases: look back quietly, then gather, then clean, then place, then show. Every phase that generates work runs before the phase that places work.
+The Monday planning session, 07:00 to 08:00, first thing in the deep work block. This is the primary use case. It runs isolated in a worktree and moves through eight phases: look back quietly, then gather, then clean, then place, then show. Every phase that generates work runs before the phase that places work.
 
 **The session is the orchestration layer and the arbiter.** Agents pull and propose in the background; nothing an agent returns reaches Forni raw. The main session reads each board, decides what is genuinely his, and presents one phase at a time, in order, in one short message per phase, with everything else handled under the rules and reported in a line. Forni, 2026-08-30, after three boards landed on him at once: "I need you as the orchestration layer here... to really delegate all of this stuff to the appropriate agents and make sure those agents are using the right models... I need you to be really the arbiter of the data as it all comes back: what is important and what needs to come to me first?"
 
-1. **Review Week** — look back, quietly, before any agents
-2. **Set Intention** — theme and banner
-3. **Sweep Inbox** — email becomes tasks
-4. **Sweep Calendar** — make the calendar true
-5. **Plan Training** — every training event placed
-6. **Plan Tasks** — work slate first, then personal, then slot
-7. **Present Week** — the finished board
+1. **Review Week**: look back, quietly, before any agents
+2. **Set Intention**: theme and banner
+3. **Review Spend**: the money half of the retro, groomed and read
+4. **Sweep Inbox**: email becomes tasks
+5. **Sweep Calendar**: make the calendar true
+6. **Plan Training**: every training event placed
+7. **Plan Tasks**: work slate first, then personal, then slot
+8. **Present Week**: the finished board
 
 ### Agent Fan Out (After the Intention, Never Before)
 
-Review Week and Set Intention run solo: no agents are dispatched until both dialogues close and the banner is written. Boards landing mid felt sense question kept interrupting and flooding the session on 2026-08-09, and on 2026-09-07 three completion notices plus three holding lines landed between the intention question and its answer; the quiet comes first. The moment the banner is on the calendar, dispatch the three specialists in parallel **as one foreground wait** (`run_in_background: false`), so the next thing Forni sees is the first phase board and nothing arrives mid question:
+Review Week and Set Intention run solo: no agents are dispatched until both dialogues close and the banner is written. Boards landing mid felt sense question kept interrupting and flooding the session on 2026-08-09, and on 2026-09-07 three completion notices plus three holding lines landed between the intention question and its answer; the quiet comes first. The moment the banner is on the calendar, dispatch the four specialists in parallel **as one foreground wait** (`run_in_background: false`), so the next thing Forni sees is the first phase board and nothing arrives mid question:
 
 - **clerk** (`~/.claude/agents/clerk.md`): pulls the full inbox and returns the proposed disposition board consumed by Sweep Inbox.
 - **groomer** (`~/.claude/agents/groomer.md`): triages the Linear queue and returns the work decision slate consumed by Plan Tasks.
+- **treasurer** (`~/.claude/agents/treasurer.md`), briefed **weekly**: checks every YNAB connection, grooms the personal queue per `assist:handle-budget`, and returns the decision slate, the plan as a batch file, and the weekly spend read consumed by Review Spend. It never writes to YNAB.
 - **planner** (`~/.claude/agents/planner.md`): makes the wide pulls (all three calendars with labels and offsets normalized, the Todoist Schedule filter plus the landing Monday pull) and runs the transition and overlap lint on the calendar pull. Strava and the takeout count come from the emailed retro; the planner pulls them only when Review Week fell back.
 
 **Every specialist runs on `sonnet`**, set in its agent file; the coach is dispatched at Plan Training the same way. A `model` override on an Agent call is chosen by failure asymmetry (`~/Eudaimonia/Admin/Tools/claude-code.md`), never to skip a read. The main session's model is the expensive one, and it spends itself on arbitration, not on pulls.
@@ -129,7 +131,22 @@ The look forward, the mirror of Review Week. Holding the retro's carry forward a
 
 This skill owns the banner; nothing else writes to it.
 
-### Phase 3: Sweep Inbox
+### Phase 3: Review Spend
+
+The money half of the retro, deferred past the intention only because it needs the treasurer's pull. Spend stays visible week by week and adds up across the month, instead of surfacing once a month in the financial review.
+
+Present the treasurer's weekly read as one message, in this order:
+
+- **Connections in error** first, by account name, with the note that every number is a floor until the connection is repaired in the YNAB app. None in error is one FYI line.
+- **Month to date against the run rate**: personal everyday and Atelic, each as spent so far against the prorated rate, trips named beside it.
+- **Missing income** and **odd spending**, one line each, only when there is some.
+- **The groom**: the auto decided rows as a tally by category, then a bolded "Needed from you" naming how many rows need him.
+
+Then walk the held rows one at a time per `assist:handle-budget` Phase 3 (the budget walk is exempt from the consolidated board rule, since the walk is what works for it). On his yes to the whole plan, **the main session applies it**: fold his answers into the treasurer's batch file and run one `YNAB_APPLY=1 ~/bin/ynab transactions batch-update`, check the response count against the plan, then approve the listed skips by id and make any listed deletes. The agent's own writes were blocked by the permission layer on 2026-09-27; the write belongs in the session that heard the yes. Candidate learned rules from the treasurer go to `## Spend Categorization` in the plugin wide `learned-rules.md` in the session's homebase worktree.
+
+An empty queue and nothing odd is a single line in the brief, not a phase message.
+
+### Phase 4: Sweep Inbox
 
 Turn the inbox into tasks before the task list is loaded, so email follow ups ride the same prioritization and slotting pass as everything else instead of living only in Gmail.
 
@@ -143,7 +160,7 @@ Turn the inbox into tasks before the task list is loaded, so email follow ups ri
 3. Confirm task creations with Forni before writing, presented per the Signal Contract, consistent with the ask before acting posture.
 4. When nothing actionable surfaces, say so in one line and continue.
 
-### Phase 4: Sweep Calendar
+### Phase 5: Sweep Calendar
 
 Make the calendar true. Fetch this week's events (Monday through Sunday) via `gws` on all three calendars (Life, Atelic, and the Todoist feed; see the calendars paragraph above), with `eventLabelVersion: 1` so labels come back, and read the weekly template for the recurring skeleton. The planner's calendar pull and lint results seed this phase; verify against them rather than re deriving.
 
@@ -170,11 +187,11 @@ Present all conflicts per the Signal Contract. For each conflict, propose a reso
 
 Execute only the agreed changes before moving on. The calendar should be clean and conflict free before anything new is placed on it.
 
-### Phase 5: Plan Training
+### Phase 6: Plan Training
 
 Invoke the `assist:plan-training` skill in `week` mode via the Skill tool. Its retro gate is satisfied by the emailed retro plus the blind spots Review Week collected; the coach agent (`~/.claude/agents/coach.md`, dispatched on `sonnet`) reads the week's shape from the block doc and the calendar pull. The skill detects existing recurring placeholders (Mon/Wed/Fri lifts, Tue Diego, Tue DRC, Thu SPRC, the four yoga holds), surfaces what's missing, lays out the week's shape and strength targets, and **places every training event for the week**, following its own constraint logic. 4K Friday retired 2026-09-14, so there are no alternating one offs. The week leaves this phase with training fully on the calendar, not just shaped. Return here once training scheduling is complete.
 
-### Phase 6: Plan Tasks
+### Phase 7: Plan Tasks
 
 Prioritize the full task slate, work first, then place the survivors.
 
@@ -232,7 +249,7 @@ A recurring catch up that gets deferred instead of slotted lands on the next pla
 
 **Deferred tasks land on the next planning Monday**: When deferring tasks to next week or further out, schedule them, date only, for the Monday that opens the target week, the morning this session runs. Monday is the landing zone where tasks get triaged during the planning session. (Replaced the Sunday landing zone 2026-08-30 when the session moved; Sunday had replaced Monday on 2026-08-09. The landing zone follows the session.)
 
-### Phase 7: Present Week
+### Phase 8: Present Week
 
 The finished board is the Google Calendar week view. Present a link to it (`https://calendar.google.com/calendar/u/0/r/week/YYYY/M/D`). Todoist sync already renders slotted tasks there alongside training, meetings, and events, so do not rebuild the week as prose day lists or summary tables (see the Learned Rules entry).
 
@@ -289,14 +306,14 @@ The named label table (names, hexes, label IDs) and the transition / travel / ti
 
 - **Emoji prefix**: All personal events use an emoji prefix (e.g., "🏋️ Strength", "✍️ Writing")
 - **Labels, not colors**: every created event carries the `eventLabelId` matching its meaning (🍏 Constitution, 🧠 Contemplation, 🤗 Community, 🛠️ Craft, and the rest of the table)
-- **Deep work**: 🙈 Deep Work blocks live on `💻 Atelic` and carry the 🛠️ Craft label (the Heads Down label retired 2026-07-19; deep work is Craft, not its own category). Protected focus, no transitions needed (block stays at current location). The generic block is a capacity placeholder, deleted once named work claims its time (see Phase 6).
+- **Deep work**: 🙈 Deep Work blocks live on `💻 Atelic` and carry the 🛠️ Craft label (the Heads Down label retired 2026-07-19; deep work is Craft, not its own category). Protected focus, no transitions needed (block stays at current location). The generic block is a capacity placeholder, deleted once named work claims its time (see Phase 7).
 - **Week banner**: the all day event spanning Monday through Sunday that carries the week's theme, created by Set Intention with the 🧭 Theme label, transparency `"free"`. Title is emoji + theme only; the body is the one sentence framing. No training block (retired 2026-09-07).
 
 Include the location when the event is at a specific place.
 
 ## Training Plan Scheduling
 
-Training event creation lives in the `assist:plan-training` skill. See that skill for the recurring placeholder table, strength programming, special weeks (template refresh, September seam, travel), and training adjacent constraints. Plan Training (Phase 5) invokes it during weekly planning. The week banner belongs to this skill alone, created during Set Intention; plan-training never writes to it.
+Training event creation lives in the `assist:plan-training` skill. See that skill for the recurring placeholder table, strength programming, special weeks (template refresh, September seam, travel), and training adjacent constraints. Plan Training (Phase 6) invokes it during weekly planning. The week banner belongs to this skill alone, created during Set Intention; plan-training never writes to it.
 
 ## Key Locations
 
@@ -314,7 +331,7 @@ Training event creation lives in the `assist:plan-training` skill. See that skil
 
 All Todoist access goes through the `td` CLI via Bash; the MCP connector retired 2026-08-13. The owning doc is `~/Eudaimonia/Admin/Tools/todoist.md` (install, auth, everyday shape, the full gotcha list); this section carries only the operations planning leans on, verified against `td --help` on 2026-08-15:
 
-- `td task list --filter '<query>' --json`: pull tasks with a raw Todoist filter query. There is no saved filter lookup, so pass the Schedule filter's raw query directly (see Phase 6). A date range pull uses `--due` (today, overdue, or YYYY-MM-DD).
+- `td task list --filter '<query>' --json`: pull tasks with a raw Todoist filter query. There is no saved filter lookup, so pass the Schedule filter's raw query directly (see Phase 7). A date range pull uses `--due` (today, overdue, or YYYY-MM-DD).
 - `td task reschedule <ref> "<date>"`: move a task's due date. Always use this instead of `td task update --due` for date changes: reschedule preserves recurrence, while `update --due` replaces the whole due string. A date only value drops an existing time of day, so pass the full form (`2026-08-18T09:00:00`) when a time matters.
 - `td task update <ref>`: set task properties (but NOT dates). `--labels` is plural and replaces the entire label set, so always pass every label the task keeps, not just the addition. `--priority` takes `p1` through `p4`. `--duration` is accepted and silently dropped, on `add` and `update` alike (confirmed 2026-08-30 on four freshly slotted tasks); durations are set in the Todoist app.
 - `td task move <ref> --project "<name>"`: move a task out of Inbox into its pillar project.

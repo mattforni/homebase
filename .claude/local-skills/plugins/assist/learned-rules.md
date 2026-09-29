@@ -65,6 +65,7 @@ Mechanics (hard-won, do not rediscover):
 - YNAB clients use delta sync. After API writes, an open app or web session needs a hard refresh to display them.
 - Payee names carry HTML entities (`&amp;`). Decode before matching.
 - Budget IDs: Personal `a55b71e6-76e4-46d9-a5c6-336b36ddd14c`, Atelic `e0d471f0-bf90-452c-8232-b1153b7411be`.
+- **Check direct import status on every run, before trusting the queue.** `ynab accounts list --budget <id>` carries `direct_import_linked` and `direct_import_in_error` per account; any open, linked account in error is the first thing reported, since its missing rows make the queue and every spend number look lighter than they are. BofA Checking and BofA Cash Rewards sat silently in error until 2026-09-27.
 
 Conventions:
 
@@ -80,7 +81,6 @@ Payee corrections (session 2026-06-29):
 - `Body Jewelry`, `Easy Steez Vintage` -> `🧥 Clothing`.
 - `Gem Figueroa` (friend, Venmo) -> context dependent; was `🍿 Entertainment` (a movie).
 - `Badfish SUP` -> `🌲 Outdoorsman` (was Gear before the tree merge). `Rhino Air`, `Discount Tire`, `Costco Gas` -> `🚙 Transportation`.
-- `Amazon` history is split (~52%); always confirm, never auto.
 
 Payee corrections (session 2026-07-18):
 
@@ -94,7 +94,19 @@ Payee corrections (session 2026-09-07, the first run after the tree restructure)
 - `ACH Deposit 261003712` is the Fidelity HSA reimbursing the health premium: payee `Transfer: Fidelity HSA`, category `🏥 Healthcare`, memo `🏥 HSA premium reimbursement` so it is findable at tax time.
 - `Sierra Dental` (bank descriptor `Sierra River N Dent`, mysierradental.com) -> `🏥 Healthcare`, its own payee. It is NOT River North Dentistry; never merge the two.
 - `Ratio Beerworks` -> `🍽️ Dining Out`. `7-Eleven` stays `🚬 Nicotine`.
-- `Amazon` and `Arc Thrift` stay always confirm; on 2026-09-07 every one of them (water filters, a basket picker, thrift finds) was `🏡 Home Improvement`, the condo furnishing era.
+- `Arc Thrift` stays always confirm; on 2026-09-07 every one of them was `🏡 Home Improvement`, the condo furnishing era.
+
+Payee corrections (session 2026-09-27, the personal groom to zero):
+
+- `Amazon` -> `🏡 Home Improvement`, auto decided as the catch all; it rides in the tally where Forni can pull any row out, and is no longer an always confirm payee.
+- `Chef Zorba's Restaurant` -> `🍾 Sobriety` when it is fellowship (taking people out from the High Noon meeting); otherwise ask like any sit down restaurant.
+- `Culinary Dropout`, `Pita Fresh`, `High Mountain Pies` -> `🍽️ Dining Out`.
+- `Hello Darling`, `Hearth Highlands`, `Honey Hill` -> `☕️ Cafés`.
+- `Oura` (the membership) -> `🏥 Healthcare`.
+- `Stinker Stores` (fuel) -> `🚙 Transportation`.
+- `Thule` -> `🚙 Transportation` (car rack parts); the warranty refund check nets back into the same category.
+- `Colorado Parks and Wildlife` -> always confirm. The 2026-09-15 charge was a camping date, filed `❤️ Romantic`; a pass or license would land elsewhere.
+- **A Venmo payment the Atelic budget already records is deleted from Personal, never categorized.** When Venmo is funded from the Atelic bank, the charge is the business's and lives on the Atelic budget; the personal Venmo row is a duplicate. Match on date and amount against Atelic before proposing any category for a personal Venmo payment, and propose the delete when it matches.
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
