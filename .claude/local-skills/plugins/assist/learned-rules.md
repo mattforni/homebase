@@ -105,7 +105,7 @@ Payee corrections (session 2026-09-27, the personal groom to zero):
 - `Oura` (the membership) -> `🏥 Healthcare`.
 - `Stinker Stores` (fuel) -> `🚙 Transportation`.
 - `Thule` -> `🚙 Transportation` (car rack parts); the warranty refund check nets back into the same category.
-- `Colorado Parks and Wildlife` -> always confirm. The 2026-09-15 charge was a camping date, filed `❤️ Romantic`; a pass or license would land elsewhere.
+- `Colorado Parks and Wildlife` -> `🌲 Outdoorsman` (Forni, 2026-09-29). The 2026-09-15 camping date stays `❤️ Romantic` as filed.
 - **A Venmo payment the Atelic budget already records is deleted from Personal, never categorized.** When Venmo is funded from the Atelic bank, the charge is the business's and lives on the Atelic budget; the personal Venmo row is a duplicate. Match on date and amount against Atelic before proposing any category for a personal Venmo payment, and propose the delete when it matches.
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
