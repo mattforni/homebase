@@ -90,7 +90,7 @@ Lead · 2
     Last touch: Walk in
 
   Ridgeline Glass [New]
-    1 touch · 0 opens
+    1 touch · no opens yet
     Last touch: Email Send
 
 MQL · 1

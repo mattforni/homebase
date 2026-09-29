@@ -54,7 +54,8 @@
           "days_since_open": 2,
           "last_reply": "",
           "fit": 14,
-          "email": "x@example.test"
+          "email": "x@example.test",
+          "tracked": 1
         }
       }
     ],
@@ -279,16 +280,16 @@
             "url": "https://app.example.test/contacts/1/record/0-2/9",
             "fit": null,
             "status": "ENGAGED",
-            "last_touch": "Bump",
+            "last_touch": "",
             "last_send": "2026-09-15",
-            "touches": 2,
-            "opens": 5,
+            "touches": 0,
+            "opens": null,
             "replied": "2026-09-18",
-            "days_since_send": 6,
+            "days_since_send": null,
             "deal": null,
             "closed": null,
             "last_open": "2026-09-19",
-            "days_since_open": 2,
+            "days_since_open": null,
             "days_since_reply": 3,
             "task": null,
             "note": null
@@ -497,8 +498,9 @@
       "contact_url": "https://app.hubspot.com/contacts/246648548/record/0-1/553459956418",
       "company_url": "https://app.hubspot.com/contacts/246648548/record/0-2/347101591250",
       "days_since_send": 5,
-      "touches": 1,
-      "opens": 2
+      "touches": 2,
+      "opens": 2,
+      "tracked": 1
     },
     {
       "person": "Info Desk",
