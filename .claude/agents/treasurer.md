@@ -29,7 +29,7 @@ Three phases. Phase One is one pass; you are resumed for the ledger and again fo
 
 ### Phase One: Groom
 
-1. **Check the connections first.** `ynab accounts list --budget <personal id>` to a file; report every open account with `direct_import_linked` true and `direct_import_in_error` true, by name, at the top of the report. A connection in error means missing rows, so every number below it is a floor, and say so.
+1. **Check the connections first, on both budgets.** `ynab accounts list --budget <id>` to a file for Personal and for Atelic; report every open account with `direct_import_linked` true and `direct_import_in_error` true, by name, at the top of the report. A connection in error means missing rows, so every number below it is a floor, and say so.
 2. Pull the unapproved queue for the Personal budget to a file in your scratchpad, then query the file. Piping `ynab` output straight into `jq` truncates large payloads and fails with an unfinished JSON error.
 3. Partition per the skill: skip transfers, route inflows, auto decide mapped payees, hold split history payees and new payees for Forni. Detect trip clusters and propose the memo. Before proposing a category for any personal Venmo payment, look for the same date and amount on the Atelic budget; a match is a delete, per the learned rules.
 4. Return the **decision slate**, never a full plan table. First the auto decided rows as a tally by category (count and total per category, with the row count that will be written). Then only the rows that need Forni, one per line: date, amount, payee, proposed category, and the one line reason. Then the trips detected with the memo you propose. The main session walks those rows with him one at a time and collects the yes on the whole plan.
