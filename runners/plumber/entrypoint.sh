@@ -11,9 +11,14 @@
 # pulled files from the work directory, sorts the week, drafts every touch,
 # writes the roster into the work directory and returns a summary as JSON;
 # the node renderer turns that into the designed email and Resend delivers it as
-# "YYYY-Www Pipeline" with the roster attached. Read only against the world:
-# the agent writes nothing outside its work directory, and Forni places the
-# roster in the repo himself, the way he already commits it.
+# "YYYY-Www Pipeline". The agent writes nothing outside its work directory;
+# the entrypoint then commits the roster into the Atelic checkout at
+# Outreach/YYYY-Www-roster.md and pushes it to main over a write capable
+# deploy key, so the mail links the file in the repo and carries no
+# attachment (Forni, 2026-09-29: the roster rode as an attachment for two
+# weeks and never got placed). Without the push key, or when the checkout is
+# this machine's own (a local run), the roster stays in the work directory and
+# rides as the attachment it used to be, so a rehearsal still delivers it.
 #
 # Until 2026-09-15 (ATE-551) the agent did every read itself, one hs or gws
 # command per model turn, and a pass cost 7.54 USD; the fetching was most of
@@ -29,6 +34,8 @@
 #   GWS_OAUTH_TOKEN_PERSONAL_JSON   forni-keys/gws-oauth-token-personal
 #   EUDY_DEPLOY_KEY                 forni-keys/github-deploy-key-eudy; only when no checkout is at $EUDY
 #   ATELIC_DEPLOY_KEY               atelic-keys/github-deploy-key-atelic; only when no checkout is at $ATELIC
+#   ATELIC_PUSH_KEY                 atelic-keys/github-deploy-key-atelic-push; the write capable key the
+#                                   roster commit goes out over. Only used on a checkout this run cloned
 # Plain configuration:
 #   REPORT_RECIPIENT          where the report goes; the Atelic mailbox, since
 #                             this is Atelic work
@@ -128,6 +135,61 @@ checkout_ready() {
         return 1
     fi
     echo "repo: $repo at $(git -C "$path" log -1 --format='%h %s' | cut -c1-80)"
+    # A clone this run made is the only checkout the roster commit may land
+    # in; a checkout that was already there (the real repo, or a read only
+    # mount of it) is never written.
+    CLONED_PATHS="${CLONED_PATHS:-} $path"
+}
+
+# ---------- placing the roster ----------
+# Commits the built roster into the Atelic checkout as Outreach/$WEEK-roster.md
+# and pushes it to main over the write capable deploy key, then names the
+# file's URL in ROSTER_URL for the report. Prose lands direct to main in that
+# repo by its own rules, and markdownlint runs on the push as an alarm, so a
+# roster the agent wrote badly shows up red there rather than blocking the
+# report. Returns non zero, with the reason on stdout, when the roster could
+# not be placed; the caller then falls back to attaching it.
+place_roster() {
+    local keyfile="$HOME/.ssh/atelic_push_key" target="$ATELIC/Outreach/$WEEK-roster.md" ssh_cmd
+    if [[ -z "${ATELIC_PUSH_KEY:-}" ]]; then
+        echo "roster: no ATELIC_PUSH_KEY in the environment; the roster stays in $WORK"
+        return 1
+    fi
+    if [[ " ${CLONED_PATHS:-} " != *" $ATELIC "* ]]; then
+        echo "roster: the checkout at $ATELIC was not cloned by this run, so nothing is written into it"
+        return 1
+    fi
+    mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+    printf '%s\n' "$ATELIC_PUSH_KEY" > "$keyfile"
+    chmod 600 "$keyfile"
+    ssh_cmd="ssh -i $keyfile -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes"
+    cp "$ROSTER_MD" "$target" || { echo "roster: could not copy the roster into the checkout"; return 1; }
+    git -C "$ATELIC" -c user.name="Claude" -c user.email="claude@atelic.me" add "Outreach/$WEEK-roster.md" || return 1
+    if git -C "$ATELIC" diff --cached --quiet; then
+        echo "roster: the checkout already holds this roster; nothing to commit"
+    elif ! git -C "$ATELIC" -c user.name="Claude" -c user.email="claude@atelic.me" commit --quiet \
+            -m "Outreach: the $WEEK roster, built by the plumber runner" \
+            -m "Built $(date +%F) from the portal sweep, both mailboxes and the pulled sites; the skeleton's Placed Ahead entries carried at the foot." 2>"$WORK/git-stderr.txt"; then
+        echo "roster: commit failed: $(head -c 300 "$WORK/git-stderr.txt")"
+        return 1
+    fi
+    # A shallow clone pushes fine as long as main has not moved under it; when
+    # it has, one rebase onto the fresh tip is the whole retry, since the
+    # commit touches one file nobody else writes in that minute.
+    local attempt
+    for attempt in 1 2; do
+        if GIT_SSH_COMMAND="$ssh_cmd" timeout 2m git -C "$ATELIC" push --quiet origin HEAD:main 2>"$WORK/git-stderr.txt"; then
+            ROSTER_URL="https://github.com/atelic-action/practice/blob/main/Outreach/$WEEK-roster.md"
+            echo "roster: pushed to main as $(git -C "$ATELIC" log -1 --format=%h), $ROSTER_URL"
+            return 0
+        fi
+        [[ $attempt -eq 1 ]] || break
+        GIT_SSH_COMMAND="$ssh_cmd" git -C "$ATELIC" fetch --quiet --depth 1 origin main 2>>"$WORK/git-stderr.txt" \
+            && git -C "$ATELIC" -c user.name="Claude" -c user.email="claude@atelic.me" rebase --quiet origin/main 2>>"$WORK/git-stderr.txt" \
+            || break
+    done
+    echo "roster: push failed: $(head -c 300 "$WORK/git-stderr.txt")"
+    return 1
 }
 
 # ---------- the pulls ----------
@@ -353,7 +415,12 @@ if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
                 opens: (if .value.tracked_sends > 0 then .value.opens else null end),
                 days_since_open: .value.days_since_open, last_reply: .value.last_reply,
                 fit: .value.fit, email: .value.email}}) | from_entries) as $m
-            | .[0] + {funnel: .[1].funnel, groom: .[1].groom}
+            | .[0] + {funnel: .[1].funnel, groom: .[1].groom,
+                in_flight: ([.[1].contacts[] | select(.section == "waiting")]
+                    | sort_by(.days_since_send) | reverse
+                    | map({person: .name, company: .company, contact_url: .contact_url, company_url: .company_url,
+                           days_since_send: .days_since_send, touches: (.touches | length),
+                           opens: (if .tracked_sends > 0 then .opens else null end)}))}
             | .owed |= with_entries(.value |= ((. // []) | map(
                 . + {metrics: ((.contact_url // null) as $cu | if ($cu | type) == "string" then ($m[$cu] // null) else null end)})))' \
         "$DRAFT_JSON" "$WORK/portal.json" > "$WORK/draft-merged.json"; then
@@ -373,7 +440,19 @@ if [[ ! -s "$ROSTER_MD" ]] || ! grep -q "Scoreboard" "$ROSTER_MD"; then
     exit 1
 fi
 echo "roster: $(wc -w < "$ROSTER_MD" | tr -d ' ') words in $ROSTER_MD"
-ATTACHMENT="$ROSTER_MD"
+# The roster goes into the repo and the mail links it; only when it could not
+# be placed does it ride as an attachment, so the week is never lost.
+ROSTER_URL=""
+if place_roster; then
+    if ! jq --arg url "$ROSTER_URL" '. + {roster_url: $url}' "$DRAFT_JSON" > "$WORK/draft-linked.json"; then
+        fail_reason="could not add the roster link to the draft"
+        exit 1
+    fi
+    mv "$WORK/draft-linked.json" "$DRAFT_JSON"
+else
+    ATTACHMENT="$ROSTER_MD"
+    echo "roster: riding as the attachment"
+fi
 
 runner_render || exit 1
 runner_render_text || exit 1

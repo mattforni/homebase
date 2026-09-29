@@ -10,6 +10,8 @@ The Read
   at day nine with no reply yet. Tuesday opens on the two replies
   owed, then the first touches.
 
+The roster, the long read, is in the repo: https://github.com/atelic-action/practice/blob/main/Outreach/2026-W05-roster.md
+
 
 ================================================================
 THE PIPELINE
@@ -18,7 +20,7 @@ THE PIPELINE
   Stage     Now  Change
   Lead       22  -3 (12%)
   MQL         7  +3 (75%)
-  SQL         3  +1 (50%)
+  SQL         3  +3 (from 0)
   Oppty       1  0
   Customer    2  0
   Closed      9  +1 (13%)
@@ -32,22 +34,12 @@ THE PIPELINE
 MQL · 7
 ================================================================
 
-  Blue Heron Plumbing [Contacted]
-    2 touches · 6 opens
-    bump 9 days ago · opened 2 days ago
-    PARKED UNTIL 2026-11-09
-    Reach back out to Priya Venkataraman about the rebuild
-
   Sunridge Dental [Contacted]
     1 touch · 4 opens
     first 4 days ago · opened 3 days ago
     NOTE 2026-09-19
     Quoted Foundation at $6,500 in the room; she is reviewing last
     year's numbers first.
-
-  Old Mill Roasters [Contacted]
-    2 touches · 3 opens
-    bump 11 days ago · opened 4 days ago
 
 ================================================================
 SQL · 3
@@ -90,12 +82,34 @@ THIS WEEK
 ================================================================
 
   Touch        Owed
-  Reply to        2
-  Bump            1
   First touch     2
-  Visit           1
+  Bump            1
   Decide          0
+  Reply to        2
+  Visit           1
 
+
+================================================================
+FIRST TOUCH · 2
+================================================================
+
+  Ines Ferreira
+    Harbor Lane Bakery and Provisions of Old Town · fit 17 · owner
+    direct
+    audit led, owner direct, graded A minus
+
+  Tobias Wren
+    Ridgeback Fencing · fit 17 · shared inbox
+    heads up on the hours mismatch, graded A
+
+================================================================
+BUMP · 1
+================================================================
+
+  Renata Oyelaran
+    Sable Creek Landscaping · sent 9 days ago · 1 touch · 6 opens ·
+    opened 2 days ago
+    Day 9 on the first send, no open yet.
 
 ================================================================
 REPLY TO · 2
@@ -113,34 +127,22 @@ REPLY TO · 2
     · opened yesterday
 
 ================================================================
-BUMP · 1
-================================================================
-
-  Renata Oyelaran
-    Sable Creek Landscaping · sent 9 days ago · 1 touch · 6 opens ·
-    opened 2 days ago
-    Day 9 on the first send, no open yet.
-
-================================================================
-FIRST TOUCH · 2
-================================================================
-
-  Ines Ferreira
-    Harbor Lane Bakery and Provisions of Old Town · fit 17 · owner
-    direct
-    audit led, owner direct, graded A minus
-
-  Tobias Wren
-    Ridgeback Fencing · fit 17 · shared inbox
-    heads up on the hours mismatch, graded A
-
-================================================================
 VISIT · 1
 ================================================================
 
   Marguerite Bell
     Thistle Lane Florist · sent 14 days ago · 2 touches · 0 opens
     Walkable, open until 17:00.
+
+================================================================
+IN FLIGHT · 2
+================================================================
+
+  Sasha Popovic
+    Cap Hill Plumbing · day 5 · 2 opens
+
+  Info Desk
+    Flatirons Fire · day 3 · untracked
 
 ================================================================
 THE GROOM
