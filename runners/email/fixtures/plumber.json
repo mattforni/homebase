@@ -20,7 +20,13 @@
           "days_since_open": 1,
           "last_reply": "2026-09-18",
           "fit": 15,
-          "email": "x@example.test"
+          "email": "x@example.test",
+          "touch_days": [
+            3
+          ],
+          "open_days": [
+            1
+          ]
         }
       },
       {
@@ -36,7 +42,13 @@
           "days_since_open": 1,
           "last_reply": "2026-09-18",
           "fit": 15,
-          "email": ""
+          "email": "",
+          "touch_days": [
+            3
+          ],
+          "open_days": [
+            1
+          ]
         }
       }
     ],
@@ -55,7 +67,13 @@
           "last_reply": "",
           "fit": 14,
           "email": "x@example.test",
-          "tracked": 1
+          "tracked": 1,
+          "touch_days": [
+            9
+          ],
+          "open_days": [
+            2
+          ]
         }
       }
     ],
@@ -73,7 +91,12 @@
           "days_since_open": null,
           "last_reply": "",
           "fit": 13,
-          "email": ""
+          "email": "",
+          "touch_days": [
+            21,
+            14
+          ],
+          "open_days": []
         }
       }
     ],

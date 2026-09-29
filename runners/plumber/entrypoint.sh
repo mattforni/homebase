@@ -414,6 +414,7 @@ if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
                 days_since_send: .value.days_since_send, touches: (.value.touches | length),
                 opens: (if .value.tracked_sends > 0 then .value.opens else null end), tracked: .value.tracked_sends,
                 days_since_open: .value.days_since_open, last_reply: .value.last_reply,
+                touch_days: .value.touch_days, open_days: .value.open_days,
                 fit: .value.fit, email: .value.email}}) | from_entries) as $m
             | .[0] + {funnel: .[1].funnel, groom: .[1].groom}
             | .owed |= with_entries(.value |= ((. // []) | map(
