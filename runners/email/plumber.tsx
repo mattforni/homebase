@@ -23,7 +23,7 @@ import {
 } from "@atelic-action/ui/email";
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, jqToString, numberString, shortDate, unindent, weekNumber } from "./jq";
-import { DimLine } from "./local";
+import { DimLine, Link } from "./local";
 import type { RenderContext } from "./types";
 
 /*
@@ -44,7 +44,8 @@ import type { RenderContext } from "./types";
  * and up to five flags. New, Lead and Closed are read as a count and a
  * change; MQL, SQL, Oppty and Customer list every company on a RecordStack so
  * a name never squashes on a phone. Everything the email leaves out lives in
- * the attached roster.
+ * the roster, which the runner commits into the Atelic repo and the title
+ * card links (roster_url); a run that could not push attaches it instead.
  */
 
 type Metrics = {
@@ -124,17 +125,56 @@ export type PipelineDraft = {
 	not_in_block?: LeadNote[] | null;
 	funnel?: Funnel;
 	groom?: Groom;
+	/** Where the runner committed the roster; empty when it rode as the attachment instead. */
+	roster_url?: string | null;
+	/** Every name sent inside six days, from the sweep: nothing is owed on them yet, and they still belong on the pipeline (Forni, 2026-09-29). */
+	in_flight?: InFlight[] | null;
 };
+
+type InFlight = {
+	person?: unknown;
+	company?: unknown;
+	contact_url?: string | null;
+	company_url?: string | null;
+	days_since_send?: number | null;
+	touches?: number | null;
+	opens?: number | null;
+};
+
+/**
+ * A parked name (an open task dated past this week) is noise until its week,
+ * whatever stage it sits in, so the stage lists leave it out (Forni,
+ * 2026-09-29). It comes back the week its task falls due.
+ */
+function shownCompanies(stage: FunnelStage): FunnelCompany[] {
+	return alt(stage.companies, []).filter((company) => jqToString(alt(company.task?.reading, "")) !== "parked");
+}
+
+function inFlightRecords(rows: InFlight[]): RecordStackItem[] {
+	return rows.map((row) => ({
+		title: jqToString(alt(row.person, "")),
+		url: row.contact_url,
+		meta: [
+			jqToString(alt(row.company, "")),
+			row.days_since_send === null || row.days_since_send === undefined ? "" : `day ${numberString(row.days_since_send)}`,
+			row.opens === null || row.opens === undefined ? "untracked" : count(row.opens, "open"),
+		].filter((m) => m !== ""),
+	}));
+}
 
 /* ---------- shared readings ---------- */
 
-/** The desk block's order: replies first, then bumps, then the new names, then Thursday's visits, then the calls only Forni makes. */
+/**
+ * The week's order (Forni, 2026-09-29): the new names first, then the bumps,
+ * then the calls only Forni makes, then the replies owed, then Thursday's
+ * visits. Until W40 replies led and first touches came fourth.
+ */
 const OWED_KINDS: { key: keyof Owed; label: string }[] = [
-	{ key: "reply", label: "Reply to" },
-	{ key: "bump", label: "Bump" },
 	{ key: "first_touch", label: "First touch" },
-	{ key: "visit", label: "Visit" },
+	{ key: "bump", label: "Bump" },
 	{ key: "decide", label: "Decide" },
+	{ key: "reply", label: "Reply to" },
+	{ key: "visit", label: "Visit" },
 ];
 
 /** The strip: the funnel Forni works. New is the pool waiting for a first send and reads as a line beneath. */
@@ -158,12 +198,18 @@ function signed(n: number): string {
 	return n > 0 ? `+${numberString(n)}` : numberString(n);
 }
 
-/** "+6 (15%)", "+9" when there was nothing a week ago, or "0" when nothing moved. */
+/**
+ * "+6 (15%)", "+9 (from 0)" when the stage was empty a week ago so no
+ * percentage exists, or "0" when nothing moved. The sweep leaves pct null
+ * exactly when last week's count was zero (Forni asked on 2026-09-29 why MQL
+ * and SQL showed no percentage; both had been empty until the 09-22 reset).
+ */
 function deltaText(stage: FunnelStage): string {
 	const delta = alt(stage.delta, 0);
 	const pct = stage.pct;
 	if (delta === 0) return "0";
-	return pct === null || pct === undefined ? signed(delta) : `${signed(delta)} (${numberString(Math.abs(pct))}%)`;
+	if (pct === null || pct === undefined) return alt(stage.then, 0) === 0 ? `${signed(delta)} (from 0)` : signed(delta);
+	return `${signed(delta)} (${numberString(Math.abs(pct))}%)`;
 }
 
 function stripStats(funnel: Funnel): StatStripEntry[] {
@@ -383,6 +429,8 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 	const owedKinds = owedKindsOf(draft);
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
+	const rosterUrl = jqToString(alt(draft.roster_url, ""));
+	const inFlight = alt(draft.in_flight, []);
 
 	return renderEmail({
 		title: `${context.week} Pipeline`,
@@ -394,6 +442,14 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					meta={`Week ${weekNumber(context.week)} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}`}
 				/>
 				<TitleCard eyebrowText="The read" headlineLines={alt(draft.headline, [])} lede={jqToString(alt(draft.lede, ""))} />
+				{rosterUrl === "" ? null : (
+					<Card>
+						<Row last={true}>
+							<DimLine text="The roster, the long read, is in the repo: " />
+							<Link text={`Outreach/${context.week}-roster.md`} url={rosterUrl} />
+						</Row>
+					</Card>
+				)}
 
 				<Eyebrow text="The pipeline" strong={true} />
 				<Card>
@@ -423,11 +479,11 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					<Fragment key={index}>
 						<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} strong={true} />
 						<Card>
-							{alt(stage.companies, []).length === 0 ? (
-								<EmptyRow text="Nobody here this week." />
+							{shownCompanies(stage).length === 0 ? (
+								<EmptyRow text={alt(stage.companies, []).length === 0 ? "Nobody here this week." : "Everyone here is parked until a later week."} />
 							) : (
 								<Row last={true}>
-									<RecordStack records={alt(stage.companies, []).map((c) => companyRecord(stage, c))} />
+									<RecordStack records={shownCompanies(stage).map((c) => companyRecord(stage, c))} />
 								</Row>
 							)}
 						</Card>
@@ -456,6 +512,17 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						</Card>
 					</Fragment>
 				))}
+
+				{inFlight.length === 0 ? null : (
+					<>
+						<Eyebrow text={`In flight · ${numberString(inFlight.length)}`} strong={true} />
+						<Card>
+							<Row last={true}>
+								<RecordStack records={inFlightRecords(inFlight)} />
+							</Row>
+						</Card>
+					</>
+				)}
 
 				<Eyebrow text="The groom" strong={true} />
 				<Card>
@@ -502,6 +569,8 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	out += `${asciiUpcase(alt(draft.headline, []).join("\n"))}\n`;
 	const lede = unindent(jqToString(alt(draft.lede, "")));
 	if (lede !== "") out += `\n${textRead(lede)}`;
+	const rosterUrl = jqToString(alt(draft.roster_url, ""));
+	if (rosterUrl !== "") out += `\nThe roster, the long read, is in the repo: ${rosterUrl}\n`;
 
 	out += textSection("The Pipeline");
 	if (funnel === null) {
@@ -513,8 +582,12 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 		if (lines.length > 0) out += `\n${lines.map((line) => wrap(line)).join("\n")}\n`;
 		for (const stage of listed) {
 			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
-			const companies = alt(stage.companies, []);
-			out += companies.length === 0 ? "  Nobody here this week.\n" : recordStackText(companies.map((c) => companyRecord(stage, c)));
+			const companies = shownCompanies(stage);
+			if (companies.length === 0) {
+				out += alt(stage.companies, []).length === 0 ? "  Nobody here this week.\n" : "  Everyone here is parked until a later week.\n";
+			} else {
+				out += recordStackText(companies.map((c) => companyRecord(stage, c)));
+			}
 		}
 	}
 
@@ -525,6 +598,12 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	for (const kind of owedKinds) {
 		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
 		out += recordStackText(owedRecords(kind.key, kind.names));
+	}
+
+	const inFlight = alt(draft.in_flight, []);
+	if (inFlight.length > 0) {
+		out += textSection(`In Flight · ${numberString(inFlight.length)}`);
+		out += recordStackText(inFlightRecords(inFlight));
 	}
 
 	out += textSection("The Groom");

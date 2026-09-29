@@ -199,11 +199,19 @@ script to the scratchpad and run that one file.
    roster name, search the domain and the person: a reply that HubSpot
    missed, with nothing from Forni after it, moves them to Follow Up; a bounce on a send marks the address
    dead.
-5. **Sort the roster into the week's fixed order.**
+5. **Sort the roster into the week's fixed order: first touches, then bumps,
+   then decides, then replies, then visits** (Forni, 2026-09-29; until W40
+   replies led and first touches came last). The sections below are described
+   in their old grouping; the roster lists them in that order.
    - **Follow Up**: every conversation already started where the ball is in
      Forni's court, each line tagged with its kind. **Reply:** their message
-     is the latest in the thread and no meeting is booked. **Bump:** a send
-     at about seven days with no reply (below). Replies lead, then bumps.
+     is the latest in the mailbox thread and no meeting is booked; the thread
+     decides, never the portal's direction on an engagement (Josh Beller's own
+     answer was logged incoming on 08-25 and read as a reply owed for a
+     month), and a note from a contact at a Customer company is client work
+     that never reaches this board (Kyle Pratt's thank you, W40). **Bump:** a
+     send at about seven days with no reply (below). Bumps come before
+     replies in the week's order.
      **The section opens with a table of every hit from the incoming email
      search and the mailbox sweep** (sender, date, subject, verbatim from the
      source), marking each dropped hit and why (already answered, or a
@@ -274,8 +282,9 @@ script to the scratchpad and run that one file.
    note that it is a snapshot and HubSpot is canonical. **Then the weekly scoreboard**,
    before the counts: one table of summary statistics, columns Type, Complete,
    Target, %, Done, Details, **one row per type and never one row per name**,
-   plus a bold total row. The types are, in this order: Follow Up, Outbound,
-   Meetings, Close. Follow Up lines are tagged "Reply:" or "Bump:", Outbound is
+   plus a bold total row. The types are, in this order: Outbound, Follow Up,
+   Close, Meetings (the week's order, Forni 2026-09-29). Follow Up lines are
+   tagged "Bump:" or "Reply:", bumps first, Outbound is
    every first touch, and Meetings lines are tagged "In person:" or
    "Remote:". Complete is zero on Monday and reads before
    Target, % is Complete over Target, Done is `✅` at 100, and Details is one

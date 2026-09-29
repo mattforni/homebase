@@ -1011,7 +1011,9 @@ async function sweep(argv) {
     const stageSort = {
         new: (a, b) => ((b.fit || 0) - (a.fit || 0)),
         lead: (a, b) => ((b.opens || 0) - (a.opens || 0)) || ((b.days_since_send || 0) - (a.days_since_send || 0)),
-        mql: (a, b) => ((b.opens || 0) - (a.opens || 0)) || ((b.days_since_send || 0) - (a.days_since_send || 0)),
+        // Touches first, then opens (Forni, 2026-09-29): the most worked name
+        // with the most opens is the one to follow up with.
+        mql: (a, b) => ((b.touches || 0) - (a.touches || 0)) || ((b.opens || 0) - (a.opens || 0)) || ((b.days_since_send || 0) - (a.days_since_send || 0)),
         sql: (a, b) => (b.replied || "").localeCompare(a.replied || ""),
         opportunity: (a, b) => ((b.deal?.amount || 0) - (a.deal?.amount || 0)),
         customer: (a, b) => a.name.localeCompare(b.name),
