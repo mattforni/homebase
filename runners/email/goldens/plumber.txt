@@ -17,7 +17,7 @@ The full read is in the roster: https://github.com/atelic-action/practice/blob/m
 THE PIPELINE
 ================================================================
 
-  Stage     Now  WoW
+  Stage     Now  Change
   Lead       22  -3 (12%)
   MQL         7  +3 (75%)
   SQL         3  +3 (from 0)
@@ -46,9 +46,6 @@ MQL · 7
 
   Sunridge Dental [Contacted]
     1 touch · 4 opens · first 4 days ago · opened 3 days ago
-    NOTE 2026-09-19
-    Quoted Foundation at $6,500 in the room; she is reviewing last
-    year's numbers first.
 
 ================================================================
 SQL · 3

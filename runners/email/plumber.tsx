@@ -23,7 +23,7 @@ import {
 } from "@atelic-action/ui/email";
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, jqToString, numberString, shortDate, unindent, weekNumber } from "./jq";
-import { DimLine, RosterLine, StripCaption } from "./local";
+import { DimLine, RosterLine } from "./local";
 import { recordCard, statusWord, type TouchLine } from "./records";
 import type { RenderContext } from "./types";
 
@@ -273,21 +273,16 @@ function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackI
 	});
 }
 
-/** The next step on the record, as the orange callout under the name: a park with its date, a task due, or the newest note. */
+/**
+ * The one callout a stage card carries: a park, with its date. A task due
+ * and the newest note used to show here too, and read as noise on every
+ * windshield sighting (Forni, 2026-09-29: no notes on the cards unless the
+ * note is that the name is parked for now).
+ */
 function nextStep(company: FunnelCompany): { eyebrow: string; text: string } | undefined {
 	const task = company.task;
-	if (task && jqToString(alt(task.subject, "")) !== "") {
-		const due = jqToString(alt(task.due, ""));
-		const reading = jqToString(alt(task.reading, ""));
-		const eyebrow =
-			reading === "parked" ? `Parked until ${due}` : reading === "stale" ? `Task overdue since ${due}` : due === "" ? "Task" : `Task due ${due}`;
-		return { eyebrow, text: jqToString(task.subject) };
-	}
-	const note = company.note;
-	if (note && jqToString(alt(note.text, "")) !== "") {
-		return { eyebrow: `Note ${jqToString(alt(note.date, ""))}`.trim(), text: jqToString(note.text) };
-	}
-	return undefined;
+	if (!task || jqToString(alt(task.subject, "")) === "" || jqToString(alt(task.reading, "")) !== "parked") return undefined;
+	return { eyebrow: `Parked until ${jqToString(alt(task.due, ""))}`, text: jqToString(task.subject) };
 }
 
 /** The five kinds of touch owed as a strip, in the desk block's order. */
@@ -405,7 +400,6 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					) : (
 						<Row last={true}>
 							<StatStrip stats={stripStats(funnel)} />
-							<StripCaption text="WoW" />
 						</Row>
 					)}
 				</Card>
@@ -511,7 +505,7 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 		out += "  The portal sweep carried no funnel this run.\n";
 	} else {
 		const strip = stripStats(funnel);
-		out += `${textTable(["Stage", "Now", "WoW"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
+		out += `${textTable(["Stage", "Now", "Change"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
 		for (const stage of listed) {
 			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
 			const companies = listedCompanies(stage, funnel);
