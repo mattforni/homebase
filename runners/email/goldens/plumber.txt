@@ -35,8 +35,7 @@ MQL · 7
 ================================================================
 
   Sunridge Dental [Contacted]
-    1 touch · 4 opens
-    first 4 days ago · opened 3 days ago
+    1 touch · 4 opens · first 4 days ago · opened 3 days ago
     NOTE 2026-09-19
     Quoted Foundation at $6,500 in the room; she is reviewing last
     year's numbers first.
@@ -46,16 +45,15 @@ SQL · 3
 ================================================================
 
   Granite Peak Tile [Engaged]
-    2 touches · 5 opens
-    bump 6 days ago · opened 2 days ago · replied 3 days ago
+    no send logged · replied 3 days ago
 
   Northwind Outfitters [Connected]
-    3 touches · 2 opens
-    visit 19 days ago · opened 3 days ago · replied 3 days ago
+    3 touches · 2 opens · visit 19 days ago · opened 3 days ago ·
+    replied 3 days ago
 
   Silver Sage Counseling [Engaged]
-    1 touch · 1 open
-    first 24 days ago · opened 4 days ago · replied 3 days ago
+    1 touch · 1 open · first 24 days ago · opened 4 days ago ·
+    replied 3 days ago
 
 ================================================================
 OPPTY · 1
@@ -107,7 +105,7 @@ BUMP · 1
 ================================================================
 
   Renata Oyelaran
-    Sable Creek Landscaping · sent 9 days ago · 1 touch · 6 opens ·
+    Sable Creek Landscaping · 1 touch · 6 opens · sent 9 days ago ·
     opened 2 days ago
     Day 9 on the first send, no open yet.
 
@@ -116,22 +114,23 @@ REPLY TO · 2
 ================================================================
 
   Salley Wilson
-    Pinewood Cabinetry · replied 2026-09-18 · 2 touches · 5 opens ·
-    opened yesterday
+    Pinewood Cabinetry · 2 touches · 5 opens · sent 3 days ago ·
+    opened yesterday · replied 2026-09-18
     Owed a number since Tuesday, sending as Atelic, graded A, and
     she asked twice whether the audit could be walked through in
     person at the shop rather than over a call.
 
   Dov Marchetti
-    Harbor Line Plumbing · replied 2026-09-18 · 2 touches · 5 opens
-    · opened yesterday
+    Harbor Line Plumbing · 2 touches · 5 opens · sent 3 days ago ·
+    opened yesterday · replied 2026-09-18
 
 ================================================================
 VISIT · 1
 ================================================================
 
   Marguerite Bell
-    Thistle Lane Florist · sent 14 days ago · 2 touches · 0 opens
+    Thistle Lane Florist · 2 touches · no opens yet · sent 14 days
+    ago
     Walkable, open until 17:00.
 
 ================================================================
@@ -139,10 +138,11 @@ IN FLIGHT · 2
 ================================================================
 
   Sasha Popovic
-    Cap Hill Plumbing · day 5 · 2 opens
+    Cap Hill Plumbing · 2 touches · 2 opens · 1 of 2 tracked · sent
+    5 days ago
 
   Info Desk
-    Flatirons Fire · day 3 · untracked
+    Flatirons Fire · 1 touch · untracked · sent 3 days ago
 
 ================================================================
 THE GROOM

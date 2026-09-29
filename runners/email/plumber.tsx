@@ -24,6 +24,7 @@ import {
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, jqToString, numberString, shortDate, unindent, weekNumber } from "./jq";
 import { DimLine, Link } from "./local";
+import { recordCard, statusWord, type TouchLine } from "./records";
 import type { RenderContext } from "./types";
 
 /*
@@ -51,6 +52,8 @@ import type { RenderContext } from "./types";
 type Metrics = {
 	days_since_send?: number | null;
 	touches?: number | null;
+	/** Sends that carried tracking, so a card can say "1 of 2 tracked". */
+	tracked?: number | null;
 	opens?: number | null;
 	days_since_open?: number | null;
 	last_reply?: unknown;
@@ -138,6 +141,7 @@ type InFlight = {
 	company_url?: string | null;
 	days_since_send?: number | null;
 	touches?: number | null;
+	tracked?: number | null;
 	opens?: number | null;
 };
 
@@ -151,15 +155,14 @@ function shownCompanies(stage: FunnelStage): FunnelCompany[] {
 }
 
 function inFlightRecords(rows: InFlight[]): RecordStackItem[] {
-	return rows.map((row) => ({
-		title: jqToString(alt(row.person, "")),
-		url: row.contact_url,
-		meta: [
-			jqToString(alt(row.company, "")),
-			row.days_since_send === null || row.days_since_send === undefined ? "" : `day ${numberString(row.days_since_send)}`,
-			row.opens === null || row.opens === undefined ? "untracked" : count(row.opens, "open"),
-		].filter((m) => m !== ""),
-	}));
+	return rows.map((row) =>
+		recordCard({
+			title: row.person,
+			url: row.contact_url,
+			lead: [row.company],
+			touch: { touches: row.touches, tracked: row.tracked, opens: row.opens, daysSinceSend: row.days_since_send },
+		}),
+	);
 }
 
 /* ---------- shared readings ---------- */
@@ -224,13 +227,6 @@ function plural(count: number, noun: string): string {
 }
 
 /** "today", "yesterday", "3 days ago"; empty when there is no date. */
-function ago(days: number | null | undefined): string {
-	if (days === null || days === undefined) return "";
-	if (days <= 0) return "today";
-	if (days === 1) return "yesterday";
-	return `${numberString(days)} days ago`;
-}
-
 function stageOf(funnel: Funnel, key: string): FunnelStage | undefined {
 	return alt(funnel?.stages, []).find((stage) => jqToString(stage.key) === key);
 }
@@ -262,64 +258,37 @@ function funnelLines(funnel: Funnel): string[] {
 	].filter((line) => line !== "");
 }
 
-function statusWord(value: unknown): string {
-	const s = jqToString(value);
-	return s === "" ? "" : s.charAt(0) + s.slice(1).toLowerCase();
-}
-
-function money(amount: number | null | undefined): string {
-	if (amount === null || amount === undefined) return "";
-	return `$${Math.round(amount).toLocaleString("en-US")}`;
-}
-
-function count(n: number, noun: string): string {
-	return `${numberString(n)} ${n === 1 ? noun : `${noun}${noun.endsWith("ch") ? "es" : "s"}`}`;
-}
-
 /*
  * A company on a stage list, on the same two lines every time. The meta line
  * is the state (status, touches, opens); the note line is the clock (the last
  * touch and when, the last open, the reply). A deal stage reads the deal
  * instead: its stage and the money, then the date and the status.
  */
+/** A company on a stage list: the shared card, with the deal on the two deal stages and the touch line on the rest. */
 function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackItem {
 	const key = jqToString(stage.key);
-	if (key === "opportunity" || key === "customer") {
-		const deal = company.deal;
-		const meta = deal
-			? [jqToString(alt(deal.stage, "")), money(deal.amount)].filter((m) => m !== "")
-			: ["no deal on the record"];
-		const clock: string[] = [];
-		if (deal && jqToString(alt(deal.close, "")) !== "") {
-			clock.push(`${key === "customer" ? "signed" : "closes"} ${jqToString(deal.close)}`);
-		}
-		return {
-			title: jqToString(company.name),
-			url: company.url,
-			badge: statusWord(company.status) || undefined,
-			meta,
-			note: clock.join(" · ") || undefined,
-			callout: nextStep(company),
-		};
-	}
-	const meta = [
-		count(alt(company.touches, 0), "touch"),
-		company.opens === null || company.opens === undefined ? "untracked" : count(company.opens, "open"),
-	].filter((m) => m !== "");
-	const clock: string[] = [];
-	if (jqToString(alt(company.last_touch, "")) !== "" && ago(company.days_since_send) !== "") {
-		clock.push(`${jqToString(company.last_touch).toLowerCase()} ${ago(company.days_since_send)}`);
-	}
-	if (ago(company.days_since_open) !== "") clock.push(`opened ${ago(company.days_since_open)}`);
-	if (ago(company.days_since_reply) !== "") clock.push(`replied ${ago(company.days_since_reply)}`);
-	return {
-		title: jqToString(company.name),
+	const onDeal = key === "opportunity" || key === "customer";
+	return recordCard({
+		title: company.name,
 		url: company.url,
-		badge: statusWord(company.status) || undefined,
-		meta,
-		note: clock.join(" · ") || undefined,
+		badge: company.status,
+		deal: onDeal
+			? company.deal
+				? { stage: company.deal.stage, amount: company.deal.amount, close: company.deal.close, signed: key === "customer" }
+				: null
+			: undefined,
+		touch: onDeal
+			? undefined
+			: {
+					touches: company.touches,
+					opens: company.opens,
+					lastTouch: company.last_touch,
+					daysSinceSend: company.days_since_send,
+					daysSinceOpen: company.days_since_open,
+					daysSinceReply: company.days_since_reply,
+				},
 		callout: nextStep(company),
-	};
+	});
 }
 
 /** The next step on the record, as the orange callout under the name: a park with its date, a task due, or the newest note. */
@@ -346,36 +315,30 @@ function owedStats(draft: PipelineDraft): StatStripEntry[] {
 }
 
 /** The numbers under an owed name, from the sweep, in the same slots for every kind. */
-function metricsLine(kind: keyof Owed, m: Metrics): string {
-	if (m === null || m === undefined) return "";
-	if (kind === "first_touch") {
-		const parts: string[] = [];
-		if (m.fit !== null && m.fit !== undefined) parts.push(`fit ${numberString(m.fit)}`);
-		parts.push(jqToString(alt(m.email, "")) === "" ? "shared inbox" : "owner direct");
-		return parts.join(" · ");
-	}
-	const parts: string[] = [];
-	if (kind === "reply") {
-		if (jqToString(alt(m.last_reply, "")) !== "") parts.push(`replied ${jqToString(m.last_reply)}`);
-	} else if (ago(m.days_since_send) !== "") {
-		parts.push(`sent ${ago(m.days_since_send)}`);
-	}
-	parts.push(count(alt(m.touches, 0), "touch"));
-	parts.push(m.opens === null || m.opens === undefined ? "untracked" : count(m.opens, "open"));
-	if (ago(m.days_since_open) !== "") parts.push(`opened ${ago(m.days_since_open)}`);
-	return parts.join(" · ");
-}
-
+/**
+ * A person owed a touch: the shared card with the company leading the meta
+ * line. A first touch carries the fit and the door instead of a touch line,
+ * since nothing has been sent; every other kind carries the sweep's numbers.
+ */
 function owedRecords(kind: keyof Owed, names: Name[]): RecordStackItem[] {
 	return names.map((name) => {
-		const company = jqToString(alt(name.company, ""));
-		const metrics = metricsLine(kind, name.metrics ?? null);
-		return {
-			title: jqToString(name.person),
-			url: name.contact_url,
-			meta: [company, metrics].filter((m) => m !== ""),
-			note: jqToString(alt(name.note, "")) === "" ? undefined : jqToString(name.note),
-		};
+		const m = name.metrics ?? null;
+		const lead: unknown[] = [name.company];
+		let touch: TouchLine | undefined;
+		if (kind === "first_touch") {
+			if (m && m.fit !== null && m.fit !== undefined) lead.push(`fit ${numberString(m.fit)}`);
+			if (m) lead.push(jqToString(alt(m.email, "")) === "" ? "shared inbox" : "owner direct");
+		} else if (m) {
+			touch = {
+				touches: m.touches,
+				tracked: m.tracked,
+				opens: m.opens,
+				daysSinceSend: m.days_since_send,
+				daysSinceOpen: m.days_since_open,
+				lastReply: kind === "reply" ? m.last_reply : undefined,
+			};
+		}
+		return recordCard({ title: name.person, url: name.contact_url, lead, touch, note: name.note });
 	});
 }
 

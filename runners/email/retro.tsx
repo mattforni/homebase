@@ -50,6 +50,7 @@ import {
 	word,
 } from "./jq";
 import { RecordsRow, SessionsRow, SpacerRow } from "./local";
+import { recordCard } from "./records";
 import type { RenderContext } from "./types";
 
 /*
@@ -301,38 +302,40 @@ function funnel(draft: RetroDraft): Staged[] {
  * reads its outcome and its reason.
  */
 
-function count(n: number, noun: string): string {
-	return `${numberString(n)} ${n === 1 ? noun : `${noun}${noun.endsWith("ch") ? "es" : "s"}`}`;
-}
+/*
+ * All three go through the shared card in records.ts, the same one the
+ * Pipeline mail uses, so a company reads the same way in both mails
+ * (Forni, 2026-09-29). The retro's rows carry counts as strings and no day
+ * clock, so the card gets what the week table knows and nothing invented.
+ */
 
 function leadRecord(row: FunnelRow): RecordStackItem {
-	const touches = row.touches === null || row.touches === undefined ? "" : count(Number(row.touches), "touch");
-	const opens = row.opens === null || row.opens === undefined ? "untracked" : count(Number(row.opens), "open");
 	const kind = titlecase(alt(row.kind, ""));
-	return {
-		title: jqToString(row.company),
-		badge: titlecase(alt(row.status, "")) || undefined,
-		meta: [touches, opens, row.replied === "yes" ? "replied" : ""],
+	const touches = row.touches === null || row.touches === undefined ? null : Number(row.touches);
+	const opens = row.opens === null || row.opens === undefined ? null : Number(row.opens);
+	return recordCard({
+		title: row.company,
+		badge: row.status,
+		touch: { touches, opens, replied: row.replied === "yes" },
 		note: kind === "" ? undefined : `Last touch: ${kind}`,
-	};
+	});
 }
 
 function dealRecord(row: FunnelRow): RecordStackItem {
-	const stage = alt(row.stage, "-");
 	const cash = alt(row.cash, "-");
-	return {
-		title: jqToString(row.company),
-		meta: [stage === "-" ? "no stage set" : stage, cash === "-" ? "" : cash],
-	};
+	return recordCard({
+		title: row.company,
+		deal: { stage: alt(row.stage, ""), amount: null, cash: cash === "-" ? "" : cash },
+	});
 }
 
 function closedRecord(row: FunnelRow): RecordStackItem {
 	const reason = alt(row.reason, "-");
-	return {
-		title: jqToString(row.company),
-		badge: row.stage === "Closed Lost" ? "Closed Lost" : titlecase(alt(row.status, "")) || undefined,
-		meta: [reason === "-" ? "" : titlecase(reason)],
-	};
+	return recordCard({
+		title: row.company,
+		badge: row.stage === "Closed Lost" ? "Closed Lost" : row.status,
+		closed: reason === "-" ? null : { reason },
+	});
 }
 
 type Stage = {
