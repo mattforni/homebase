@@ -10,14 +10,14 @@ The Read
   at day nine with no reply yet. Tuesday opens on the two replies
   owed, then the first touches.
 
-The roster, the long read, is in the repo: https://github.com/atelic-action/practice/blob/main/Outreach/2026-W05-roster.md
+The full read is in the roster: https://github.com/atelic-action/practice/blob/main/Outreach/2026-W05-roster.md
 
 
 ================================================================
 THE PIPELINE
 ================================================================
 
-  Stage     Now  Change
+  Stage     Now  WoW
   Lead       22  -3 (12%)
   MQL         7  +3 (75%)
   SQL         3  +3 (from 0)
@@ -25,9 +25,19 @@ THE PIPELINE
   Customer    2  0
   Closed      9  +1 (13%)
 
-  41 names waiting for a first send: 3 in and 0 out this week.
-  Lead 22, -3 (12%): 1 in and 4 out this week.
-  Closed 9, +1 (13%): 1 in and 0 out this week.
+
+================================================================
+LEAD · 22
+================================================================
+
+  Pinewood Cabinetry [Contacted]
+    1 touch · 2 opens · first 2 days ago · opened yesterday
+
+  Harbor Lane Bakery [Contacted]
+    1 touch · untracked · first 4 days ago
+
+  20 more names sent a week or longer ago; the ones owed a touch are
+  under This Week.
 
 
 ================================================================
@@ -132,17 +142,6 @@ VISIT · 1
     Thistle Lane Florist · 2 touches · no opens yet · sent 14 days
     ago
     Walkable, open until 17:00.
-
-================================================================
-IN FLIGHT · 2
-================================================================
-
-  Sasha Popovic
-    Cap Hill Plumbing · 2 touches · 2 opens · 1 of 2 tracked · sent
-    5 days ago
-
-  Info Desk
-    Flatirons Fire · 1 touch · untracked · sent 3 days ago
 
 ================================================================
 THE GROOM

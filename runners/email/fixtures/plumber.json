@@ -171,7 +171,48 @@
           "Old Mill Roasters",
           "Granite Peak Tile"
         ],
-        "companies": []
+        "companies": [
+          {
+            "id": "30",
+            "name": "Pinewood Cabinetry",
+            "url": "https://app.example.test/contacts/1/record/0-2/30",
+            "fit": 8,
+            "status": "CONTACTED",
+            "last_touch": "First",
+            "last_send": "2026-09-19",
+            "touches": 1,
+            "opens": 2,
+            "replied": "",
+            "days_since_send": 2,
+            "deal": null,
+            "closed": null,
+            "last_open": "2026-09-20",
+            "days_since_open": 1,
+            "days_since_reply": null,
+            "task": null,
+            "note": null
+          },
+          {
+            "id": "31",
+            "name": "Harbor Lane Bakery",
+            "url": "https://app.example.test/contacts/1/record/0-2/31",
+            "fit": 6,
+            "status": "CONTACTED",
+            "last_touch": "First",
+            "last_send": "2026-09-17",
+            "touches": 1,
+            "opens": null,
+            "replied": "",
+            "days_since_send": 4,
+            "deal": null,
+            "closed": null,
+            "last_open": "",
+            "days_since_open": null,
+            "days_since_reply": null,
+            "task": null,
+            "note": null
+          }
+        ]
       },
       {
         "key": "mql",
@@ -490,26 +531,5 @@
       }
     ]
   },
-  "roster_url": "https://github.com/atelic-action/practice/blob/main/Outreach/2026-W05-roster.md",
-  "in_flight": [
-    {
-      "person": "Sasha Popovic",
-      "company": "Cap Hill Plumbing",
-      "contact_url": "https://app.hubspot.com/contacts/246648548/record/0-1/553459956418",
-      "company_url": "https://app.hubspot.com/contacts/246648548/record/0-2/347101591250",
-      "days_since_send": 5,
-      "touches": 2,
-      "opens": 2,
-      "tracked": 1
-    },
-    {
-      "person": "Info Desk",
-      "company": "Flatirons Fire",
-      "contact_url": "https://app.hubspot.com/contacts/246648548/record/0-1/1",
-      "company_url": "https://app.hubspot.com/contacts/246648548/record/0-2/348602546929",
-      "days_since_send": 3,
-      "touches": 1,
-      "opens": null
-    }
-  ]
+  "roster_url": "https://github.com/atelic-action/practice/blob/main/Outreach/2026-W05-roster.md"
 }

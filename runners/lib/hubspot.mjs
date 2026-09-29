@@ -856,6 +856,10 @@ async function sweep(argv) {
         if (co.disqualification_reason) { section = "closed"; why = co.disqualification_reason; }
         else if (!status) { section = "not_in_motion"; why = "no Lead Status"; }
         else if (CLOSED_STATUSES.has(status)) { section = "closed"; why = `${status} with no reason on the company; set one`; }
+        // A customer's contact is never owed a touch by this motion: a note from
+        // them is client work (Forni, 2026-09-29, when Kyle Pratt's thank you
+        // read as a reply owed).
+        else if (co.lifecyclestage === "customer") { section = "conversation"; why = `a customer; their ${lastReplyDay || "last"} message is client work, not a reply owed`; }
         else if (lastReply && (!lastTouch || lastReply.ts >= lastTouch.ts)) { section = "replies_owed"; why = `their ${lastReplyDay} reply is the last message on the record`; }
         else if (due.length) { section = "tasks_due"; why = `task due ${due[0].due}: ${due[0].subject}`; }
         else if (parked.length) { section = "parked"; why = `task parked to ${parked[0].due}; silent until then`; }
@@ -1024,10 +1028,13 @@ async function sweep(argv) {
         stages: STAGE_ORDER.map((key) => {
             const nowList = byStage.now.get(key) || [], thenList = byStage.then.get(key) || [];
             const thenIds = new Set(thenList.map((c) => c.id)), nowIds = new Set(nowList.map((c) => c.id));
-            // New, Lead and Closed are read as counts and movers alone; the
-            // four stages in between list every company (Forni, 2026-09-24).
-            const listed = ["mql", "sql", "opportunity", "customer"].includes(key);
-            const shown = (listed ? nowList : []).map(funnelRow).sort(stageSort[key]);
+            // New and Closed are read as counts and movers alone; Lead lists
+            // the week's sends, the names in flight with nothing owed on them
+            // yet (Forni, 2026-09-29), and the four stages above it list every
+            // company (Forni, 2026-09-24).
+            const listed = ["lead", "mql", "sql", "opportunity", "customer"].includes(key);
+            const inWeek = (co) => { const s = companyTouches(co).lastSend; return Boolean(s) && daysSince(`${s}T12:00:00Z`) < 6; };
+            const shown = (listed ? (key === "lead" ? nowList.filter(inWeek) : nowList) : []).map(funnelRow).sort(stageSort[key]);
             const delta = nowList.length - thenList.length;
             return {
                 key, label: STAGE_LABEL[key], now: nowList.length, then: thenList.length, delta,

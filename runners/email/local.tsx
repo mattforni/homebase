@@ -83,6 +83,37 @@ export function Link({ text, url }: LinkProps) {
 	);
 }
 
+export type RosterLineProps = { url: string };
+
+/**
+ * The last line of the read card: where the long read lives. It sits in the
+ * TitleCard's stats slot, so the lede keeps the card's foot and this line
+ * reads as its own paragraph (Forni, 2026-09-29, after the roster link rode
+ * as a card of its own).
+ */
+export function RosterLine({ url }: RosterLineProps) {
+	const { palette, fonts } = useEmailTheme();
+	return (
+		<tr>
+			<td style={{ padding: "14px 26px 26px", fontFamily: fonts.sans, fontSize: "15px", lineHeight: "1.6", color: palette.dim }}>
+				The full read is in <Link text="the roster" url={url} />.
+			</td>
+		</tr>
+	);
+}
+
+export type StripCaptionProps = { text: string };
+
+/** A caption under a strip's delta row, in the delta's own type: what the small numbers are (WoW, week over week). */
+export function StripCaption({ text }: StripCaptionProps) {
+	const { palette, fonts } = useEmailTheme();
+	return (
+		<div style={{ textAlign: "center", fontFamily: fonts.mono, fontSize: "11px", letterSpacing: "0.08em", color: palette.faint, paddingTop: "2px" }}>
+			{text}
+		</div>
+	);
+}
+
 export type DimLineProps = { text: string };
 
 /** One dim sentence filling a card row: the board's empty state. */
