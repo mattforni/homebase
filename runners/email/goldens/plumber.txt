@@ -29,6 +29,60 @@ THE PIPELINE
 
 
 ================================================================
+LEAD · 22
+================================================================
+
+
+  Waiting on a send, 2: Pinewood Cabinetry, Harbor Lane Bakery
+
+
+================================================================
+MQL · 7
+================================================================
+
+
+  Waiting on a send, 1: Sunridge Dental
+
+
+================================================================
+SQL · 3
+================================================================
+
+  Granite Peak Tile [New]
+    no send logged · replied 3 days ago
+
+  Northwind Outfitters
+    3 touches · 2 opens · visit 19 days ago · opened 3 days ago ·
+    replied 3 days ago
+
+  Silver Sage Counseling
+    1 touch · 1 open · first 24 days ago · opened 4 days ago ·
+    replied 3 days ago
+
+
+================================================================
+OPPTY · 1
+================================================================
+
+  Rivermark Kitchen and Bath
+    Proposal · $8,500
+    closes 2026-10-31
+
+
+================================================================
+CUSTOMER · 2
+================================================================
+
+  Alder and Oak Physical Therapy
+    Closed Won · $9,090
+    signed 2026-09-17
+
+  Westbrook Skylights
+    Closed Won · $7,500
+    signed 2026-08-20
+
+
+================================================================
 THIS WEEK
 ================================================================
 
@@ -87,60 +141,6 @@ VISIT · 1
     30d [········#······#··············|]
     Thistle Lane Florist · 2 touches · no opens yet
     Walkable, open until 17:00.
-
-================================================================
-LEAD · 22
-================================================================
-
-
-  Waiting on a send, 2: Pinewood Cabinetry, Harbor Lane Bakery
-
-
-================================================================
-MQL · 7
-================================================================
-
-
-  Waiting on a send, 1: Sunridge Dental
-
-
-================================================================
-SQL · 3
-================================================================
-
-  Granite Peak Tile [New]
-    no send logged · replied 3 days ago
-
-  Northwind Outfitters
-    3 touches · 2 opens · visit 19 days ago · opened 3 days ago ·
-    replied 3 days ago
-
-  Silver Sage Counseling
-    1 touch · 1 open · first 24 days ago · opened 4 days ago ·
-    replied 3 days ago
-
-
-================================================================
-OPPTY · 1
-================================================================
-
-  Rivermark Kitchen and Bath
-    Proposal · $8,500
-    closes 2026-10-31
-
-
-================================================================
-CUSTOMER · 2
-================================================================
-
-  Alder and Oak Physical Therapy
-    Closed Won · $9,090
-    signed 2026-09-17
-
-  Westbrook Skylights
-    Closed Won · $7,500
-    signed 2026-08-20
-
 
 ================================================================
 THE GROOM
