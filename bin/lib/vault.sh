@@ -6,14 +6,11 @@
 # duplication is not theoretical here: the same three-copies problem already
 # bit the .account resolver badly enough to produce bin/lib/account-profile.sh.
 #
-# The split, 2026-08-14: one shared vault became three, one per identity, named
-# to match the gws profiles they serve.
+# The split, 2026-08-14: one shared vault became one per identity, named to
+# match the gws profiles they serve.
 #
 #   forni-keys   personal   mattforni@gmail.com, its own billing account
 #   atelic-keys  atelic     matt@atelic.me, inside the atelic.me organization
-#   tpf-keys     tpf        the Product Forge set, kept separate so retiring
-#                           that venture is one project delete rather than
-#                           picking secrets out of a shared vault
 #
 # They were previously commingled in a single project, which put YNAB and
 # calendar tokens inside a business organization and the business's spend on a
@@ -35,28 +32,24 @@
 
 VAULT_PROJECT_ATELIC="${VAULT_PROJECT_ATELIC:-atelic-keys}"
 VAULT_PROJECT_PERSONAL="${VAULT_PROJECT_PERSONAL:-forni-keys}"
-VAULT_PROJECT_TPF="${VAULT_PROJECT_TPF:-tpf-keys}"
 
 # gws profile to vault project. The profile names and the project names are
-# deliberately parallel (personal/atelic/tpf), so a new profile needs one line
+# deliberately parallel (personal/atelic), so a new profile needs one line
 # here and nothing else.
 vault_project_for_profile() {
     case "$1" in
         personal) printf '%s' "$VAULT_PROJECT_PERSONAL" ;;
-        tpf)      printf '%s' "$VAULT_PROJECT_TPF" ;;
         *)        printf '%s' "$VAULT_PROJECT_ATELIC" ;;
     esac
 }
 
-# Credential name to vault project. Personal and TPF are the explicit lists
-# because they are the shorter ones and the ones whose misplacement matters;
+# Credential name to vault project. Personal is the explicit list because it
+# is the shorter one and the one whose misplacement matters;
 # Atelic is the default, so a new business credential needs no edit here.
 vault_project_for_secret() {
     case "$1" in
         ynab-token|reclaim-api-key|todoist-api-token|strava-client-id|strava-client-secret|strava-refresh-token|gws-oauth-token-personal|gws-oauth-client-personal)
             printf '%s' "$VAULT_PROJECT_PERSONAL" ;;
-        hubspot-service-key-tpf|linear-cli-theproductforge|gws-oauth-client-tpf)
-            printf '%s' "$VAULT_PROJECT_TPF" ;;
         *)
             printf '%s' "$VAULT_PROJECT_ATELIC" ;;
     esac

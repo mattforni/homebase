@@ -46,7 +46,8 @@ account_warn() {
 # manpath, dirstack, argv.
 #
 # Only leading and trailing whitespace is trimmed, never internal. Stripping
-# every space would fold a marker reading "t pf" into the valid profile "tpf",
+# every space would fold a marker reading "a telic" into the valid profile
+# "atelic",
 # selecting an account the file never named; internal whitespace instead falls
 # through to the validator and is rejected loudly. Reading via $(<...) rather
 # than an external command keeps this free of PATH entirely and lets an
@@ -62,12 +63,13 @@ account_read_profile_file() {
         account_warn "ignoring malformed profile name in $src"
         return 0
     fi
-    # Two retired names normalize forward. The zero profile retired with the
+    # Three retired names normalize forward. The zero profile retired with the
     # Zero Homes W2 and its dirs are gone; the home profile was renamed to
-    # personal on 2026-08-14, once atelic and tpf made "home" the odd one out.
+    # personal on 2026-08-14; the tpf profile retired 2026-09-30 with the
+    # venture it served.
     # A stale marker or pointer on any machine still resolves rather than
     # landing on a config dir that no longer exists.
-    [[ "$name" == "zero" || "$name" == "home" ]] && name="personal"
+    [[ "$name" == "zero" || "$name" == "home" || "$name" == "tpf" ]] && name="personal"
     printf '%s' "$name"
 }
 

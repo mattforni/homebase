@@ -78,7 +78,6 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 - `mealplanner@richroll.com` -> `🍏 Constitution/🥕 Nutrition`, archive + Linear ticket in Atelic
 - `gifts@childhelp.org` -> `🤗 Community/🤲 Giving` (donation receipts, archive)
 - `do_not_reply@geico.com` -> `🍏 Constitution/🪪 Insurance` (NOT Healthcare; GEICO is auto insurance)
-- `kettlesarah@gmail.com` -> `🛠️ Craft/💻 TPF` (Sarah Kettles, TPF associate)
 
 **Constitution signals:**
 
@@ -122,7 +121,6 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 - Software, dev tools, GitHub -> `🛠️ Craft/🧑‍💻 Development`
 - RYLLC, consulting -> `🛠️ Craft/💻 RYLLC`
 - Atelic -> `🛠️ Craft/💼 Vocation/💻 Atelic`
-- Product Forge, Titus -> `🛠️ Craft/💻 TPF`
 - Travel, trips, flights, hotels -> `🛠️ Craft/🌏 Adventure`
 - Australia -> `🛠️ Craft/🌏 Adventure/🇦🇺 Australia`
 - Vehicles, auto -> `🛠️ Craft/🌏 Adventure/🚙 Vehicles`

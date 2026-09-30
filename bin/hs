@@ -3,8 +3,8 @@
 #
 # Walks up from $PWD finding the nearest .account marker, maps the profile to an
 # authenticated HubSpot account, and appends --account before exec'ing the real
-# binary. Work in the TPF subtree therefore hits the TPF portal and everything
-# else hits Atelic, with no per directory setup.
+# binary. Work in the Atelic subtree therefore hits the Atelic portal, with no
+# per directory setup.
 #
 # Why not `hs account link`, which is the vendor's own mechanism: it writes a
 # .hs/settings.json per directory and can only be driven from a TTY, so it
@@ -91,7 +91,7 @@ fi
 
 # 2. Marker to portal. This is an explicit table rather than an `hs-pat-$profile`
 #    convention because the profiles are named for the identity (personal,
-#    atelic, tpf) while the portals are named for the businesses. Adding a
+#    atelic) while the portals are named for the businesses. Adding a
 #    profile means adding a line here.
 #
 #    `personal` deliberately maps to nothing. It used to reach the Atelic portal
@@ -104,7 +104,6 @@ else
     profile="$(account_resolve_profile)"
 fi
 case "$profile" in
-    tpf)    hs_account="hs-pat-tpf" ;;
     atelic) hs_account="hs-pat-atelic" ;;
     *)      hs_account="" ;;
 esac
@@ -112,7 +111,6 @@ esac
 # An explicit --account names the portal directly and outranks the marker, for
 # the service key path as much as for the CLI one.
 case "${explicit_account:-$hs_account}" in
-    hs-pat-tpf|tpf|246641731)       keychain_service="hubspot-service-key-tpf" ;;
     hs-pat-atelic|atelic|246648548) keychain_service="hubspot-service-key-atelic" ;;
     *)                              keychain_service="" ;;
 esac

@@ -35,7 +35,7 @@ Read these before pulling anything; they override your judgment.
    (`e673764afca2f4c2515eae6f102db4fe60e6cb6add06a133e912b7b9032b08c1@group.calendar.google.com`),
    where every timed Todoist task renders. Pass `eventLabelVersion: 1`
    inside `--params` on all three so labels come back; without it the
-   API omits `eventLabelId` and a labeled event reads as unlabeled. The TPF calendar left the sweep 2026-08-24. **Normalize every
+   API omits `eventLabelId` and a labeled event reads as unlabeled. **Normalize every
    `dateTime` to `America/Denver` before reading it**: the Todoist feed
    carries a foreign offset (`-07:00`, some rows tagged
    `America/Los_Angeles`), and the raw wall clock string reads an hour
