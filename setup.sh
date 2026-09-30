@@ -434,66 +434,33 @@ setup_agent_browser() {
   fi
 }
 
-install_brave_launcher() {
-  header "Brave launcher"
+retire_brave_launcher() {
+  header "Brave launcher (retired)"
 
-  # Compiles launchd/brave-launcher.applescript into ~/Applications/Brave.app
-  # with Brave's icon, for the Dock in place of Brave itself. A launch from the
-  # Dock otherwise goes through LaunchServices with no --remote-debugging-port.
-  # The app is built rather than tracked, since osacompile output is binary.
-  local src="$DIR/launchd/brave-launcher.applescript"
+  # ~/Applications/Brave.app was a Dock launcher compiled from
+  # launchd/brave-launcher.applescript so Brave always started with the CDP
+  # port open on 9222. That port retired 2026-09-30 (ATE-601): Claude never
+  # drives Brave, and signed in automation runs through the Chrome identities
+  # in bin/chrome/. The app was built rather than deployed, so the manifest
+  # prune never sees it; this removes it and its stamp. Unpinning it from the
+  # Dock stays a hand step. Delete this phase once every machine has run it.
   local app="$HOME/Applications/Brave.app"
-  local icon="/Applications/Brave Browser.app/Contents/Resources/app.icns"
-  # Outside the bundle: a file added inside it would break its signature.
   local stamp="$HOME/.local/state/homebase/brave-launcher.sha"
 
-  if [[ ! -d "/Applications/Brave Browser.app" ]]; then
-    warn "Brave not installed, skipping the launcher"
-    return 0
-  fi
-
-  local sha
-  sha=$(shasum -a 256 "$src" | cut -d' ' -f1)
-  if [[ "$FORCE" != true ]] && [[ -x "$app/Contents/MacOS/applet" ]] && codesign --verify "$app" 2>/dev/null \
-    && [[ -f "$stamp" ]] && [[ "$(cat "$stamp")" == "$sha" ]]; then
-    info "Brave launcher already built"
+  if [[ ! -e "$app" && ! -e "$stamp" ]]; then
+    info "Brave launcher already gone"
     return 0
   fi
 
   if [[ "$DRY_RUN" == true ]]; then
-    dry "BUILD $app from $src"
+    [[ -e "$app" ]] && dry "REMOVE $app"
+    [[ -e "$stamp" ]] && dry "REMOVE $stamp"
     return 0
   fi
 
-  mkdir -p "$HOME/Applications"
-  rm -rf "$app"
-  if ! osacompile -o "$app" "$src"; then
-    warn "osacompile failed for the Brave launcher"
-    return 1
-  fi
-  # osacompile ships its icon in Assets.car, which outranks applet.icns, so
-  # the catalog goes and Brave's icns takes its place. Editing the bundle
-  # voids osacompile's ad hoc signature, and codesign refuses a bundle
-  # carrying Finder attributes, so clear them and sign again.
-  if [[ -f "$icon" ]]; then
-    rm -f "$app/Contents/Resources/Assets.car"
-    /usr/libexec/PlistBuddy -c "Delete :CFBundleIconName" "$app/Contents/Info.plist" 2>/dev/null || true
-    cp "$icon" "$app/Contents/Resources/applet.icns"
-  fi
-  xattr -cr "$app"
-  codesign --force --sign - "$app" 2>/dev/null
-  touch "$app"
-
-  # Prove the bundle is sound rather than trusting osacompile's exit code.
-  if [[ -x "$app/Contents/MacOS/applet" ]] && codesign --verify "$app" 2>/dev/null; then
-    mkdir -p "$(dirname "$stamp")"
-    printf '%s\n' "$sha" > "$stamp"
-    info "Built $app (drag it into the Dock in place of Brave)"
-    SUMMARY+=("Brave launcher built at $app")
-  else
-    warn "Brave launcher bundle has no executable"
-    return 1
-  fi
+  rm -rf "$app" "$stamp" || return 1
+  info "Removed the Brave launcher (unpin it from the Dock by hand)"
+  SUMMARY+=("Brave launcher removed")
 }
 
 ###############################################################################
@@ -1105,9 +1072,9 @@ install_mcp_servers() {
     PINOLE_API_TOKEN="$(security find-generic-password -s pinole-mcp-token -w)" || PINOLE_API_TOKEN=""
   fi
 
-  # playwright left on 2026-09-16: agent-browser attached to the everyday Brave
-  # on port 9222 is the one browser tool now, so a registration left from an
-  # earlier run is removed here rather than silently kept.
+  # playwright left on 2026-09-16: agent-browser is the one browser tool now,
+  # so a registration left from an earlier run is removed here rather than
+  # silently kept.
   local retired=(playwright)
   for name in "${retired[@]}"; do
     if claude mcp get "$name" &>/dev/null; then
@@ -1459,6 +1426,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     # run worth trusting and "touch nothing" has to mean it.
     warn "Dry run: installing nothing. Home changes only."
     run_phase reconcile_home
+    run_phase retire_brave_launcher
   else
     run_phase setup_prerequisites
     run_phase install_brew_packages
@@ -1473,7 +1441,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     run_phase install_bun_globals
     run_phase setup_agent_browser
     run_phase install_launchagents
-    run_phase install_brave_launcher
+    run_phase retire_brave_launcher
     run_phase install_ide_extensions
     run_phase install_claude_plugins
     run_phase install_mcp_servers

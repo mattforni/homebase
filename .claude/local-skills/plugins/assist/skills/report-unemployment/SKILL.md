@@ -1,6 +1,6 @@
 ---
 name: report-unemployment
-description: File the weekly Colorado unemployment payment request in MyUI+ from the activities ledger in the Pinole work API. Builds the reportable activity slate for the just ended claim week, drives MyUI+ through agent-browser attached to Forni's real Brave, walks the weekly payment request screens, and stops hard at both certifications for Forni's explicit yes. Use whenever Forni says "report unemployment", "request UI payment", "file the weekly claim", "MyUI+", mentions the Monday payment request task, or invokes /assist:report-unemployment. The claimer agent carries this method for background dispatch.
+description: File the weekly Colorado unemployment payment request in MyUI+ from the activities ledger in the Pinole work API. Builds the reportable activity slate for the just ended claim week, drives MyUI+ through agent-browser on the personal Chrome identity, headed, walks the weekly payment request screens, and stops hard at both certifications for Forni's explicit yes. Use whenever Forni says "report unemployment", "request UI payment", "file the weekly claim", "MyUI+", mentions the Monday payment request task, or invokes /assist:report-unemployment. The claimer agent carries this method for background dispatch.
 ---
 
 # Report Unemployment
@@ -33,14 +33,14 @@ Codified 2026-08-25, when the week of 08-16 read as three applications and was a
 
 ## Browser Mechanics
 
-The agent-browser bundled Chromium cannot pass the ID.me Cloudflare challenge, headed or not; the check spins forever on the automation fingerprint. Attach to Forni's real Brave instead:
+The agent-browser bundled Chromium cannot pass the ID.me Cloudflare challenge, headed or not; the check spins forever on the automation fingerprint. Drive the personal Chrome identity instead: real Google Chrome with a persistent profile, run headed because the certifications and any MFA need Forni's hands. Claude never drives Brave. The mechanics live in homebase `bin/chrome/README.md`.
 
-1. Quit Brave gracefully (`osascript -e 'quit app "Brave Browser"'`) and wait for the process to exit.
-2. Relaunch with the port: `open -a "Brave Browser" --args --remote-debugging-port=9222 --restore-last-session`.
-3. Verify the port with `curl -s http://localhost:9222/json/version`, then confirm Brave itself owns it with `lsof -nP -i :9222 | grep LISTEN`. Do not check the JSON's `Browser` field: Brave is Chromium and reports `Chrome/<version>` there, never its own name, so that test can only ever fail. A listener that is not Brave means a stale process holds the port, so stop rather than attach. Then `agent-browser --session myui connect 9222`.
-4. Open MyUI+ in a new tab and pin it (`tab new <url>`, `tab list`, `tab <id> --pin-tab`). Unpinned, the session follows whatever tab Forni focuses.
+1. Put `--session myui --identity personal --headed` on every call. The shim starts the instance in a visible window if it is not running, and refuses if it is running headless; then `~/bin/chrome/stop-identity personal` first, once nothing else is mid read on it.
+2. Open MyUI+ with `tab new <url>`. The window belongs to this flow alone, so there is no tab of Forni's to collide with.
 
-If a fresh ID.me login or MFA is needed, hand the keyboard to Forni and wait. An existing session redirects the login URL straight into the claimant flow.
+If a fresh ID.me login or MFA is needed, hand the keyboard to Forni in that window and wait. An existing session redirects the login URL straight into the claimant flow. When the claim is filed, `~/bin/chrome/stop-identity personal` returns the identity to headless on its next use.
+
+Passing ID.me's Cloudflare check from the Chrome identity is not yet proven (the first run was due after 2026-09-30). If it spins, stop and tell Forni rather than reaching for Brave.
 
 ## The Flow
 

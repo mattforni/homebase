@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Quit one running Chrome identity cleanly.
+#
+# Usage: stop-identity <atelic|personal>
+#
+# Sends SIGTERM, which Chrome treats as a normal quit and flushes cookies
+# before exiting, then waits for the port to close. Use it to switch an
+# identity between headless and headed (one user data dir runs one instance),
+# or to close its CDP port once the work is done. Anything attached to the
+# identity at the time loses it, so check nothing is mid read first.
+
+set -euo pipefail
+
+lib="$(dirname "$0")/../lib/chrome-identity.sh"
+if [[ ! -r "$lib" ]]; then
+    echo "stop-identity: cannot read $lib" >&2
+    exit 78
+fi
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=../lib/chrome-identity.sh
+. "$lib"
+
+name="${1:-}"
+if ! port="$(chrome_identity_port "$name")"; then
+    echo "stop-identity: unknown identity '$name' (known: $CHROME_IDENTITY_NAMES)" >&2
+    exit 64
+fi
+dir="$(chrome_identity_dir "$name")"
+
+# Match on the user data dir, not just the port, so a stranger holding the
+# port is never the thing that gets killed.
+pid="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null | head -1 || true)"
+if [[ -z "$pid" ]]; then
+    echo "stop-identity: the $name Chrome is not running"
+    exit 0
+fi
+if ! ps -o command= -p "$pid" | grep -qF -- "--user-data-dir=$dir"; then
+    echo "stop-identity: port $port is held by something other than the $name Chrome (pid $pid); leaving it" >&2
+    exit 69
+fi
+
+kill -TERM "$pid"
+for _ in $(seq 1 30); do
+    kill -0 "$pid" 2>/dev/null || { echo "stop-identity: the $name Chrome stopped"; exit 0; }
+    sleep 0.5
+done
+echo "stop-identity: the $name Chrome (pid $pid) did not exit within 15 seconds" >&2
+exit 1
