@@ -1,17 +1,36 @@
 #!/usr/bin/env bash
-# PATH shim that points agent-browser at Brave instead of Chrome for Testing.
+# PATH shim for agent-browser: binds a call to a signed in Chrome identity, and
+# points every other launch at real Chrome instead of Chrome for Testing.
 #
-# agent-browser ships and manages its own Chrome for Testing build under
-# ~/.agent-browser/browsers and launches it with a throwaway profile. That is
-# the worst possible fingerprint for any site that screens automation: no
-# history, no extensions, and Chromium's automation flags on the command line.
-# Workable's captcha refused it outright on 2026-09-15, and the same class of
-# failure is already documented for the ID.me Cloudflare check in the
-# assist:report-unemployment skill.
+# Two jobs.
 #
-# Brave is the browser this workstation actually uses, so it is the browser the
-# tooling should drive. `--executable-path` is the lever, and
-# AGENT_BROWSER_EXECUTABLE_PATH is its environment form.
+# 1. `--identity <name>` attaches to one of the headless Chrome identities in
+#    bin/lib/chrome-identity.sh (atelic, personal) by rewriting the flag to
+#    `--cdp <port>`. Each identity is its own Chrome instance with its own user
+#    data dir, signed in once by hand, so the port is the identity. When the
+#    instance is not running, the shim starts it through
+#    bin/chrome/launch-identity and waits for the port; it then stays up until
+#    the machine restarts. Nothing runs at login. This replaced attaching to
+#    Forni's working Brave on 9222, which raised his window and stole keyboard
+#    focus mid read (ATE-601).
+#
+#    Add `--headed` to run the identity in a visible window instead, for a task
+#    Claude drives that still needs Forni's hands (a sign in, a captcha, a
+#    MyUI+ certification). One profile runs in one mode at a time; the shim
+#    refuses a mismatch rather than restarting under another caller, and
+#    bin/chrome/stop-identity switches. Claude never drives Brave.
+#
+#    Every call that should reach the identity carries the flag. A bare
+#    `connect <port>` followed by calls without `--cdp` quietly launches a
+#    throwaway browser instead of failing, which read as "signed out" for an
+#    hour on 2026-09-30.
+#
+# 2. Without `--identity`, agent-browser launches a browser of its own. It ships
+#    Chrome for Testing with a throwaway profile, the worst possible fingerprint
+#    for any site that screens automation: Workable's captcha refused it on
+#    2026-09-15, and ID.me's Cloudflare check refuses it too. Pointing
+#    AGENT_BROWSER_EXECUTABLE_PATH at real Chrome improves the binary; the
+#    profile is still throwaway, so a signed in task wants an identity.
 #
 # Why a shim and not just an export in .zshrc: Claude Code captures a shell
 # snapshot once per session and replays it for every tool call, preserving
@@ -20,20 +39,10 @@
 # same hole. Resolving here, at invocation time, is the one layer that holds for
 # every caller regardless of how the process was started. This is the same
 # reasoning as the gws and hs shims beside it.
-#
-# This shim decides WHICH BINARY runs, and nothing else. It does not touch the
-# profile, so a launch through it still gets a clean automated profile. When a
-# site screens hard enough that the real logged in profile is required, connect
-# to the running Brave instead:
-#
-#   agent-browser connect 9222
-#
-# which the me.atelic.brave-debug-port LaunchAgent keeps available. See
-# launchd/README.md.
 
 set -euo pipefail
 
-BRAVE="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
 # Find the next `agent-browser` on PATH that isn't this shim.
 # Bash's `-ef` compares by device+inode, so this holds when the script is
@@ -54,16 +63,110 @@ if [[ -z "$real_ab" ]]; then
     exit 127
 fi
 
+identity=""
+identity_mode="headless"
+args=()
+while (($#)); do
+    case "$1" in
+        --identity)
+            if (($# < 2)); then
+                echo "agent-browser shim: --identity needs a name" >&2
+                exit 64
+            fi
+            identity="$2"
+            shift 2
+            ;;
+        --identity=*)
+            identity="${1#--identity=}"
+            shift
+            ;;
+        --headed)
+            # Held back until we know whether this call names an identity;
+            # without one it passes through as agent-browser's own flag.
+            identity_mode="headed"
+            shift
+            ;;
+        *)
+            args+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- ${args[@]+"${args[@]}"}
+
+if [[ -z "$identity" && "$identity_mode" == "headed" ]]; then
+    set -- --headed ${args[@]+"${args[@]}"}
+fi
+
+if [[ -n "$identity" ]]; then
+    identity_lib="$(dirname "$0")/lib/chrome-identity.sh"
+    if [[ ! -r "$identity_lib" ]]; then
+        echo "agent-browser shim: cannot read $identity_lib, so --identity cannot resolve" >&2
+        exit 78
+    fi
+    # shellcheck source-path=SCRIPTDIR
+    # shellcheck source=lib/chrome-identity.sh
+    . "$identity_lib"
+    if ! identity_port="$(chrome_identity_port "$identity")"; then
+        echo "agent-browser shim: unknown identity '$identity' (known: $CHROME_IDENTITY_NAMES)" >&2
+        exit 64
+    fi
+
+    listening() { curl -sf --max-time 2 "http://127.0.0.1:$identity_port/json/version" >/dev/null; }
+    running_mode() {
+        if curl -sf --max-time 2 "http://127.0.0.1:$identity_port/json/version" | grep -q HeadlessChrome; then
+            echo headless
+        else
+            echo headed
+        fi
+    }
+
+    if ! listening; then
+        # Anything else holding the port would be attached to as if it were
+        # the identity, so refuse rather than start a second listener.
+        if lsof -nP -iTCP:"$identity_port" -sTCP:LISTEN >/dev/null 2>&1; then
+            echo "agent-browser shim: port $identity_port is held by something other than the $identity Chrome" >&2
+            exit 69
+        fi
+        launcher="$(dirname "$0")/chrome/launch-identity"
+        log="${TMPDIR:-/tmp}/chrome-$identity.log"
+        echo "agent-browser shim: starting the $identity Chrome $identity_mode on $identity_port" >&2
+        nohup "$launcher" "$identity" "$identity_mode" >"$log" 2>&1 &
+        disown
+        for _ in $(seq 1 30); do
+            listening && break
+            sleep 0.5
+        done
+        if ! listening; then
+            echo "agent-browser shim: the $identity Chrome did not come up on $identity_port (see $log)" >&2
+            exit 69
+        fi
+    fi
+
+    # One user data dir runs one instance, so the identity is in exactly one
+    # mode. Switching kills whatever else is attached, so it is never done
+    # silently here; the caller stops it deliberately.
+    current_mode="$(running_mode)"
+    if [[ "$current_mode" != "$identity_mode" ]]; then
+        echo "agent-browser shim: the $identity Chrome is running $current_mode, not $identity_mode" >&2
+        echo "  switch with: $(dirname "$0")/chrome/stop-identity $identity, then call again" >&2
+        exit 69
+    fi
+
+    # Attaching, not launching, so the executable override below is moot.
+    exec "$real_ab" --cdp "$identity_port" "$@"
+fi
+
 # A caller that named an executable meant it. Never second guess that.
 if [[ -n "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ]]; then
     exec "$real_ab" "$@"
 fi
 
-# Brave is not on every machine homebase deploys to. Pass through rather than
+# Chrome is not on every machine homebase deploys to. Pass through rather than
 # failing, so the tooling degrades to Chrome for Testing instead of breaking.
-if [[ ! -x "$BRAVE" ]]; then
-    echo "agent-browser shim: Brave not found at $BRAVE, falling back to the bundled browser" >&2
+if [[ ! -x "$CHROME" ]]; then
+    echo "agent-browser shim: Chrome not found at $CHROME, falling back to the bundled browser" >&2
     exec "$real_ab" "$@"
 fi
 
-exec env AGENT_BROWSER_EXECUTABLE_PATH="$BRAVE" "$real_ab" "$@"
+exec env AGENT_BROWSER_EXECUTABLE_PATH="$CHROME" "$real_ab" "$@"

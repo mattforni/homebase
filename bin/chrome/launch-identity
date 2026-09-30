@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Run one Chrome identity in the foreground, headless by default.
+#
+# Usage: launch-identity <atelic|personal> [headless|headed]
+#
+# Headless is for background reads nobody watches. Headed is for a task Claude
+# drives that still needs Forni's hands (a sign in, a captcha, a certification
+# on MyUI+): the same profile, in a window he can see. One user data dir runs
+# one instance, so an identity is in one mode at a time; stop-identity switches.
+#
+# The bin/agent-browser shim starts this on demand, detached, the first time a
+# call asks for an identity that is not listening; the instance then lives until
+# the machine restarts. Nothing starts it at login, by choice: an identity's CDP
+# port is open only while something has needed it. It execs Chrome rather than
+# forking it, so the process that was started is Chrome itself. The port and
+# user data dir come from bin/lib/chrome-identity.sh.
+#
+# Two flags carry the design:
+#
+#   --headless=new (the default mode) keeps the instance off screen entirely.
+#   The problem this solves (ATE-601) was agent-browser raising Forni's working
+#   Brave window and stealing keyboard focus during console reads. A headless
+#   instance has no window to raise.
+#
+#   --disable-features=EnableBoundSessionCredentials,DeviceBoundSessions turns
+#   off Device Bound Session Credentials. Chrome binds a Google sign in to a
+#   Secure Enclave key; a session signed in headed and then run headless lost
+#   that binding, and Google revoked it (the SID cookies vanished from the
+#   profile on 2026-09-30). With binding off, the sign in is an ordinary long
+#   lived cookie, which is exactly what makes it stealable from disk. That is
+#   the tradeoff, recorded in bin/chrome/README.md.
+#
+# Signing in is a headed launch by hand, never through this script:
+# bin/chrome/README.md has the steps.
+
+set -euo pipefail
+
+lib="$(dirname "$0")/../lib/chrome-identity.sh"
+if [[ ! -r "$lib" ]]; then
+    echo "launch-identity: cannot read $lib" >&2
+    exit 78
+fi
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=../lib/chrome-identity.sh
+. "$lib"
+
+name="${1:-}"
+if ! port="$(chrome_identity_port "$name")"; then
+    echo "launch-identity: unknown identity '$name' (known: $CHROME_IDENTITY_NAMES)" >&2
+    exit 64
+fi
+dir="$(chrome_identity_dir "$name")"
+
+mode="${2:-headless}"
+case "$mode" in
+    headless) mode_flags=(--headless=new) ;;
+    headed) mode_flags=() ;;
+    *)
+        echo "launch-identity: mode must be headless or headed, not '$mode'" >&2
+        exit 64
+        ;;
+esac
+
+if [[ ! -x "$CHROME_IDENTITY_BIN" ]]; then
+    echo "launch-identity: Chrome not found at $CHROME_IDENTITY_BIN" >&2
+    exit 78
+fi
+
+mkdir -p "$dir"
+
+exec "$CHROME_IDENTITY_BIN" \
+    ${mode_flags[@]+"${mode_flags[@]}"} \
+    --user-data-dir="$dir" \
+    --remote-debugging-port="$port" \
+    --window-size=1440,900 \
+    --no-first-run \
+    --no-default-browser-check \
+    --disable-features=EnableBoundSessionCredentials,DeviceBoundSessions
