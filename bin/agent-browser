@@ -120,9 +120,11 @@ if [[ -n "$identity" ]]; then
         exit 64
     fi
 
-    listening() { curl -sf --max-time 2 "http://127.0.0.1:$identity_port/json/version" >/dev/null; }
+    # Five seconds, not two: a busy instance (a heavy console page mid render)
+    # can take longer than two to answer, and a miss here reads as dead.
+    listening() { curl -sf --max-time 5 "http://127.0.0.1:$identity_port/json/version" >/dev/null; }
     running_mode() {
-        if curl -sf --max-time 2 "http://127.0.0.1:$identity_port/json/version" | grep -q HeadlessChrome; then
+        if curl -sf --max-time 5 "http://127.0.0.1:$identity_port/json/version" | grep -q HeadlessChrome; then
             echo headless
         else
             echo headed
@@ -130,10 +132,18 @@ if [[ -n "$identity" ]]; then
     }
 
     if ! listening; then
-        # Anything else holding the port would be attached to as if it were
-        # the identity, so refuse rather than start a second listener.
-        if lsof -nP -iTCP:"$identity_port" -sTCP:LISTEN >/dev/null 2>&1; then
-            echo "agent-browser shim: port $identity_port is held by something other than the $identity Chrome" >&2
+        # A listener that did not answer is either this identity's own Chrome,
+        # too busy or wedged, or a stranger that would be attached to as if it
+        # were the identity. Either way, never start a second listener; say
+        # which it is so the fix is obvious.
+        holder="$(lsof -tiTCP:"$identity_port" -sTCP:LISTEN 2>/dev/null | head -1 || true)"
+        if [[ -n "$holder" ]]; then
+            if ps -o command= -p "$holder" | grep -qF -- "--user-data-dir=$(chrome_identity_dir "$identity")"; then
+                echo "agent-browser shim: the $identity Chrome (pid $holder) is running but not answering on $identity_port" >&2
+                echo "  retry, or restart it: $(dirname "$0")/chrome/stop-identity $identity" >&2
+            else
+                echo "agent-browser shim: port $identity_port is held by something other than the $identity Chrome (pid $holder)" >&2
+            fi
             exit 69
         fi
         launcher="$(dirname "$0")/chrome/launch-identity"
