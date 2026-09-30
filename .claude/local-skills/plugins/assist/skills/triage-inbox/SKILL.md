@@ -1,6 +1,6 @@
 ---
 name: triage-inbox
-description: Triage the Gmail inbox to a settled state. Classify every email, draft a reply for anything needing a response, and turn action-without-response into a Todoist follow-up, then review and execute one email at a time. Handles unsubscribes, recurring-sender filters, and per-sender side actions inline as they come up. Use whenever the user mentions email triage, inbox cleanup, processing the inbox, clearing email, or getting to inbox zero.
+description: Triage the Gmail inbox to a settled state. Classify every email, draft a reply for anything owed one, and turn actions into Todoist follow ups, then review and execute one email at a time. Use when Forni mentions email triage, inbox cleanup, or inbox zero.
 argument-hint: ""
 allowed-tools:
   - Bash

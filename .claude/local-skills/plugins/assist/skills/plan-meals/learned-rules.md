@@ -49,7 +49,7 @@ Corrections and preferences specific to meal planning. Read on every invocation.
   - Why: Forni said on 2026-04-17 "I LOVE their bulk section."
   - How to apply: when generating a shopping list, put dried beans, rice, lentils, quinoa, and related bulk staples under Sprouts. Costco is for jarred/packaged items (kimchi, hummus, olives, artichokes, pickled onions, yogurt, nuts, coffee, vanilla extract).
 
-- **The primary shopping list goes into Pinole via `mcp__pinole__add_shopping_item`.** One call per item, with `store` set and quantity/brand hints in `notes`; it surfaces in the Pinole app for the run. (The system was named Atelic until 2026-07-20.)
+- **The primary shopping list goes into Pinole via `mcp__claude_ai_Pinole__add_shopping_item`.** One call per item, with `store` set and quantity/brand hints in `notes`; it surfaces in the Pinole app for the run. (The system was named Atelic until 2026-07-20.)
   - Why: superseded Apple Reminders in ATE-353 (2026-06-16) when meal plans moved into the app; the shopping plan now lives alongside the pantry rather than in a separate app.
   - How to apply: See the "Shopping List in Pinole" section of SKILL.md. Only push items for the store being shopped that day; other stores can be added with their own `store`.
 

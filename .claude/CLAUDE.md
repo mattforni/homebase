@@ -34,8 +34,8 @@ Three standing questions (what genuinely feels like reward; die in the morning s
 
 ## Agents
 
-- **Delegate matching work to the user level roster in `~/.claude/agents/` proactively**, without waiting for explicit invocation: recon to explore, verification and methodology critique to socrates, tests and builds to runner, mechanical sweeps to migrator (three writers at most, each in its own worktree on a disjoint file set), web research to researcher. Agents return summaries with pointers, never transcripts. This governs how requested work gets executed, not whether to start work.
-- **Landing a PR is the lander agent's job, dispatched first.** Never `/sdlc:land` or a Monitor or Bash loop watching a PR from the main session; lander bails back on human reviews, CI failures, and merge conflicts, and its status line gets relayed to Forni.
+- **Delegate matching work to the user level roster in `~/.claude/agents/` proactively**, without waiting for explicit invocation: recon to explore, verification and methodology critique to socrates, tests and builds to runner, mechanical sweeps to migrator (three writers at most, each in its own worktree on a disjoint file set), web research to researcher, or through Anthropic's `deep-research` skill when the question spans many sources; either way what reaches Forni is one page. Agents return summaries with pointers, never transcripts. This governs how requested work gets executed, not whether to start work.
+- **Landing a PR is the lander agent's job, dispatched first.** Never a Monitor or Bash loop watching a PR from the main session; lander bails back on human reviews, CI failures, and merge conflicts, and its status line gets relayed to Forni.
 - **Never run concurrent writers against one resource.** Fanning out is for reading; writers to a shared calendar week, branch, or issue set go strictly in sequence. Codified 2026-08-10.
 - **Read what a background agent changed, not just what it says it changed.** Read the diff before relaying or building on an agent's result, and scrutinize any change to a documented convention or public interface as you would a human's PR. Codified 2026-08-07.
 - **Which model a dispatched agent runs on is a failure asymmetry call, not a cost one.** The heuristic, the tier table, and the dispatch narratives behind the rules above live in `~/Eudaimonia/Admin/Tools/claude-code.md`.
@@ -73,9 +73,9 @@ When context sprawls or duplicates, run `assist:groom-context`.
 
 ## Skills
 
-- Every skill that makes decisions on behalf of the user includes a `learned-rules.md`. Authoring conventions (the SKILL.md versus learned-rules.md split, when to graduate rules) live in `~/.claude/references/skills.md`; recurring headless automations (launchd, Keychain auth, `--allowedTools`, JSON success detection) in `~/.claude/references/headless-claude.md`.
+- Every skill that makes decisions on behalf of the user includes a `learned-rules.md`. Authoring conventions live in `~/.claude/references/skills.md`; recurring headless automations (launchd, Keychain auth, `--allowedTools`, JSON success detection) in `~/.claude/references/headless-claude.md`.
 - **Manual first, then codify.** Do a workflow by hand once with real data before writing its skill; the gotchas and calibration numbers only surface under actual use, so the skill is the last step, written from the captured learnings.
-- `L{N}` is shorthand for Level N of Bassi Eledath's 8 levels of agentic engineering (tracked in `~/Eudaimonia/LEVELS.md`); L7 is background agents, L8 agent teams.
+- `L{N}` is shorthand for Level N of Bassi Eledath's 8 levels of agentic engineering (tracked in `~/Eudaimonia/LEVELS.md`).
 
 ## External App Integration
 

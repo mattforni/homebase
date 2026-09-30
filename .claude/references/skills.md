@@ -28,6 +28,14 @@ Periodically audit learned-rules.md. Graduate rules that have stabilized to SKIL
 
 Every skill that makes decisions on behalf of the user should include a `learned-rules.md` file. When the user corrects a decision, append the correction. Read learned rules at the start of every invocation. This applies to all skills, whether created via /skill-creator or manually.
 
+## Description Length
+
+A description loads into every turn of every session, so it is held to a length. A skill's description is at most 400 characters (about 100 tokens): one clause on what the skill does, then when to use it, with at most three trigger phrases. An agent's description is at most 300 characters (about 75 tokens): when to dispatch it, with "use proactively" only where proactive dispatch is wanted. The how lives in the body, which loads only on use. No example lists, no restated slash command, no "also trigger when."
+
+## Where a Skill Comes From
+
+A skill used only in Claude Code installs from `claude-plugins-official` and is tracked in `enabledPlugins`. A skill that exists only on claude.ai, or is wanted on every Claude surface, comes through the claude.ai sync, with unwanted synced skills turned off in `skillOverrides`. Never two copies of one skill.
+
 ## Agent Authoring
 
 **TLDR (official docs, checked 2026-07-25).** An agent definition is a markdown file whose frontmatter needs only `name` and `description`; the body becomes the agent's entire system prompt, and subagents inherit no conversation history from the parent. The `description` drives automatic delegation, so name the trigger scenarios, not just the role. Useful optional fields: `tools` (an allowlist; least privilege is the documented gold standard, e.g. `Read, Grep, Glob` for analysis), `model` (default `inherit`), `skills` (preloads full skill content at agent startup), `memory` (cross session learning), and `color`. Plugin agents live in `plugins/<plugin>/agents/*.md`, dispatch as `<plugin>:<name>`, and ignore `hooks`, `mcpServers`, and `permissionMode` frontmatter. Rechecked 2026-08-13: subagents can spawn their own subagents (default depth 3), resuming a subagent retains its full context, and AskUserQuestion is stripped from every subagent, so human decisions always round trip through the main session between dispatches.

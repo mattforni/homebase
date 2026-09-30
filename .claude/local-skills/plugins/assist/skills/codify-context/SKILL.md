@@ -1,6 +1,6 @@
 ---
 name: codify-context
-description: Codify knowledge from the current session into the right layer of the context architecture (GC, a repo CLAUDE.md, a path scoped rule, a skill's learned rules, a hook, a tool doc, or auto memory), routing by trigger and admitting to always loaded files only through the placement tests. Use this skill whenever the user says "codify" followed by a topic, wants to capture something they just figured out, asks to document a pattern or convention, or says something like "we should write this down" or "future me needs to know this." Also trigger when the user discovers a gotcha, foot gun, or non obvious behavior worth preserving. Named after the "plan, delegate, assess, codify" Level 4 compounding loop. This is the write in counterpart to `assist:groom-context`, which audits and prunes the same context architecture.
+description: Codify knowledge from the current session into the right layer of the context architecture, routing by trigger and admitting to always loaded files only through the placement tests. Use when Forni says "codify" followed by a topic, "we should write this down", or "future me needs to know this", or when a gotcha worth preserving surfaces.
 argument-hint: "<topic> [in <directory>]"
 allowed-tools:
   - Bash

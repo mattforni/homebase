@@ -1,6 +1,6 @@
 ---
 name: wrap
-description: Session wrap. Don't lose the thread, clean everything up, don't leave loose ends in your head. Scans every git repo touched this session for uncommitted or unpushed state, surfaces external commitments (pending replies, calendar holds, contract deadlines) from the recent conversation, prompts for codification of durable learnings, logs each loose end the user triages to Todoist (today if pressing, next Sunday otherwise), summarizes the session, and closes with a compaction ready line. Run it yourself, unprompted, the moment the session reaches its terminal state (the work landed, tickets closed, no question open), with a one line heads up rather than an offer. Also use it whenever the user says "wrap", "wrap up", "wrap the session", "wrap this up", "wrapping up", "clean up before I exit", "signing off", "done for the day", or invokes /assist:wrap. Pairs with /assist:mise as the bookend. Mise opens the kitchen for service. Wrap closes it cleanly after.
+description: Session wrap. Scans every repo touched for uncommitted or unpushed state, surfaces external commitments, prompts for codification, logs loose ends to Todoist, and summarizes the session. Run it unprompted, with a one line heads up, the moment the session reaches its terminal state (work landed, tickets closed, no question open). Use when Forni says "wrap", "wrap up", or "signing off".
 allowed-tools:
   - Bash
   - Read

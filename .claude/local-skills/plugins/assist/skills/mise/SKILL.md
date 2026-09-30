@@ -1,6 +1,6 @@
 ---
 name: mise
-description: Morning prep sync for Forni's workstation. Pulls latest in ~/Eudaimonia and ~/Eudaimonia/Craft/Development/personal/homebase, then runs homebase's setup.sh to deploy dotfiles and refresh brew, npm globals, IDE extensions, and Claude plugins. Use this skill whenever Forni says "mise", "mise en place", "prep the station", "morning sync", "get the station ready", or otherwise wants his dev environment neat and tidy before the day's work. Also trigger for "/assist:mise". Named after mise en place: everything in its place before service.
+description: Morning prep sync for Forni's workstation. Pulls latest in ~/Eudaimonia and homebase, then runs homebase's setup.sh to deploy dotfiles and refresh brew, npm globals, IDE extensions, and Claude plugins. Use when Forni says "mise", "mise en place", or "prep the station".
 allowed-tools:
   - Bash(git:*)
   - Bash(test:*)

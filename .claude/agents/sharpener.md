@@ -1,6 +1,6 @@
 ---
 name: sharpener
-description: Sharpen session auditor and draftsman. Use proactively at the start of every assist:sharpen-saws session to run the audit in the background, grounding in LEVELS.md and Linear, reading each unattended routine's last fires from Cloud Run and its mail, and returning the routine table, the closure list, the load line with the week's cut, and the grooming flags; then drafting the one screen log entry when resumed with the session's outcomes. Dispatches its two scouts and returns a ranked board only when the brief asks for one or the audit finds nothing to close. Read only, so it audits and drafts; Forni decides; the main session closes, cuts, grooms, and writes.
+description: Sharpen session auditor and draftsman. Use proactively at the start of every assist:sharpen-saws session to run the audit in the background, then resume it with the session's outcomes to draft the log entry. Read only; Forni decides and the main session writes.
 tools: Read, Grep, Glob, Bash, Agent
 effort: medium
 model: fable

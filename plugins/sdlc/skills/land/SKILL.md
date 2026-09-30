@@ -1,6 +1,6 @@
 ---
 name: land
-description: Drive the back half of SDLC autonomously. Run the CodeRabbit CLI review as the gate, watch CI, triage findings, merge (squash), then clean up. The agent (not GitHub) judges when feedback is addressed. Bails to the user on human review, hard CI failure, merge conflict, or time budget exceeded. Default next step after implementation; use when the user says "land it", "ship this", "merge when ready", or invokes /sdlc:land.
+description: Drive the back half of SDLC autonomously. Run the CodeRabbit CLI review as the gate, watch CI, triage findings, squash merge, then clean up, bailing to the user on human review, hard CI failure, merge conflict, or time budget exceeded. Use when the user says "land it", "ship this", or "merge when ready".
 disable-model-invocation: true
 argument-hint: "[PR number - auto-detected if on feature branch]"
 allowed-tools:

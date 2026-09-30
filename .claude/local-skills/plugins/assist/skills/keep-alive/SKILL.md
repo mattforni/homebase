@@ -1,6 +1,6 @@
 ---
 name: keep-alive
-description: Keep the session's prompt cache warm while Forni steps away, with a self paced loop that wakes every 50 minutes and does nothing else unless given a watch task, then end it the moment he is back. Use whenever Forni says "keep alive", "keep this alive", "keep the cache warm", "I'm heading out", "going for a run", "back in an hour", or invokes "/assist:keep-alive", optionally with something to watch while he is gone ("keep alive and watch the landers").
+description: Keep the session's prompt cache warm while Forni steps away, with a self paced loop that wakes every 50 minutes and does nothing else unless given a watch task, then end it the moment he is back. Use when Forni says "keep alive", "keep the cache warm", or "I'm heading out".
 allowed-tools:
   - Skill
   - ScheduleWakeup

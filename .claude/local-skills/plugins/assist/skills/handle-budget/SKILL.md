@@ -1,6 +1,6 @@
 ---
 name: handle-budget
-description: Categorize and approve YNAB transactions, building a payee rules engine that gets smarter each run. Runs as a dry run by default and never writes without explicit approval. Use whenever Forni mentions YNAB, categorizing spend, cleaning up the budget, approving transactions, the unapproved queue, payee cleanup, or wants a clean read on where money is going. Also trigger for "/assist:handle-budget", "tidy the budget", or "categorize my spending".
+description: Categorize and approve YNAB transactions, building a payee rules engine that gets smarter each run. Runs as a dry run by default and never writes without explicit approval. Use when Forni mentions YNAB or the unapproved queue, or says "tidy the budget" or "categorize my spending".
 allowed-tools:
   - Bash
   - Read
