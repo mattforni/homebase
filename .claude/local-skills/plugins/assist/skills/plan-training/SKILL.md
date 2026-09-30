@@ -1,6 +1,6 @@
 ---
 name: plan-training
-description: Training plan scheduling, weekly retrospectives, and training adjacent constraint validation. Use this skill whenever the user mentions training, lifts, runs, swims, yoga placement, recovery days, the recomp block, asking to schedule a training session, or asking to look back / retrospect on a past training week. Also trigger for "/assist:plan-training", "schedule my training", "what does training look like this week", "how did last week go", "training retro", "this week's lifts", or any request that touches the block plan in `Constitution/Fitness/`. Independently usable, and also called by `/assist:plan-week` during Monday planning.
+description: Training plan scheduling, weekly training retrospectives, and training adjacent constraint validation against the block plan in `Constitution/Fitness/`. Use when Forni mentions lifts, runs, recovery days, or the recomp block, or says "schedule my training" or "training retro".
 argument-hint: "[week | move | retro]"
 allowed-tools:
   - Bash

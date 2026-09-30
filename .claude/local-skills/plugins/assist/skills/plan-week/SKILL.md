@@ -1,6 +1,6 @@
 ---
 name: plan-week
-description: Weekly planning, calendar management, and Monday planning session task slotting. Use this skill whenever the user mentions weekly planning, the Monday planning session (07:00, first thing in the deep work block; it ran on Sundays until 2026-08-30), slotting tasks, finding free time, checking what their week looks like, moving or swapping calendar events, or wants help fitting something into their week. Also trigger when the user asks about V2MOM measure coverage. Training plan scheduling lives in `assist:plan-training`; this skill calls into it during the weekly planning session.
+description: Weekly planning, calendar management, and task slotting for the Monday planning session. Use when Forni mentions weekly planning, slotting tasks, finding free time, moving calendar events, or V2MOM measure coverage, or asks what his week looks like.
 argument-hint: "[plan | week | slot | move]"
 allowed-tools:
   - Skill

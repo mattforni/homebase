@@ -1,6 +1,6 @@
 ---
 name: draft-applications
-description: Drain the work search queue. Consume queued postings from the Pinole work API (through the pinole CLI) and produce a complete application package per role, one at a time, in this order: fit sanity check, cover letter, application question responses, hiring manager research, follow up email draft, then log the application activity and mark the posting applied once Forni confirms submission. Use whenever Forni says "apply to the queue", "run the applications", "apply to <company>", or queued postings exist after a recruiter sweep. Replaces the retired job-apply skill.
+description: Drain the work search queue. Turn each queued posting in the Pinole work API into a complete application package, one role at a time, and mark it applied once Forni confirms submission. Use when Forni says "apply to the queue", "run the applications", or "apply to <company>".
 ---
 
 # Draft Applications

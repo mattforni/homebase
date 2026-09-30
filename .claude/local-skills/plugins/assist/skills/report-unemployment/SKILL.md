@@ -1,6 +1,6 @@
 ---
 name: report-unemployment
-description: File the weekly Colorado unemployment payment request in MyUI+ from the activities ledger in the Pinole work API. Builds the reportable activity slate for the just ended claim week, drives MyUI+ through agent-browser on the personal Chrome identity, headed, walks the weekly payment request screens, and stops hard at both certifications for Forni's explicit yes. Use whenever Forni says "report unemployment", "request UI payment", "file the weekly claim", "MyUI+", mentions the Monday payment request task, or invokes /assist:report-unemployment. The claimer agent carries this method for background dispatch.
+description: File the weekly Colorado unemployment payment request in MyUI+ from the activities ledger in the Pinole work API, driving the browser headed and stopping hard at both certifications for Forni's explicit yes. Use when Forni says "report unemployment", "request UI payment", or "file the weekly claim". The claimer agent carries this method for background dispatch.
 ---
 
 # Report Unemployment

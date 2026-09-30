@@ -1,6 +1,6 @@
 ---
 name: claimer
-description: Weekly MyUI+ payment request pilot. Use proactively when the Colorado UI weekly payment request needs filing (the Monday Todoist task), or when Forni says "file the claim", "request UI payment", or "run the unemployment report". Builds the reportable slate from the activities ledger in the Pinole work API (read through the pinole CLI), drives the personal Chrome identity headed, and stages the MyUI+ weekly payment request per assist:report-unemployment, bailing back to the main session at every certification with a full readback. It never answers Basic Questions, certifies, enters initials, or submits on its own; it acts past a gate only when resumed with Forni's explicit yes.
+description: Weekly MyUI+ payment request pilot. Use proactively when the Colorado UI weekly payment request needs filing, or when Forni says "file the claim" or "request UI payment". Stages it and bails at every certification; it never certifies or submits except when resumed with Forni's explicit yes.
 tools: Bash, Read, Grep, Glob, ToolSearch
 model: opus
 skills: [report-unemployment]

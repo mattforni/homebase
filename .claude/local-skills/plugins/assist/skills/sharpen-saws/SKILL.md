@@ -1,6 +1,6 @@
 ---
 name: sharpen-saws
-description: Run the weekly sharpen audit that moves collaboration one small step toward Levels 7 and 8 of the agentic engineering hierarchy. Verify each unattended routine fired and was consumed, close or ticket every deferral, take one cut from the always loaded context, groom one flag, and append a one screen log entry to LEVELS.md. Use this skill whenever the user says "sharpen", "sharpen saws", asks to "sharpen our process", or explicitly starts a sharpen session. Paired with the weekly Sharpen Saws block on Wednesdays. The sharpener agent carries this method for background dispatch.
+description: Run the weekly sharpen audit. Verify each unattended routine fired and was consumed, close or ticket every deferral, take one cut from the always loaded context, groom one flag, and append a one screen entry to LEVELS.md. Use when Forni says "sharpen" or "sharpen saws", or starts a sharpen session. The sharpener agent carries this method for background dispatch.
 ---
 
 # Sharpen Assist

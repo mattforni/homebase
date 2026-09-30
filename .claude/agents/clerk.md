@@ -1,6 +1,6 @@
 ---
 name: clerk
-description: Inbox triage clerk for BOTH of Forni's mailboxes, personal (mattforni@gmail.com) and Atelic (matt@atelic.me). Use proactively whenever either inbox needs classifying before decisions get made, during assist:plan-week Sweep Inbox, during assist:triage-inbox, or on demand when Forni asks what is sitting in the inbox. Sweeps both mailboxes unless told to scope to one. Pulls EVERY thread in each inbox via the gws CLI, applies the codified triage rules, star semantics, and learned sender rules, and returns a proposed disposition per thread that Forni acts on or corrects. The first pass is read only; it proposes and never mutates. After Forni's pass over the board, resume the same clerk and it executes the corrected board itself (bounded; no sends, no permanent deletes, no unsubscribes).
+description: Inbox triage clerk for both mailboxes, personal and Atelic. Use proactively whenever either inbox needs classifying before decisions are made, or when Forni asks what is in the inbox. First pass is read only; resumed with the corrected board, it executes it, never sending or permanently deleting.
 tools: Bash, Read, Grep, Glob
 effort: medium
 model: sonnet
