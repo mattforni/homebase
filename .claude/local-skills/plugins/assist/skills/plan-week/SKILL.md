@@ -114,7 +114,7 @@ Look back at the week that closed yesterday, read as a **compass, not a verdict*
 
 **Fallback.** When the email is missing or reports that the run failed, make the two light pulls the runner would have made: Strava for the just closed ISO week (`mcp__claude_ai_Strava__list_activities` with `range_start` and `range_end`; metric in, imperial out, miles = m / 1609.344, feet = m * 3.28084) and the Gmail takeout tally (`GWS_FORCE_PROFILE=personal gws gmail`, matching the planner's pull, with `(Domino OR "Illegal Pete" OR DoorDash OR Grubhub OR "Uber Eats" OR Postmates) after:YYYY/MM/DD before:YYYY/MM/DD`; `before:` is exclusive, so it is the Monday after the week; then confirm each hit is an order). Present them tightly, then run the same dialogue.
 
-Read it all gently. The retro course corrects, it does not grade. Surface anything that should become a planning input (a task, a guardrail, a measure to watch) and carry it into the phases below. When the dialogue closes, move to Set Intention; the fan out waits until the banner is written (see Agent Fan Out above). A deeper dialogue can invoke `assist:reflect` in `week` mode.
+Read it all gently. The retro course corrects, it does not grade. Surface anything that should become a planning input (a task, a guardrail, a measure to watch) and carry it into the phases below. When the dialogue closes, move to Set Intention; the fan out waits until the banner is written (see Agent Fan Out above).
 
 ### Phase 2: Set Intention
 

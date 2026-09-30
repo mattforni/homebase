@@ -1153,7 +1153,7 @@ install_mcp_servers() {
 configure_repo() {
   header "Repo config"
 
-  # sdlc:review and sdlc:iterate read the optional PR bot trigger from
+  # sdlc:review reads the optional PR bot trigger from
   # `git config sdlc.review-command`. The plugin default is "/gemini review"
   # but this repo uses CodeRabbit, so pin it locally. This is the public repo
   # fallback only; the review gate itself is the CodeRabbit CLI run on the

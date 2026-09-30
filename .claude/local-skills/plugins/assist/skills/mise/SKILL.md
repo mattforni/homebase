@@ -105,8 +105,8 @@ Given a repo path `$REPO`:
 The user is mid-feature on this repo. The goal is to preserve any in-flight work, bring main current, and merge main forward so the branch keeps pace.
 
 1. Check for dirty tree: `git -C "$REPO" status --porcelain`.
-2. **If dirty**, delegate to `/sdlc:checkpoint` via the Skill tool. That skill handles "save WIP with commit and push, no PR" — exactly what's needed here. `/sdlc:checkpoint` operates on its caller's cwd, so cd into `$REPO` first (or otherwise scope the invocation to the right repo) — do not let it run against the wrong directory.
-3. **If clean**, skip the checkpoint call entirely. `/sdlc:checkpoint` refuses on a clean tree, and invoking it would either error or become a wasted interaction. A clean feature branch (e.g., one with an open PR that's awaiting review) should flow straight to the merge step.
+2. **If dirty**, save the work in progress on the branch: stage it, commit it with a `WIP` message, and push, with no PR. Run every command as `git -C "$REPO"` so it lands in the right repo.
+3. **If clean**, skip the WIP commit entirely. A clean feature branch (e.g., one with an open PR that's awaiting review) should flow straight to the merge step.
 4. Fetch and merge main into the current branch:
 
    ```bash
@@ -159,7 +159,7 @@ Resolve the merge and re-run /assist:mise.
 
 ## Anti-patterns
 
-- Do not stash on a non-main branch. Use `/sdlc:checkpoint` — it commits to the actual branch, which is what Forni expects to find when he resumes.
+- Do not stash on a non-main branch. Commit the work in progress to the branch instead, which is what Forni expects to find when he resumes.
 - Do not modify `origin` remotes or branches. mise is a local-station operation.
 - Do not skip setup.sh because "nothing changed". Brewfile updates and plugin manifest tweaks are common and cheap to apply.
 - Do not surface setup.sh's full stdout in the summary. Point at where the output went; keep the summary scannable.

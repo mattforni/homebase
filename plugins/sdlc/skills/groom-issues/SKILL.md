@@ -1,6 +1,7 @@
 ---
 name: groom-issues
 description: Groom a Linear team's queue. Two modes, cycle grooming (when the team runs Linear cycles, trim the active cycle to a realistic slate) and backlog grooming (when the team has a backlog without active cycles, triage by priority, staleness, and intent). Use whenever the user mentions Linear grooming, triaging issues, pruning a backlog, sprint grooming, "the cycle is overstuffed", "let's clean up the queue", "groom the backlog", or wants to make decisions across many issues at once. All Linear access goes through the `linear` CLI.
+disable-model-invocation: true
 allowed-tools:
   - Bash(linear *)
   - Bash(git *)
@@ -28,7 +29,7 @@ Trigger on:
 
 Do NOT use for:
 
-- Single ticket CRUD (create, comment, status update). Use `linear-lifecycle:linear-lifecycle`.
+- Single ticket CRUD (create, comment, status update). Use the `linear` CLI directly (`~/Eudaimonia/Admin/Tools/linear.md`).
 - Cross team structural work (initiatives, projects spanning quarters). Use a roadmap doc.
 
 ## Modes

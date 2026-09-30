@@ -60,14 +60,14 @@ fi
 Categorize per repo:
 
 - **Clean.** Working tree clean, in sync with origin, no open PRs needing the user. Nothing to do.
-- **Uncommitted changes.** Surface and ask: commit (via `/sdlc:checkpoint`), stash, or discard.
+- **Uncommitted changes.** Surface and ask: commit and push, stash, or discard.
 - **Unpushed commits.** Push, or leave intentionally with a note.
-- **Open PR awaiting the user.** Blocks exit (see Step 9). Surface review comments and chain to `/sdlc:iterate`.
-- **Open PR awaiting reviewer.** Blocks exit (see Step 9). Watch for review to land, then chain to `/sdlc:iterate` or `/sdlc:complete` as appropriate.
-- **Merged PR with the branch still local.** Chain to `/sdlc:complete` via the Skill tool.
+- **Open PR awaiting the user.** Blocks exit (see Step 9). Surface review comments and dispatch the lander agent, which triages them.
+- **Open PR awaiting reviewer.** Blocks exit (see Step 9). Dispatch the lander agent to drive it through review to merge.
+- **Merged PR with the branch still local.** Delete it with `git branch -D <branch>` once the PR is confirmed merged (a squash merge fails the ancestry check behind `-d`).
 - **Leftover worktree from a merged branch.** Destroy it: `git worktree remove <path>` then `git branch -D <branch>`. Do this for every session worktree whose PR has merged. The one exception is the current session's own working directory and any `locked` worktree; leave those, they get cleaned when the session ends.
 
-When the session already ran `/sdlc:complete`, this step is usually fast and returns clean for the main repo.
+When the session's merged branches are already cleaned up, this step is usually fast and returns clean for the main repo.
 
 #### Close the tickets whose work is done
 
@@ -171,7 +171,7 @@ The session is ready to hand off only when every condition below holds:
 
 - No uncommitted changes remain in any session-touched repo
 - No unpushed commits remain, or any that do are intentional with a note
-- **No PR the user authored this session is still open.** An open PR is not hand off state. Watch the PR through review (CodeRabbit, Gemini, human reviewers), chain to `/sdlc:iterate` when feedback lands, and to `/sdlc:complete` once merged.
+- **No PR the user authored this session is still open.** An open PR is not hand off state. Hand the PR to the lander agent, which watches it through review (CodeRabbit, Gemini, human reviewers), triages feedback, and merges; then clean up the local branch.
 - **No ticket whose work merged this session is still open.** Closed in Step 2. A ticket left open behind a merged PR is the loose end the user keeps having to point out.
 
 When all conditions are met, the last line of the wrap is exactly this, on its own:
@@ -185,7 +185,7 @@ When a PR is still open, end instead with the current state of the PR and the ne
 ## Why Each Step Matters
 
 - **Session-touched repos, not a fixed allowlist.** The user works across many repos (Eudaimonia, homebase, skillset, zero repos, and ad-hoc clones). A fixed list either misses repos or scans noise. Inferring from session activity matches the actual blast radius.
-- **Git scan first.** Highest-signal check. After `/sdlc:complete` this is usually fast and clean.
+- **Git scan first.** Highest-signal check.
 - **Three-tier categorization over flat list.** ⚠️/🟡/✅ separates "act now" from "track" from "ignore". A flat list of "follow-ups" is noise.
 - **Dedupe against Todoist before triage.** The user already runs Todoist as the system of record for follow-ups. Surfacing tasks that are already scheduled there is noise and forces them to triage the same thing twice. The Step 4 query is the cheapest check available and removes the noisiest failure mode.
 - **Triage one item at a time.** Bulk decisions hide bad triage. AskUserQuestion forces real choice per item.

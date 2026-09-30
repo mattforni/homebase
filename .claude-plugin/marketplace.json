@@ -11,27 +11,9 @@
   },
   "plugins": [
     {
-      "name": "linear-lifecycle",
-      "source": "./plugins/linear-lifecycle",
-      "version": "2.0.0",
-      "license": "MIT",
-      "description": "Manage Linear issues via the Linear CLI with zero-context overhead.",
-      "homepage": "https://github.com/mattforni/homebase",
-      "repository": "https://github.com/mattforni/homebase",
-      "author": {
-        "name": "Matthew Fornaciari",
-        "url": "https://github.com/mattforni"
-      },
-      "category": "development",
-      "keywords": ["linear", "issue-tracking", "cli", "workflow", "context-budget", "project-management"],
-      "commands": [
-        "./commands/linear-setup.md"
-      ]
-    },
-    {
       "name": "sdlc",
       "source": "./plugins/sdlc",
-      "version": "5.1.2",
+      "version": "5.2.0",
       "license": "MIT",
       "description": "Software development lifecycle skills for planning, designing, implementing, reviewing, and completing work.",
       "homepage": "https://github.com/mattforni/homebase",

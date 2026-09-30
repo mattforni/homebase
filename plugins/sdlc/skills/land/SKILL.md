@@ -1,6 +1,7 @@
 ---
 name: land
 description: Drive the back half of SDLC autonomously. Run the CodeRabbit CLI review as the gate, watch CI, triage findings, merge (squash), then clean up. The agent (not GitHub) judges when feedback is addressed. Bails to the user on human review, hard CI failure, merge conflict, or time budget exceeded. Default next step after implementation; use when the user says "land it", "ship this", "merge when ready", or invokes /sdlc:land.
+disable-model-invocation: true
 argument-hint: "[PR number - auto-detected if on feature branch]"
 allowed-tools:
   - Bash(git *)
@@ -12,13 +13,11 @@ allowed-tools:
   - Edit
   - Monitor
   - Skill(sdlc:review)
-  - Skill(sdlc:iterate)
-  - Skill(sdlc:complete)
 ---
 
 # Land a PR
 
-Take an implementation from "ready for review" through "merged and cleaned up". Wraps `sdlc:review` → CLI review → watch CI → (`sdlc:iterate`)* → merge → `sdlc:complete`. The agent owns the feedback-completeness judgment because GitHub's `mergeStateStatus: CLEAN` only reflects branch protection and required checks, not whether the review's findings have been addressed.
+Take an implementation from "ready for review" through "merged and cleaned up". Wraps `sdlc:review` → CLI review → watch CI → (address findings)* → merge → clean up. The agent owns the feedback-completeness judgment because GitHub's `mergeStateStatus: CLEAN` only reflects branch protection and required checks, not whether the review's findings have been addressed.
 
 In all bash steps below, substitute placeholder names (like PR_NUMBER, HEAD_SHA) with the actual values you stored earlier.
 
@@ -28,7 +27,7 @@ In all bash steps below, substitute placeholder names (like PR_NUMBER, HEAD_SHA)
 2. **Review the branch yourself with the CodeRabbit CLI.** This is the gate.
 3. **Watch CI** on a bounded poll, exiting on settled checks, CI failure, human review, or timeout
 4. **Decide and act**: merge / address findings / bail
-5. **Merge and complete** when ready, invoking `sdlc:complete` for cleanup
+5. **Merge and clean up** when ready
 
 Never wait on the CodeRabbit PR bot. On a private repo the free plan posts a walkthrough comment and never a review object, so a loop that polls for one polls forever while gating on nothing. On a public repo the free Open Source plan does review properly, so read its findings if they have already arrived, but merge on your own CLI review plus CI regardless. Adopted 2026-08-29; the full reasoning and mechanics live in `~/Eudaimonia/Admin/Tools/coderabbit.md`.
 
@@ -136,7 +135,7 @@ Run this under Monitor when landing in the background, and stay resident until i
     - Actionable items → **iterate** (next bullet)
     - Mixed → address the actionable ones, decline the advisory ones with reasoning, push, then loop back
   - When a declined item came from the PR bot and is therefore visible to others, reply on that comment with the reasoning so the audit trail shows it was considered rather than ignored.
-- **Iterate**: invoke `sdlc:iterate` with PR_NUMBER. It addresses findings and pushes. **After any push, re-run the CLI review from Step 2 against the new HEAD.** A review of a stale SHA gates nothing, which is the whole reason the gate is a local run rather than a status colour. Then check `mergeStateStatus` and rebase if the PR went `DIRTY` while you were iterating, since main can move under you in an active repo:
+- **Iterate**: address the actionable findings yourself, fixing each in place, then commit and push to the PR branch. **After any push, re-run the CLI review from Step 2 against the new HEAD.** A review of a stale SHA gates nothing, which is the whole reason the gate is a local run rather than a status colour. Then check `mergeStateStatus` and rebase if the PR went `DIRTY` while you were iterating, since main can move under you in an active repo:
 
   ```bash
   gh pr view PR_NUMBER --json mergeStateStatus --jq '.mergeStateStatus'
@@ -173,7 +172,7 @@ If `BEHIND` or `DIRTY` (merge conflict against base): bail to user. Rebasing int
 
 One carve out: a conflict confined entirely to plugin version lines is yours to resolve. Merge main into the branch, take the version that is correctly ahead of origin/main under the repo's bump rule, and set every affected manifest to that one value, since a plugin's version is mirrored in `plugins/<plugin>/plugin.json` and `.claude-plugin/marketplace.json` and the two must agree. Confirm that parity, verify that both sides' unrelated changes survived the auto merge, and report the resolution in your summary rather than passing it silently. Any conflict touching real content still bails. (Approved by Forni 2026-08-10, after a stacked branch hit exactly this: main had moved a plugin to 10.0.0 while the branch went 9.0.8 to 10.0.1, so git saw competing edits on one line in two files.)
 
-After successful merge, invoke `sdlc:complete` to clean up the worktree/branch. `sdlc:complete` already handles the squash-merge gotcha where `git branch -d` fails the DAG ancestry check (uses `-D` after verifying content parity).
+After a successful merge, remove the PR's worktree (`git worktree remove`, never `--force`) and delete its local branch. A squash merge always fails the ancestry check behind `git branch -d`, so confirm the PR merged your exact HEAD SHA, then use `git branch -D`.
 
 ## Output
 

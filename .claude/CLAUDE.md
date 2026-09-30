@@ -69,7 +69,7 @@ The stores above are the layers of the context architecture (GC, `~/CLAUDE.md`, 
 - **Placement and enforcement beat volume.** A rule belongs at the single layer that owns it, stated once, with other layers pointing to it rather than repeating it. Prose is a request; a flow skill step is stronger; a hook is the only guarantee, so load bearing gates are enforced at the point of use.
 - **Trim before adding.** A rule that keeps getting dropped gets scoped or enforced, not restated louder, and a fact that stops being true gets deleted, never a dated paragraph layered over it saying so. Every line admitted to GC or `~/CLAUDE.md` is paid for with a cut; homebase's `bin/lint/context-size` holds both at their last measured size.
 
-When context sprawls or duplicates, run `assist:groom-context` (also run monthly via `assist:reflect`).
+When context sprawls or duplicates, run `assist:groom-context`.
 
 ## Skills
 
