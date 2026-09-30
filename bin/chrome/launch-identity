@@ -30,6 +30,12 @@
 #   lived cookie, which is exactly what makes it stealable from disk. That is
 #   the tradeoff, recorded in bin/chrome/README.md.
 #
+#   --disable-extensions, headless only. Bitwarden's background worker spins
+#   with no window to attach to: the atelic instance idled at about 250% CPU
+#   with one blank tab, and dropped to zero with extensions off (2026-09-30).
+#   Nothing headless needs an extension. Headed keeps them, since a sign in by
+#   hand may want the password manager.
+#
 # Signing in is a headed launch by hand, never through this script:
 # bin/chrome/README.md has the steps.
 
@@ -53,7 +59,7 @@ dir="$(chrome_identity_dir "$name")"
 
 mode="${2:-headless}"
 case "$mode" in
-    headless) mode_flags=(--headless=new) ;;
+    headless) mode_flags=(--headless=new --disable-extensions) ;;
     headed) mode_flags=() ;;
     *)
         echo "launch-identity: mode must be headless or headed, not '$mode'" >&2

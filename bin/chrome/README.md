@@ -32,6 +32,11 @@ result pages, bot screened sites. There is no window, so nothing raises over
 Forni's work, which is the problem this replaced (ATE-601: attaching to his
 Brave on 9222 pulled his window forward and stole keyboard focus mid read).
 
+Headless runs with extensions off: Bitwarden's background worker spins
+without a window (about 250% CPU on an idle instance, 2026-09-30), and no
+unattended read needs an extension. Close your tab when the read is done;
+console pages keep running their scripts in the background.
+
 **Add `--headed` when the task needs his hands**: a sign in, a captcha, a
 certification on MyUI+, an application form he submits himself. Same profile,
 in a window he can see. One profile runs in one mode at a time, so the shim
