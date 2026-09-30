@@ -87,7 +87,6 @@
       "Bash(~/.zshrc)",
       "Read(//$HOME/**)",
       "Skill(assist:*)",
-      "Skill(linear-lifecycle:*)",
       "Skill(sdlc:*)",
       "WebFetch(domain:alpinemaids.com)",
       "WebFetch(domain:bluesprucemaids.com)",
@@ -140,13 +139,42 @@
     "padding": 0
   },
   "enabledPlugins": {
-    "pr-review-toolkit@claude-code-plugins": true,
-    "feature-dev@claude-code-plugins": true,
     "skill-creator@claude-plugins-official": true,
     "assist@local-skills": true,
-    "linear-lifecycle@skillset": true,
-    "sdlc@skillset": true
+    "sdlc@skillset": true,
+    "cowork-plugin-management@synced": false
   },
+  "skillOverrides": {
+    "anthropic-skills:docs": "off",
+    "anthropic-skills:computer-use": "off",
+    "anthropic-skills:docx": "off",
+    "anthropic-skills:built-in-browser": "off",
+    "anthropic-skills:chrome-browser": "off",
+    "anthropic-skills:xlsx": "off",
+    "anthropic-skills:pptx": "off",
+    "anthropic-skills:skill-creator": "off",
+    "anthropic-skills:google-workspace": "off",
+    "anthropic-skills:import-memory": "off",
+    "anthropic-skills:morning": "off",
+    "dataviz": "user-invocable-only",
+    "claude-api": "user-invocable-only",
+    "artifact-design": "user-invocable-only",
+    "artifact-diagramming": "user-invocable-only",
+    "artifact-capabilities": "user-invocable-only",
+    "workflow-authoring": "user-invocable-only",
+    "schedule": "user-invocable-only",
+    "code-review": "user-invocable-only",
+    "simplify": "user-invocable-only",
+    "security-review": "user-invocable-only",
+    "fewer-permission-prompts": "user-invocable-only",
+    "keybindings-help": "user-invocable-only",
+    "run": "user-invocable-only",
+    "init": "user-invocable-only"
+  },
+  "deniedMcpServers": [
+    { "serverName": "claude.ai Claude Docs" },
+    { "serverName": "claude.ai Google Drive" }
+  ],
   "extraKnownMarketplaces": {
     "claude-code-workflows": {
       "source": {

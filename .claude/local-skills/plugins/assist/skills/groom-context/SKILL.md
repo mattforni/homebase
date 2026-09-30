@@ -1,6 +1,6 @@
 ---
 name: groom-context
-description: Audit and redesign the context architecture (every CLAUDE.md, rules file, learned-rules.md, tool doc, and the auto memory index that loads into Claude Code sessions) so rules are stated once, never in contradiction, and enforced at the point of use rather than scattered, duplicated, or buried. Use this skill whenever Forni says "groom context", "groom-context", "we forgot a basic again", "the context is sprawling", "the rules keep getting lost", "clean up the context", or invokes "/assist:groom-context". Also invoked as a closing step by the monthly path of assist:reflect. This is the cleanup counterpart to assist:codify-context, which writes knowledge into the same architecture.
+description: Audit and redesign the context architecture (every CLAUDE.md, rules file, learned-rules.md, tool doc, and the auto memory index that loads into Claude Code sessions) so rules are stated once, never in contradiction, and enforced at the point of use rather than scattered, duplicated, or buried. Use this skill whenever Forni says "groom context", "groom-context", "we forgot a basic again", "the context is sprawling", "the rules keep getting lost", "clean up the context", or invokes "/assist:groom-context". This is the cleanup counterpart to assist:codify-context, which writes knowledge into the same architecture.
 argument-hint: "[optional starting topic, e.g. 'code review' or 'a layer to start from']"
 allowed-tools:
   - Bash
@@ -41,7 +41,7 @@ Keep the context architecture honest. The failure this skill exists to fix is **
 - **Rules**: project scoped `.claude/rules/<topic>.md` in each repo, and user scoped `~/.claude/rules/`. A rule with `paths:` loads only when a matching file is read; a rule without `paths:` is always loaded and audited as such.
 - **Eudaimonia CLAUDE.md chain**: root (always loaded when working in Eudy) and nested (`Craft/`, `Admin/`, pillar dirs), the nested ones loaded when files in that directory are read.
 - **Repo CLAUDE.md chains**: per repo and nested, loaded when working in that repo.
-- **Skill files**: `SKILL.md` and `learned-rules.md` per skill in the `assist` plugin (`.claude/local-skills/plugins/assist/skills/*`) and the `skillset` plugins (`sdlc`, `linear-lifecycle`). Loaded on invocation; the description alone sits in every session.
+- **Skill files**: `SKILL.md` and `learned-rules.md` per skill in the `assist` plugin (`.claude/local-skills/plugins/assist/skills/*`) and the `skillset` plugin (`sdlc`). Loaded on invocation; the description alone sits in every session.
 - **Hooks** (`~/.claude/hooks/`, wired in `.claude/settings.json`): the enforcement layer. Not prose, but every process gate in prose is measured against whether one of these could carry it instead.
 - **Tool docs**: `~/Eudaimonia/Admin/Tools/<tool>.md`, plus a repo's own `Tools/` for a tool that exists only for that repo; reference loaded on relevance.
 - **Auto memory**: every project's store under `~/.claude/projects/*/memory/`, each with its own `MEMORY.md` (first 200 lines or 25 KB load every session, the rest is silently dropped) plus topic files loaded on demand. A first class layer since 2026-07-04; groom it for staleness and for duplication against the repo file layers, but its existence is not a smell. Hold each index under 140 lines: move tool gotchas into the tool's doc, delete memories a repo file already states in full, then merge what is related (2026-09-25, ATE-576).
@@ -88,7 +88,7 @@ Land the changes per each repo's convention. The commit messages are the only re
 
 ## The Weekly Slice
 
-The sharpen session's Groom phase (`assist:sharpen-saws`, Phase 5) runs one bounded slice of this checklist every Wednesday: skill doctor and the cache read, then one carried grooming flag taken through the step it belongs to (a contradiction, a cull, a dedup, a relocation). The full pass stays monthly through `assist:reflect`. Both read this file, so a step added here is picked up by both; there is no second grooming procedure. Adopted 2026-09-23.
+The sharpen session's Groom phase (`assist:sharpen-saws`, Phase 5) runs one bounded slice of this checklist every Wednesday: skill doctor and the cache read, then one carried grooming flag taken through the step it belongs to (a contradiction, a cull, a dedup, a relocation). The full pass runs when this skill is invoked. Both read this file, so a step added here is picked up by both; there is no second grooming procedure. Adopted 2026-09-23.
 
 ## Output Shape
 

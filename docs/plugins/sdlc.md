@@ -12,10 +12,7 @@ This plugin provides a complete workflow for managing the software development l
 |-------|-------|-------------|
 | `/sdlc:plan` | Plan | Refine requirements on a Linear ticket through Socratic dialogue |
 | `/sdlc:design` | Design | Start work on an issue with branch setup and implementation design |
-| `/sdlc:checkpoint` | Implement | Save work in progress (commit + push, no PR) |
 | `/sdlc:review` | Review | Create PR and request code review |
-| `/sdlc:iterate` | Review | Address PR feedback, request re-review |
-| `/sdlc:complete` | Complete | Reset environment for next task |
 | `/sdlc:land` | Land | Drive the back half autonomously: open PR, iterate with bot reviewer, merge, clean up |
 
 ## Workflow
@@ -29,12 +26,10 @@ The typical flow is:
     ↓
 [implement features]      # Write code
     ↓
-/sdlc:checkpoint          # Save progress (optional, repeatable)
-    ↓
 /sdlc:land                # Open PR, iterate with bot, merge, clean up
 ```
 
-`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → poll → (`sdlc:iterate`)* → merge → `sdlc:complete` and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded). Drop down to the individual back-half skills (`/sdlc:review`, `/sdlc:iterate`, `/sdlc:complete`) only when you want manual control over a specific step.
+`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → CLI review → poll → (address findings)* → merge → clean up and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded).
 
 ## Installation
 
@@ -52,8 +47,8 @@ claude plugin install sdlc@skillset
 
 - **Git** for version control
 - **GitHub CLI** (`gh`) for PR operations
-- **CodeRabbit CLI** (`coderabbit`) for the review gate used by land and iterate. Install via `brew install coderabbit`, then `coderabbit auth login`. It reviews the current git repository and has no flag that selects one, so call it from a `cr-review.sh` wrapper that changes directory internally. Mechanics live in `~/Eudaimonia/Admin/Tools/coderabbit.md`.
-- **Linear CLI** (`linear`) for Linear integration (optional, used by plan/design/complete). Install via `brew install schpet/tap/linear`.
+- **CodeRabbit CLI** (`coderabbit`) for the review gate used by land. Install via `brew install coderabbit`, then `coderabbit auth login`. It reviews the current git repository and has no flag that selects one, so call it from a `cr-review.sh` wrapper that changes directory internally. Mechanics live in `~/Eudaimonia/Admin/Tools/coderabbit.md`.
+- **Linear CLI** (`linear`) for Linear integration (optional, used by plan and design). Install via `brew install schpet/tap/linear`.
 
 ## Skill Details
 
@@ -86,17 +81,6 @@ Starts work on an issue:
 
 **Usage:** `/sdlc:design ATE-123` or `/sdlc:design feature-name`
 
-### /sdlc:checkpoint
-
-Saves work in progress without creating a PR:
-
-1. Verifies on feature branch
-2. Stages all changes
-3. Generates commit message (or uses provided message)
-4. Pushes to remote
-
-**Usage:** `/sdlc:checkpoint` or `/sdlc:checkpoint "WIP: auth refactor"`
-
 ### /sdlc:review
 
 Creates a PR and requests review:
@@ -104,33 +88,9 @@ Creates a PR and requests review:
 1. Detects and removes dead code
 2. Creates commit with proper attribution
 3. Pushes and creates PR
-4. Requests a PR bot review with the configured trigger. This is the optional public repo fallback, not the gate: the gate is the CodeRabbit CLI run by land and iterate.
+4. Requests a PR bot review with the configured trigger. This is the optional public repo fallback, not the gate: the gate is the CodeRabbit CLI run by land.
 
 **Usage:** `/sdlc:review`
-
-### /sdlc:iterate
-
-Addresses PR review feedback:
-
-1. Fetches all review comments
-2. Addresses each issue
-3. Commits and pushes
-4. Re reviews the new HEAD with the CodeRabbit CLI, and posts the configured trigger as an optional public repo fallback
-
-**Usage:** `/sdlc:iterate` or `/sdlc:iterate 123`
-
-### /sdlc:complete
-
-Finishes work and resets environment:
-
-1. Verifies PR is merged
-2. Updates Linear issue to "Done"
-3. Cleans up based on how work was set up:
-   - **worktree**: tears down the Claude Code worktree (in session: via `ExitWorktree`; cross session: falls back to `git worktree remove`)
-   - **branch**: checks out main, pulls latest, and deletes the branch
-4. Prunes remote tracking branches
-
-**Usage:** `/sdlc:complete`
 
 ### /sdlc:land
 
@@ -141,10 +101,10 @@ Drives the back half of SDLC autonomously, from "ready for review" through "merg
 3. **Polls** for state changes via Monitor: CI settled, CI failure, human review, or timeout
 4. **Decides** per event:
    - Review clean, or only advisory findings → merges
-   - Actionable findings → invokes `/sdlc:iterate`, then re-runs the CLI review on the new HEAD
+   - Actionable findings → fixes them in place and pushes, then re-runs the CLI review on the new HEAD
    - CI failure self-introduced → fixes in place and pushes
    - CI failure not self-introduced, human review, merge conflict, or timeout → bails to the user with state summary
-5. **Merges** (squash, with branch delete) and invokes `/sdlc:complete` for cleanup
+5. **Merges** (squash, with branch delete), then removes the local worktree and branch
 
 The agent (not GitHub) judges when feedback is addressed. `mergeStateStatus: CLEAN` only reflects branch protection and required checks, not whether anyone read the diff. Findings are not implemented blindly: when the agent disagrees it declines with reasoning and merges through.
 
@@ -154,11 +114,11 @@ The loop never waits on the CodeRabbit PR bot (adopted 2026-08-29). On a private
 
 ## Configuration
 
-All skills use `disable-model-invocation: true`, meaning they are only triggered by explicit user invocation (not automatically by Claude).
+`land` and `groom-issues` use `disable-model-invocation: true`, meaning they are only triggered by explicit user invocation (not automatically by Claude).
 
 ### Branching Strat
 
-Controls how `/sdlc:design` sets up your working environment and how `/sdlc:complete` cleans up.
+Controls how `/sdlc:design` sets up your working environment.
 
 | Strat | Behavior |
 |-------|----------|
@@ -182,7 +142,7 @@ Worktree mode places worktrees under `.claude/worktrees/`, which is managed by C
 
 ### Review Command
 
-The review and iterate skills use a configurable review command. Configure via:
+The review skill uses a configurable review command. Configure via:
 
 **Git config (recommended):**
 
@@ -200,10 +160,10 @@ export SDLC_REVIEW_COMMAND="/gemini review"
 
 ### Linear Integration
 
-The plan, design, and complete skills optionally integrate with Linear via the Linear CLI. If the CLI is installed and the issue ID looks like a Linear issue (e.g., `ATE-123`), the skills will:
+The plan and design skills optionally integrate with Linear via the Linear CLI. If the CLI is installed and the issue ID looks like a Linear issue (e.g., `ATE-123`), the skills will:
 
 - Fetch issue details for context
-- Update issue status ("In Progress", "Done")
+- Update issue status ("In Progress")
 - Post design summary comments
 
 Install via `brew install schpet/tap/linear` and authenticate with `linear auth login`.

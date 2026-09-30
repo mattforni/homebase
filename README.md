@@ -15,19 +15,17 @@ Curated, single purpose plugins for development workflows. Hosted at the repo ro
 ```bash
 claude plugin marketplace add mattforni/homebase
 claude plugin install sdlc@skillset
-claude plugin install linear-lifecycle@skillset
 ```
 
 | Plugin | Description |
 |--------|-------------|
-| [sdlc](plugins/sdlc/) | Plan, design, checkpoint, review, iterate, complete. See [docs/plugins/sdlc.md](docs/plugins/sdlc.md). |
-| [linear-lifecycle](plugins/linear-lifecycle/) | Manage Linear issues via the Linear CLI with zero context overhead. See [docs/plugins/linear-lifecycle.md](docs/plugins/linear-lifecycle.md). |
+| [sdlc](plugins/sdlc/) | Plan, design, review, land, groom issues. See [docs/plugins/sdlc.md](docs/plugins/sdlc.md). |
 
 > Migrating from `mattforni/skillset`? That repo is deprecated. Run `claude plugin marketplace remove skillset` then re add from `mattforni/homebase`.
 
 #### Per clone config
 
-The review gate is `coderabbit review --base origin/main --committed --agent`, run locally on the branch, and it needs no configuration. `git config sdlc.review-command` only feeds the **public repo fallback**: the trigger comment `sdlc:review` and `sdlc:iterate` post so the PR bot takes a second look, which is worth having here because homebase is public and the free Open Source plan reviews properly on it. Nothing waits on that trigger. The plugin default is `/gemini review`, which is dead since Google sunset the consumer app, so `setup.sh` sets the local config automatically, or you can run it by hand:
+The review gate is `coderabbit review --base origin/main --committed --agent`, run locally on the branch, and it needs no configuration. `git config sdlc.review-command` only feeds the **public repo fallback**: the trigger comment `sdlc:review` posts so the PR bot takes a second look, which is worth having here because homebase is public and the free Open Source plan reviews properly on it. Nothing waits on that trigger. The plugin default is `/gemini review`, which is dead since Google sunset the consumer app, so `setup.sh` sets the local config automatically, or you can run it by hand:
 
 ```bash
 git config sdlc.review-command "@coderabbitai review"
@@ -39,4 +37,4 @@ Personal productivity skills. Lives under [.claude/local-skills](.claude/local-s
 
 | Plugin | Description |
 |--------|-------------|
-| [assist](.claude/local-skills/plugins/assist/) | Emails, schedule, codify, sharpen, BD, job apply, meals, permissions. |
+| [assist](.claude/local-skills/plugins/assist/) | Emails, schedule, codify, sharpen, BD, job apply, meals. |

@@ -61,7 +61,7 @@ Claude Code has no profiles and one config dir (the `~/bin/claude` wrapper retir
 ├── bin/             # Scripts: flat files are shims, directories are namespaces
 │   ├── lib/         #   Shared, sourced rather than duplicated (deploy table, vault routing)
 │   └── lint/        #   shell, reconciler, and context size checks, run by CI and pre-commit
-├── plugins/         # The skillset marketplace plugins (sdlc, linear-lifecycle)
+├── plugins/         # The skillset marketplace plugins (sdlc)
 ├── coderabbit/      # The two CodeRabbit house standards
 ├── .githooks/       # Tracked git hooks; activate with core.hooksPath
 └── setup.sh         # Installation and reconciliation

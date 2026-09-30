@@ -6,11 +6,11 @@ Entries here follow the context library's three tiers of fidelity: a short TLDR,
 
 ## Naming
 
-Skill names lead with a verb. Add an object when it sharpens the meaning (`plan-week`, `triage-email`); a bare verb is fine when it already reads unambiguously (`reflect`, `sharpen`, `wrap`). New skills follow this. Rename an existing skill only when its name actively misleads, not for conformity's sake.
+Skill names lead with a verb. Add an object when it sharpens the meaning (`plan-week`, `triage-email`); a bare verb is fine when it already reads unambiguously (`sharpen`, `wrap`). New skills follow this. Rename an existing skill only when its name actively misleads, not for conformity's sake.
 
 **Agent names are one word role nouns.** A skill names the work (verb noun: `audit-prospect`, `plan-week`); an agent names the worker (`auditor`, `lander`, `socrates`, `runner`, `migrator`). The split keeps the two surfaces distinguishable at a glance: what is being done versus who is doing it. When a skill and its background agent counterpart coexist (the lead plugin's `audit-prospect` skill and `auditor` agent), the agent stays a thin dispatch contract whose first action is reading the skill for method, never a parallel reimplementation. Applies to user roster agents in `~/.claude/agents/` and plugin agents in `plugins/<plugin>/agents/` alike. Settled 2026-07-25 while creating `lead:auditor`.
 
-**Plugin skill frontmatter names are bare.** The loader namespaces every plugin skill as `<plugin>:<name>`, so the `name:` field in SKILL.md must be the bare skill name (`triage-inbox`, `land`), never the namespaced form. Writing `assist:triage-inbox` there double namespaces the invocation surface into `assist:assist:triage-inbox`. Caught 2026-07-24 across all 18 assist and 8 sdlc skills; linear-lifecycle, whose name was bare, was unaffected.
+**Plugin skill frontmatter names are bare.** The loader namespaces every plugin skill as `<plugin>:<name>`, so the `name:` field in SKILL.md must be the bare skill name (`triage-inbox`, `land`), never the namespaced form. Writing `assist:triage-inbox` there double namespaces the invocation surface into `assist:assist:triage-inbox`. Caught 2026-07-24 across all 18 assist and 8 sdlc skills.
 
 ## SKILL.md vs learned-rules.md
 
