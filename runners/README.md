@@ -78,6 +78,12 @@ the exact rendered bytes through the same Resend sender the job uses. Its key
 comes from the Keychain through `bin/lib/email-report.sh`, never from the
 vault, because the vault copy belongs to the container.
 
+**A merge does not promote.** A change under `runners/` reaches the scheduled
+job only when `promote` runs for every runner it touches (all of them for
+`runners/lib/` and `runners/email/`); a fire between the merge and the promote
+runs the old image. ATE-608 makes the merge promote on its own, and this
+paragraph goes when it lands.
+
 ### The Commands
 
 | Command | Role |

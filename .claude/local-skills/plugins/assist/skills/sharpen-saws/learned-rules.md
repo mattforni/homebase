@@ -91,3 +91,11 @@ When a scout or the sharpener dies on a server side error (a 529, a dropped conn
 **Why:** 2026-09-23, the first Groom. The table showed the retired `job-apply` skill still loaded, `chatroom` registered twice, `handle-pr` (Gemini feedback, dead since 2026-07-17) still present, and `sdlc:groom-issues` unused since the groomer agent took its job.
 
 **How to apply:** Run it at Groom, read the never used rows against what replaced them, and propose the turn offs; a skill is turned off only on Forni's yes.
+
+## Check gcloud Auth Before Dispatching the Sharpener
+
+The atelic gcloud identity is logged out by a daily reauth, and the login is a browser step only Forni can take. Before dispatching the sharpener, run one read (`gcloud run jobs list --project atelic --region us-central1`); if it fails on reauthentication, ask Forni to run `gcloud auth login` first, and dispatch once it passes.
+
+**Why:** 2026-09-30. The audit ran logged out, so executions, scheduler entries, and image digests went unread and every row rested on runner mail, the ledger, and git. The sharpener said so, as its own rule requires, but the one fact the week turned on (the plumber fired on an image five days stale) is exactly what a digest read shows and mail cannot.
+
+**How to apply:** The check is the first step of Before Every Invocation, ahead of the dispatch. If Forni is away or declines, dispatch anyway and carry the caveat into the log's Routines line; never work around the login.
