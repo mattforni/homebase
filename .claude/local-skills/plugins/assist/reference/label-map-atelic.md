@@ -92,11 +92,6 @@ applications, recruiters, and their confirmations at the practice address
 (Wellfound, Fractional Jobs). The ledger of record is the Pinole work API
 (`pinole work postings`, `pinole work activities`); this label is retrieval only.
 
-### TPF (⚒️)
-
-The Product Forge archive, including the forwarded thread set that came across
-on 2026-08-20. Historical: the practice pitches, sends, and signs as Atelic.
-
 ## Routing Notes
 
 - **The mailbox is the routing signal.** Work landing here is practice work, so

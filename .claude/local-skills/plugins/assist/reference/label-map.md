@@ -55,7 +55,6 @@ Always route to the most specific sublabel. Never label with just a parent pilla
 - `🛠️ Craft/💼 Vocation` -- job search, career
 - `🛠️ Craft/💼 Vocation/💻 Atelic` -- Atelic, the practice
 - `🛠️ Craft/💼 Vocation/💻 Atelic/🌽 Pinole` -- Pinole, the meal and training dojo
-- `🛠️ Craft/💼 Vocation/⚒️ TPF` -- The Product Forge, Titus
 - `🛠️ Craft/🧑‍💻 Development` -- software, dev tools, GitHub, tech subscriptions
 - `🛠️ Craft/🌏 Adventure` -- travel, trips, flights, hotels
 - `🛠️ Craft/🌦️ Climate` -- climate tech

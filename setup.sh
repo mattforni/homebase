@@ -267,7 +267,7 @@ install_npm_globals() {
   # Todoist and HubSpot claude.ai connectors on 2026-08-12 (ATE-463). A connector
   # is authorized against the Claude account rather than a directory, so it loads
   # in every session and can only ever reach one account; the HubSpot one was
-  # bound to the TPF portal, leaving Atelic unreachable through it. Both CLIs
+  # bound to the wrong portal, leaving Atelic unreachable through it. Both CLIs
   # cost nothing until invoked and resolve their account per directory.
   # lighthouse and playwright (2026-09-26, ATE-586) serve the practice's audit
   # scripts: pagespeed.mjs renders Google's PageSpeed run into Lighthouse's own
@@ -1293,7 +1293,7 @@ setup_auth() {
     # in the 2026-08-14 split. GWS_BOOTSTRAP_PROJECT still forces one project
     # for every profile, which is what a recovery run wants.
     local gws_bootstrap_project gws_profile gws_dir
-    for gws_profile in personal atelic tpf; do
+    for gws_profile in personal atelic; do
       gws_bootstrap_project="${GWS_BOOTSTRAP_PROJECT:-$(vault_project_for_profile "$gws_profile")}"
       gws_dir="$HOME/.config/gws-$gws_profile"
       if [[ -f "$gws_dir/client_secret.json" ]] && [[ -f "$gws_dir/credentials.enc" ]] && [[ "$FORCE" != true ]]; then
