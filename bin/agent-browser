@@ -74,10 +74,18 @@ while (($#)); do
                 exit 64
             fi
             identity="$2"
+            if [[ -z "$identity" ]]; then
+                echo "agent-browser shim: --identity needs a non-empty name" >&2
+                exit 64
+            fi
             shift 2
             ;;
         --identity=*)
             identity="${1#--identity=}"
+            if [[ -z "$identity" ]]; then
+                echo "agent-browser shim: --identity needs a non-empty name" >&2
+                exit 64
+            fi
             shift
             ;;
         --headed)

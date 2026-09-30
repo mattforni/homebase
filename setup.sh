@@ -458,7 +458,7 @@ retire_brave_launcher() {
     return 0
   fi
 
-  rm -rf "$app" "$stamp"
+  rm -rf "$app" "$stamp" || return 1
   info "Removed the Brave launcher (unpin it from the Dock by hand)"
   SUMMARY+=("Brave launcher removed")
 }
@@ -1426,6 +1426,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     # run worth trusting and "touch nothing" has to mean it.
     warn "Dry run: installing nothing. Home changes only."
     run_phase reconcile_home
+    run_phase retire_brave_launcher
   else
     run_phase setup_prerequisites
     run_phase install_brew_packages
