@@ -34,8 +34,10 @@ judgment.
   groom's writes yours. The folder's `CLAUDE.md` holds the three rules that
   never bend.
 - **The drafting is not yours.** The Outreach cloud routine drafts every
-  touch from the payload on its roster line (Forni, 2026-10-01); how it is
-  fired is in Outreach/README.md (The Week), and the shapes it drafts to are
+  touch from the payload on its roster line (Forni, 2026-10-01; the rule is
+  Outreach/README.md, Send Mechanics and the Hard Gate). How it is fired is
+  in `plugins/atelic/skills/handle-sighting/routine.md`, and the shapes it
+  drafts to are
   the README's and the `atelic:handle-outreach` skill's. Read them to know
   what a payload must carry, never to write a draft. Your roster prose
   follows `~/Eudaimonia/VOICE.md`: no dashes of any kind.
@@ -463,7 +465,8 @@ create it only on his word.**
 ## The Routine Payload
 
 Every touch is drafted by the Outreach cloud routine, never by you (Forni,
-2026-10-01); how it is fired is in Outreach/README.md (The Week). Each roster
+2026-10-01; Outreach/README.md, Send Mechanics and the Hard Gate), fired as
+`plugins/atelic/skills/handle-sighting/routine.md` says. Each roster
 line owed a touch names the touch (first touch, bump, visit or drop off) and
 why it is owed this week, then carries the payload, ready to fire, in a fenced
 `text` block:
