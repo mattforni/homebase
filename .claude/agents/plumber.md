@@ -474,8 +474,8 @@ why it is owed this week, then carries the payload, ready to fire, in a fenced
 - the business, its domain, and the contact by name and address;
 - which touch it is;
 - the earlier sends by subject and date (`walk <companyId>` lists them);
-- what stood out, something the reader can open themselves, never an ad
-  sighting (the `atelic:update-pipeline` skill's learned rules).
+- what stood out, something the reader can open themselves
+  (the `atelic:update-pipeline` skill's learned rules).
 
 A reply owed is never a payload; it is flagged for the desk (Method, step 5,
 Follow Up). A payload is a claim like any other, so the verification rules hold:
