@@ -55,12 +55,11 @@ judgment.
   (NEW, CONTACTED, ENGAGED, CONNECTED, QUALIFIED, UNQUALIFIED; a company
   carrying a Disqualification Reason is closed and off every board, per
   Closing a Prospect in `Tools/hubspot.md`),
-  the GROW
-  scores summing to `fit`, the `tags` vocabulary (`warm`, `whale`, `trade`,
-  `nonprofit`; untagged means cold; `bench` retired 2026-08-26, unscored is
-  `fit` unknown), and the queue derivation: lifecycle Lead is the funnel,
-  the contact's Lead Status is where they stand, `fit` is the order, and the
-  Next Up and Unscored views carry it (Outreach/README.md, The Queue).
+  the `tags` vocabulary (`warm`, `whale`, `trade`, `nonprofit`; untagged
+  means cold), and the queue derivation: lifecycle Lead is the funnel, the
+  contact's Lead Status is where they stand, the order is oldest first, and
+  the Next Up view carries it (Outreach/README.md, The Queue). The GROW
+  scores on older records are retired and never read or written.
 - **The tool**: `plugins/atelic/scripts/hubspot.ts` in the Atelic repo is the
   groom's reads and writes, its header comment the reference for every
   command and guard. Run it as one plain command with the checkout's path,
@@ -69,8 +68,9 @@ judgment.
   as it stands, here and in the runner's image, and it takes the service key
   from `HUBSPOT_SERVICE_KEY` or the Keychain. Add `--json` whenever you parse
   the result. Never a throwaway script for anything it covers.
-- **The board**: `~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/Leads/README.md` for
-  the fit order and the build schedule; per engagement folders under `Pipeline/Leads/` (or `Pipeline/Opportunities/`, `Pipeline/Customers/`)
+- **The board**: per engagement folders under
+  `~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/Leads/` (or
+  `Pipeline/Opportunities/`, `Pipeline/Customers/`)
   for anyone with an engagement record. **A client README is the engagement
   (wedge, build, artifacts, lessons), never the relationship timeline.**
   Where they stand, what was sent, who visited whom and when, all of that
@@ -174,9 +174,7 @@ one file.
 
    - **Repeat opens are strong evidence and they move a name up the order.**
      Somebody who loaded the images four or five times over several days read
-     it and came back. That outranks `fit` for deciding what gets worked
-     first, because interest already demonstrated beats interest inferred
-     from a score.
+     it and came back, and that outranks the oldest first order (The Queue).
    - **Zero opens is not evidence of anything.** A blocked image, a corporate
      gateway, a plain text client: all produce a zero on a send that was read.
      Never write "he never opened it" on a roster line; write "no opens
@@ -228,8 +226,11 @@ one file.
      roster (2026-09-15) listed Salley Wilson with a follow up booked and Josh
      Beller three weeks after Forni had answered him. The 2026-09-08 roster
      declared none while Ryan Kohler's 09-04 reply sat in both places; a
-     table would have shown it and a sentence hid it. Then each reply owed
-     gets its line and its payload (The Routine Payload, below).
+     table would have shown it and a sentence hid it. **A reply is not a
+     routine payload**: it is the relationship answering (Outreach/README.md,
+     The Reply), and the desk drafts it in the thread's own register. Each
+     reply owed gets a flagged line naming the thread, who replied and when,
+     and your read of what they said, and you draft nothing for it.
    - **Tasks due**: any open HubSpot task whose due date falls in this week
      or earlier. Read the task body, which carries why the name was parked
      and what the next touch owes, then name that touch and write its
@@ -271,13 +272,12 @@ one file.
      ran; each is walked with Forni and the close is his call on the line,
      never yours or the groom's (The Weekly Groom).
    - **First touches**: the week's new names. Start from any name Forni
-     carried forward on last week's roster file, then fill from the top of
-     Next Up (lifecycle
-     Lead, `fit` known, no Disqualification Reason, sorted by `fit`
-     descending) where a contact still reads NEW. For each, run
-     the mailbox dig first, pick the entry per the entry rule, verify every
-     claim on the platform it lives on and note the verification date, and
-     write its payload. Five is a full week; name the stretch.
+     carried forward on last week's roster file, then fill from the queue in
+     its order (Outreach/README.md, The Queue) where a contact still reads
+     NEW. For each, run the mailbox dig first, pick the entry per the entry
+     rule, verify every claim on the platform it lives on and note the
+     verification date, and write its payload. The week's target is the
+     Outbound number in The Weekly Scoreboard; name the stretch.
 6. **Write the roster** into `Outreach/<ISO week>-roster.md` in the Atelic
    repo, replacing the skeleton's notice and everything above `## Placed
    Ahead`, as markdown, opening with the date it was built and the standing
@@ -398,11 +398,7 @@ actually does. Two rules ride along:
 4. **Size the company from its own pages**, the team page and the about page,
    never from a guess or an aggregator. Headcount and an in house marketing
    title are what decide whether there is a buyer at all.
-5. **Score GROW**, each axis 1 to 5, `fit` their sum: `gravity` is demand pull,
-   `refresh` is how badly the surface needs rebuilding, `owner` is how reachable
-   and willing the decision maker is, `wiring` is how much machinery is missing.
-   High `wiring` means unwired, so a fully instrumented shop scores low.
-6. **Write the record.** Verify `portalId` 246648548 before the first write.
+5. **Write the record.** Verify `portalId` 246648548 before the first write.
 
    **Preflight both objects, and make the whole step safe to run twice.** Search
    companies by exact domain and contacts by exact lowercased email, and reuse
@@ -413,7 +409,7 @@ actually does. Two rules ride along:
    from a run that died halfway, so check for each and create only what is
    absent.
 
-   Create the company at lifecycle `lead` with its GROW scores, `vertical`,
+   Create the company at lifecycle `lead` with its `vertical`,
    `segment`, `source`, `door`, `tags`, address and phone, and a description
    holding the wedge and the verification date. Create the named contact at
    `lifecyclestage: lead` and `hs_lead_status: NEW`, associate it, then **read
@@ -422,7 +418,7 @@ actually does. Two rules ride along:
    endpoint. **That is the whole write.** Inside an audit you never move an existing record: no Lead Status change, no
    lifecycle change, no property edit on anything that existed before you
    started, no deletes, and no notes or meetings on anyone's timeline.
-7. **Put it on the roster** as a first touch with its payload, or write the
+6. **Put it on the roster** as a first touch with its payload, or write the
    pass and the reason it is a pass. **A great finding on a company with no
    buyer is still a pass**, and the honest place to say so is the roster line,
    not the payload. A well built site gets the two findings that cost money, never a
@@ -468,18 +464,18 @@ create it only on his word.**
 
 Every touch is drafted by the Outreach cloud routine, never by you (Forni,
 2026-10-01); how it is fired is in Outreach/README.md (The Week). Each roster
-line owed a touch names the touch (first touch, bump, reply, visit or drop
-off) and why it is owed this week, then carries the payload, ready to fire, in
-a fenced `text` block:
+line owed a touch names the touch (first touch, bump, visit or drop off) and
+why it is owed this week, then carries the payload, ready to fire, in a fenced
+`text` block:
 
 - the business, its domain, and the contact by name and address;
 - which touch it is;
-- the earlier sends by subject and date (`walk <companyId>` lists them), and
-  for a reply, their latest message by subject and date;
+- the earlier sends by subject and date (`walk <companyId>` lists them);
 - what stood out, something the reader can open themselves, never an ad
   sighting (the `atelic:update-pipeline` skill's learned rules).
 
-A payload is a claim like any other, so the verification rules hold:
+A reply owed is never a payload; it is flagged for the desk (Method, step 5,
+Follow Up). A payload is a claim like any other, so the verification rules hold:
 
 - **Nothing fabricated, ever.** A claim that reaches a payload is verified the
   same day on the platform it lives on, or it stays out. No aggregator number
