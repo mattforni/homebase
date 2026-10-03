@@ -32,7 +32,8 @@ export GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
 
 | Profile | Config dir | Account |
 |---------|-----------|---------|
-| `personal` | `~/.config/gws-personal/` | personal Gmail |
+| `personal` | `~/.config/gws-personal/` | personal Gmail (the ambient default) |
+| `atelic` | `~/.config/gws-atelic/` | `matt@atelic.me` |
 
 The active profile is layered:
 
@@ -41,7 +42,7 @@ The active profile is layered:
 3. **Invocation time shim (authoritative)**: `~/bin/gws` re-resolves the marker on every single call and exports the config dir before exec'ing the real binary. This is the layer that actually guarantees the right account, because it does not care how the process was started.
 4. **Pin**: `gws-pin` sets `GWS_AUTO_SWITCH=0`, honored by both the hook and the shim, which then pass through untouched.
 
-The `.account` marker is a cross-tool convention; the `~/bin/claude` wrapper reads the same file to pick the Claude Code profile.
+The `.account` marker is a cross-tool convention; the `hs` shim reads the same file to pick the HubSpot account.
 
 | Command | Effect |
 |---------|--------|
@@ -50,13 +51,14 @@ The `.account` marker is a cross-tool convention; the `~/bin/claude` wrapper rea
 | `gws-pin` | Lock to current profile in this shell (`GWS_AUTO_SWITCH=0`, honored by the hook and the shim) |
 | `gws-unpin` | Resume chpwd hook |
 | `gws-whoami` | Re-resolve from `$PWD`, then show profile, config dir, and `gws auth status` |
-| `GOOGLE_WORKSPACE_CLI_CONFIG_DIR=~/.config/gws-personal gws ...` | One shot override |
+| `GWS_FORCE_PROFILE=personal gws ...` | One shot override. Unambiguous; use this everywhere |
+| `GOOGLE_WORKSPACE_CLI_CONFIG_DIR=~/.config/gws-personal gws ...` | Legacy one shot override. Silently ignored when it names the profile you are already on |
 
-When writing tooling that should always run against a specific account regardless of where it runs, prefer the per command override over relying on the ambient profile. When in doubt about which account is active, run `gws-whoami` before any action that sends mail or modifies a calendar.
+When writing tooling that should always run against a specific account regardless of where it runs, prefer `GWS_FORCE_PROFILE=<profile>` over relying on the ambient profile; an unknown profile name exits 78 instead of guessing. When in doubt about which account is active, run `gws-whoami` before any action that sends mail or modifies a calendar.
 
 `~/bin/gws` is a PATH shim that re-resolves the nearest `.account` marker on every invocation, so a plain `gws` call from inside a marked subtree uses that subtree's account even in an agent shell, a launchd job, or CI. Do not assume the inherited `GOOGLE_WORKSPACE_CLI_CONFIG_DIR` reflects reality; it frequently does not, and the shim is what corrects it. Full explanation in homebase `CLAUDE.md` under Account Profiles.
 
-The one shot override keeps working unchanged. Every resolver stamps `GWS_RESOLVED_DIR` with the config dir it set, so the shim can tell an inherited config dir (equal to the stamp, safe to re-resolve) from one you set on purpose (different from the stamp, honored). In a context with no stamp at all, such as launchd, cron, or a raw `sh -c`, the marker wins and `GWS_AUTO_SWITCH=0` is the way to force a specific account.
+The legacy config dir override is conditional, which is why `GWS_FORCE_PROFILE` replaced it. Every resolver stamps `GWS_RESOLVED_DIR` with the config dir it set, so the shim can tell an inherited config dir (equal to the stamp, safe to re-resolve) from one you set on purpose (different from the stamp, honored). An explicit config dir that names the profile the shell is already on is byte identical to an inherited one, so the shim re-resolves from the marker and the override is lost. The full account lives in `~/Eudaimonia/Admin/Tools/gws.md`.
 
 ### Cross Machine Secret Sync
 

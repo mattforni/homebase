@@ -67,10 +67,10 @@ For each message, fetch headers and classify. **Scan, do not deep-read.** Read t
 ```bash
 # Headers for classification
 gws gmail users messages get --params '{"userId":"me","id":"<ID>","format":"metadata","metadataHeaders":["From","Subject","Date","List-Unsubscribe"]}' --format json 2>&1 | grep -v "^Using"
-# Full body when a verb depends on it. Do NOT use `gws gmail +read` (it returns only the subject).
-# The `snippet` field is the fastest gist; for full text decode the base64 text/plain part.
-# For HTML-only mail, strip <style>/<script> before stripping tags, or just read the snippet.
-gws gmail users messages get --params '{"userId":"me","id":"<ID>","format":"full"}' --format json 2>&1 | grep -v "^Using"
+# Full body when a verb depends on it. The metadata call's `snippet` field is the fastest gist.
+# `+read` decodes the body and converts HTML-only mail to plain text; add `--format json`
+# for From, To, Cc, and both bodies as fields. It never returns Bcc.
+gws gmail +read --id <ID> --headers 2>&1 | grep -v "^Using"
 ```
 
 Cross-reference each sender/subject against triage-rules.md and email-rules.md, assign a verb, and prepare the artifact:
