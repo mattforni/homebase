@@ -1,7 +1,6 @@
 ---
 name: plan-meals
-description: Weekly meal planning and pantry aware grocery runs. Produces a plant based, seasonal, batch prep friendly plan authored into the Pinole app, plus a shopping list grouped by store. Use when Forni mentions meal planning, a shopping list, or a grocery run, or says "meals for the week" or "what should I cook".
-disable-model-invocation: true
+description: Weekly meal plan and grocery list, authored into Pinole. Use when Forni asks directly for meal planning, "meals for the week", or "what should I cook"; never from weekly planning.
 argument-hint: "[optional week, e.g. 2026-W17]"
 allowed-tools:
   - Bash
@@ -17,7 +16,7 @@ allowed-tools:
 
 # Plan Meals Assist
 
-**Direct invocation only (2026-08-24).** Weekly planning no longer includes a meals phase; this skill runs only when Forni asks for meal planning himself.
+**Runs only on Forni's direct ask.** Weekly planning no longer includes a meals phase, so never start this skill from a planning session. When he asks for meal planning in his own words, run it; planning meals by hand skips the learned rules.
 
 Help Forni plan a week of plant based, seasonal, batch prep friendly meals, author it into the Pinole app, and produce a single primary shopping list. The goal is less decision fatigue mid week and more momentum on the healthy eating front.
 

@@ -79,10 +79,6 @@ Corrections and preferences specific to meal planning. Read on every invocation.
   - Why: Stated 2026-07-16 when gazpacho was offered as a summer blender showcase. This REVERSES the 2026-04-17 blender soup experiment rule that used to live here; do not resurrect it.
   - How to apply: do not propose soups of any kind (pureed, chunky, brothy, chilled) unless Forni explicitly asks. The immersion blender earns its keep on sauces, dressings, and salsas instead.
 
-- **No bananas.** Forni does not eat them, anywhere.
-  - Why: Forni said so on 2026-04-17.
-  - How to apply: do not propose recipes that use bananas, and do not include bananas on any shopping list. For the quinoa breakfast alt (previously sweetened with banana), use dates, a small drizzle of agave, or seasonal berries instead.
-
 ## Food Preferences
 
 Standing likes, dislikes, and avoid foods. Read before drafting any plan, cross-check the draft against this list, and append here whenever Forni states a new preference during planning. New entries follow the same Why / How to apply structure as the rules above. A durable product home for preferences and allergies is tracked as a Pinole ticket; until it ships, this section is the source of truth.
@@ -111,15 +107,18 @@ Standing likes, dislikes, and avoid foods. Read before drafting any plan, cross-
 - **Pasta.** Favor grain bowls and skillet formats over pasta dishes.
   - Why: Not a fan of pasta. Stated 2026-06-21.
   - How to apply: Reach for quinoa or rice instead of building a meal around pasta.
-- **Bananas.** Does not eat them, anywhere.
-  - Why: Stated 2026-04-17. See the dedicated rule under Recipe Rules above.
-  - How to apply: No bananas in recipes or on shopping lists; sweeten with dates or berries instead.
 
 **Grain preference:**
 
 - **Quinoa over rice** when a recipe leaves the grain open.
   - Why: Stated preference on 2026-06-21.
   - How to apply: Default to quinoa unless the recipe specifically calls for rice or Forni asks for it.
+
+**Substitutions:**
+
+- **Blended silken tofu over coconut milk.** Wherever a recipe calls for coconut milk or something like it, use blended silken tofu instead, and keep coconut milk off shopping lists.
+  - Why: Stated 2026-10-03 planning W41: coconut milk "just doesn't seem very healthy" and "I would love to start replacing coconut milk everywhere."
+  - How to apply: Swap it in any recipe proposed or authored. Use up the coconut milk powder on hand first, in dishes where the flavor matters.
 
 **Already well stocked (do not add to a list by default, confirm first):**
 
