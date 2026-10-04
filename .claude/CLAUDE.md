@@ -79,7 +79,7 @@ When context sprawls or duplicates, run `assist:groom-context`.
 
 ## External App Integration
 
-A tool doc's named method wins. Absent one, connect to outside apps by an officially supported CLI, then a native Claude connector, then an MCP server. Per directory tooling goes in a `.mcp.json` at the subtree root (inherited downward), per repo behavior in that repo's `.claude/settings.json`, and per directory CLI identity through `.account` markers plus an invocation time shim; Claude Code itself has one config dir and no profiles (`~/Eudaimonia/Admin/Tools/claude-code.md`).
+A tool doc's named method wins. Absent one, connect to outside apps by an officially supported CLI, then a native Claude connector, then an MCP server. Per directory tooling goes in a `.mcp.json` at the subtree root (inherited downward), per repo behavior in that repo's `.claude/settings.json`, and per directory CLI identity through `.account` markers plus an invocation time shim. Browser work runs through the `agent-browser` CLI (`~/Eudaimonia/Admin/Tools/agent-browser.md`).
 
 ### gws Profiles
 
