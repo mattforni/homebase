@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Table test for .claude/hooks/voice-gate.sh: a gws gmail command that writes
+# an email is denied until the session transcript shows a Read of VOICE.md and
+# of the email overlay, and every read, every other command, and every command
+# in a session that has loaded both is allowed. Run by CI and by hand.
+set -uo pipefail
+
+REPO=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null) \
+  || { echo "not in a git repo"; exit 1; }
+HOOK="$REPO/.claude/hooks/voice-gate.sh"
+[[ -x "$HOOK" ]] || { echo "hook missing or not executable: $HOOK"; exit 1; }
+
+TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+read_line() { jq -cn --arg p "$1" '{type:"assistant",message:{content:[{type:"tool_use",name:"Read",input:{file_path:$p}}]}}'; }
+
+LOOKALIKE="$TMP/look.jsonl"
+{ read_line "/tmp/VOICE.md"; read_line "/tmp/Admin/Tools/email.md"; } > "$LOOKALIKE"
+EMPTY="$TMP/empty.jsonl"; : > "$EMPTY"
+VOICE_ONLY="$TMP/voice.jsonl"; read_line "/Users/x/Eudaimonia/VOICE.md" > "$VOICE_ONLY"
+BOTH="$TMP/both.jsonl"
+{ read_line "/Users/x/Eudaimonia/VOICE.md"; read_line "/Users/x/Eudaimonia/Admin/Tools/email.md"; } > "$BOTH"
+# A subagent's reads sit in a directory named for the session, beside it.
+SUB="$TMP/sub.jsonl"; : > "$SUB"; mkdir -p "$TMP/sub/subagents"
+{ read_line "/Users/x/Eudaimonia/VOICE.md"; read_line "/Users/x/Eudaimonia/Admin/Tools/email.md"; } > "$TMP/sub/subagents/agent-1.jsonl"
+
+pass=0; fail=0
+expect() {
+  local want="$1" transcript="$2" cmd="$3" out decision
+  out=$(jq -cn --arg c "$cmd" --arg t "$transcript" '{tool_name:"Bash",tool_input:{command:$c},transcript_path:$t,cwd:"/tmp"}' | "$HOOK" 2>/dev/null)
+  decision=$(jq -r '.hookSpecificOutput.permissionDecision // "allow"' <<<"${out:-{\}}" 2>/dev/null)
+  if [[ "$decision" == "$want" ]]; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf '  FAIL want %-5s got %-5s  %s\n' "$want" "$decision" "$cmd"
+  fi
+}
+
+# Must deny: words into Gmail with the voice unread, or only half read.
+expect deny "$EMPTY" "gws gmail +send --to a@b.co --subject 'Hi' --html --body '<p>x</p>' --draft"
+expect deny "$EMPTY" "gws gmail +reply --message-id 1 --html --body '<p>x</p>'"
+expect deny "$EMPTY" "GWS_FORCE_PROFILE=personal gws gmail +reply-all --message-id 1 --html --body '<p>x</p>' --draft"
+expect deny "$EMPTY" "gws gmail +forward --message-id 1 --to a@b.co --draft"
+expect deny "$EMPTY" "gws gmail users drafts create --params '{\"userId\":\"me\"}' --json '{}'"
+expect deny "$EMPTY" "gws gmail users messages send --params '{\"userId\":\"me\"}' --json '{}'"
+expect deny "$EMPTY" "export GWS_FORCE_PROFILE=personal; gws gmail +send --to a@b.co --subject Hi --body x"
+expect deny "$VOICE_ONLY" "gws gmail +send --to a@b.co --subject Hi --body x"
+expect deny "$EMPTY" $'gws gmail \\\n  +send --to a@b.co --subject Hi --body x'
+expect deny "$LOOKALIKE" "gws gmail +send --to a@b.co --subject Hi --body x"
+
+# Must pass: both files read, in the session or in a subagent beside it.
+expect allow "$BOTH" "gws gmail +send --to a@b.co --subject Hi --body x"
+expect allow "$BOTH" "gws gmail +reply-all --message-id 1 --html --body '<p>x</p>' --draft"
+expect allow "$SUB" "gws gmail +reply --message-id 1 --html --body '<p>x</p>' --draft"
+
+# Must pass: reads, an existing draft sent, other tools, the override.
+expect allow "$EMPTY" "gws gmail +read --id 1 --headers"
+expect allow "$EMPTY" "gws gmail users messages list --params '{\"userId\":\"me\",\"q\":\"from:jeff\"}'"
+expect allow "$EMPTY" "gws gmail users threads get --params '{\"userId\":\"me\",\"id\":\"1\"}'"
+expect allow "$EMPTY" "gws gmail users drafts send --params '{\"userId\":\"me\"}' --json '{\"id\":\"r1\"}'"
+expect allow "$EMPTY" "gws gmail users messages modify --params '{\"userId\":\"me\",\"id\":\"1\"}' --json '{}'"
+expect allow "$EMPTY" "gws calendar events list --params '{}'"
+expect allow "$EMPTY" "git commit -m 'gws gmail notes'"
+expect allow "$EMPTY" "VOICE_GATE_BYPASS=1 gws gmail +send --to a@b.co --subject Hi --body x"
+expect allow "/nonexistent/transcript.jsonl" "gws gmail +send --to a@b.co --subject Hi --body x"
+
+echo "voice-gate-test: $pass passed, $fail failed"
+[[ $fail -eq 0 ]]
