@@ -164,7 +164,7 @@ Turn the inbox into tasks before the task list is loaded, so email follow ups ri
 
 Make the calendar true. Fetch this week's events (Monday through Sunday) via `gws` on all three calendars (Life, Atelic, and the Todoist feed; see the calendars paragraph above), with `eventLabelVersion: 1` so labels come back, and read the weekly template for the recurring skeleton. The planner's calendar pull and lint results seed this phase; verify against them rather than re deriving.
 
-**Free vs busy events**: Check the `transparency` field on each event. Events with `transparency: "transparent"` are "free" (informational only, no action required). Filter them out of the working set. Do not treat free events as conflicts or as consuming time slots. Only `opaque` (busy) events block time.
+**Free vs busy events**: Check the `transparency` field on each event. Events with `transparency: "transparent"` are "free" (informational only, no action required). Filter them out of the working set. Do not treat free events as conflicts or as consuming time slots. Only `opaque` (busy) events block time. The one exception is a named ATE block: it is created Free so the booking link stays open for prospects and customers (Work Holds in `~/Eudaimonia/Admin/Tools/google-calendar.md`), and it still holds its slot. Keep every ATE block in the working set and never place another work block on top of one.
 
 **Rectify against the template and the frame**: Compare the live calendar against the template and against itself, and also reconcile the template against the current V2MOM frame, since a frame rebuild leaves the skeleton stale. Identify:
 
