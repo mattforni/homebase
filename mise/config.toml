@@ -9,6 +9,11 @@
 # NB: "mise" here is the runtime version manager (jdx/mise). It is unrelated to
 # the assist:mise skill, which is the morning prep routine.
 
+# python is here for the Anthropic pdf skill (2026-10-05, ATE-609). Homebrew's
+# python3 refuses pip installs as externally managed, so the skill's libraries
+# go into this one; setup.sh's install_python_packages holds the list.
+
 [tools]
 node = "lts"
+python = "3.13"
 ruby = "3.4.7"

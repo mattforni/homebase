@@ -141,7 +141,7 @@ Any SEO, GEO, or growth engineering work, Atelic client or personal, follows `~/
 ## Local File Conventions
 
 - **Screenshots** live in `~/Screenshots`; "last screenshot" means modified time ordering there. macOS names them with a literal leading space (`2026-05-16 at 09.48.15.png`), so discover the exact name with `ls -1` and pass it to `Read` with the space included.
-- **Scanned PDFs** drop into `~/Documents/scans/` as `Scan.pdf`, `Scan 1.pdf`, and so on; quote the numbered names in shell. Letter size pages with small content need cropping; the recipe lives in `~/Eudaimonia/Admin/Tools/pdf-crop.md`.
+- **Scanned PDFs** drop into `~/Documents/scans/` as `Scan.pdf`, `Scan 1.pdf`, and so on; quote the numbered names in shell. All PDF work runs through the `pdf` skill; scan cropping depth is `~/Eudaimonia/Admin/Tools/pdf.md`.
 
 # Compact instructions
 

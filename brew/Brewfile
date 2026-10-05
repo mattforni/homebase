@@ -14,6 +14,8 @@ brew "jq"
 brew "linear"
 brew "markdownlint-cli2"
 brew "poppler"
+brew "qpdf" # With poppler, tesseract, and imagemagick: the binaries the Anthropic pdf skill shells out to
+brew "tesseract"
 brew "mas"
 brew "shellcheck" # Static analysis for shell; bin/lint/shell and CI both require it
 brew "stow"
@@ -21,6 +23,7 @@ brew "wget"
 brew "zsh"
 
 # Media & image processing
+brew "imagemagick"
 brew "vips" # libvips: Active Storage variant processor for atelic image hosting (matches the Docker image)
 
 # Languages & build tools
