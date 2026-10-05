@@ -32,6 +32,9 @@ cmd=$(jq -r '.tool_input.command // empty' <<<"$input" 2>/dev/null)
 
 grep -qE '^[[:space:]]*VOICE_GATE_BYPASS=1([[:space:]]|$)' <<<"$cmd" && exit 0
 
+# Fold backslash-newline continuations so a split command is still recognized.
+cmd=${cmd//$'\\\n'/ }
+
 # A gws gmail command that writes words: a helper, or a raw create or send.
 grep -qE '(^|[[:space:];&|(/])gws[[:space:]]+gmail[[:space:]]' <<<"$cmd" || exit 0
 grep -qE 'gmail[[:space:]]+\+(send|reply|reply-all|forward)([[:space:]]|$)|drafts[[:space:]]+(create|update)([[:space:]]|$)|messages[[:space:]]+send([[:space:]]|$)' <<<"$cmd" || exit 0
