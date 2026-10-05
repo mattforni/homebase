@@ -13,7 +13,7 @@ Loaded when `setup.sh` or the deploy table is read. The rules every session need
 Run `./setup.sh` to install homebase to the home directory. The script will:
 
 - Reconcile `$HOME` against the deploy table, creating what is missing, fixing what is wrong, and removing what homebase used to deploy and no longer does. Repo tooling is never deployed. See [How Homebase Reaches `$HOME`](#how-homebase-reaches-home)
-- Install brew packages, runtimes via mise, npm globals, IDE extensions, and Claude plugins
+- Install brew packages, runtimes via mise, npm globals, Python packages, IDE extensions, and Claude plugins
 - Set up authentication (GitHub CLI, SSH, Google Cloud, gws)
 
 Run `./setup.sh --dry-run` first to see every change it would make to `$HOME`,
@@ -25,7 +25,8 @@ removals included, without installing anything.
 
 **Phase order is load bearing in three places.** `reconcile_home` deploys
 `mise/config.toml`, which `setup_runtimes` reads. `setup_runtimes` puts node on
-`PATH`, which `install_npm_globals` needs. And `reconcile_home` deploys the
+`PATH`, which `install_npm_globals` needs, and the mise python, which
+`install_python_packages` installs into. And `reconcile_home` deploys the
 `.claude` tree that `install_claude_plugins` and `install_mcp_servers` read back
 out of `$HOME`.
 

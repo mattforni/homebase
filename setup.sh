@@ -332,6 +332,58 @@ install_npm_globals() {
   fi
 }
 
+# The Python libraries the Anthropic pdf skill imports (2026-10-05, ATE-609).
+# The skill is synced from claude.ai and installs nothing itself: its scripts
+# and snippets call bare `python` and expect these to be there. They go into
+# the mise python, never Homebrew's, which refuses pip as externally managed
+# (PEP 668). The binaries the skill shells out to (poppler, qpdf, tesseract,
+# imagemagick) are in the Brewfile.
+install_python_packages() {
+  header "Python packages"
+
+  # `mise which` rather than `command -v python`: the latter is satisfied by
+  # Homebrew's python when mise has none, and the install would then fail on
+  # every package with an externally-managed-environment error.
+  local py
+  if ! py="$(mise which python 2>/dev/null)" || [[ -z "$py" ]]; then
+    warn "no mise managed python, skipping"
+    return 0
+  fi
+
+  # name|module: pip's name for the install, the import name for the proof.
+  local packages=(
+    "pypdf|pypdf"
+    "pdfplumber|pdfplumber"
+    "pdf2image|pdf2image"
+    "pillow|PIL"
+    "reportlab|reportlab"
+    "pytesseract|pytesseract"
+  )
+
+  local entry name module proven=0
+  for entry in "${packages[@]}"; do
+    IFS='|' read -r name module <<<"$entry"
+    if [[ "$FORCE" != true ]] && "$py" -c "import $module" &>/dev/null; then
+      info "$name already installed"
+    else
+      info "Installing $name..."
+      "$py" -m pip install --quiet --upgrade "$name" || return 1
+      SUMMARY+=("$name installed")
+    fi
+  done
+
+  # Prove the imports rather than trusting pip's exit code, and prove that the
+  # bare `python` the skill calls is this interpreter and not one shadowing it.
+  for entry in "${packages[@]}"; do
+    IFS='|' read -r name module <<<"$entry"
+    "$py" -c "import $module" 2>/dev/null || { warn "$name installed but 'import $module' fails; the pdf skill will break on it"; proven=1; }
+  done
+  if [[ "$(command -v python 2>/dev/null)" != *mise* ]]; then
+    warn "'python' on PATH is not the mise shim; the pdf skill's scripts will not find these packages"
+  fi
+  return "$proven"
+}
+
 update_claude_code() {
   header "Claude Code"
 
@@ -1500,6 +1552,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     run_phase reconcile_home
     run_phase setup_runtimes
     run_phase install_npm_globals
+    run_phase install_python_packages
     run_phase update_claude_code
     run_phase install_bun_globals
     run_phase setup_agent_browser
