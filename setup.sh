@@ -360,7 +360,7 @@ install_python_packages() {
     "pytesseract|pytesseract"
   )
 
-  local entry name module
+  local entry name module proven=0
   for entry in "${packages[@]}"; do
     IFS='|' read -r name module <<<"$entry"
     if [[ "$FORCE" != true ]] && "$py" -c "import $module" &>/dev/null; then
@@ -376,11 +376,12 @@ install_python_packages() {
   # bare `python` the skill calls is this interpreter and not one shadowing it.
   for entry in "${packages[@]}"; do
     IFS='|' read -r name module <<<"$entry"
-    "$py" -c "import $module" 2>/dev/null || warn "$name installed but 'import $module' fails; the pdf skill will break on it"
+    "$py" -c "import $module" 2>/dev/null || { warn "$name installed but 'import $module' fails; the pdf skill will break on it"; proven=1; }
   done
   if [[ "$(command -v python 2>/dev/null)" != *mise* ]]; then
     warn "'python' on PATH is not the mise shim; the pdf skill's scripts will not find these packages"
   fi
+  return "$proven"
 }
 
 update_claude_code() {
