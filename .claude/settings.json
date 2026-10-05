@@ -92,6 +92,12 @@
     "ask": [],
     "defaultMode": "auto"
   },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Label, star, read state, and archive changes to Gmail threads in Forni's own mailboxes through the gws CLI (gmail users threads modify, messages modify, batchModify), run directly or from a script. These are reversible triage housekeeping, pre authorized by Forni on 2026-10-05 for agents executing an inbox board. Sending or drafting mail, trashing or deleting, unsubscribing, and filter changes are not covered."
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh",
