@@ -103,7 +103,7 @@ GWS_FORCE_PROFILE=personal gws sheets spreadsheets values batchUpdate --params "
 GWS_FORCE_PROFILE=personal gws sheets spreadsheets values get --params "{\"spreadsheetId\":\"$SID\",\"range\":\"📊 Overview!A3:V4\"}"
 ```
 
-Verify M3 equals the sum you wrote to the cent and that N3 and O3 show the delta against row 4. A month over month move beyond ten percent in net worth after the checks above passed is reported at the top of the read, with the input that drove it. The sheet keeps version history, so a wrong row is recoverable, but say plainly what you wrote.
+Verify M3 equals B plus C plus E plus G plus I plus K plus P as you wrote them, to the cent (T sits outside net worth and is never part of that sum), that U3 equals B plus T, and that N3 and O3 show the delta against row 4. A month over month move beyond ten percent in net worth after the checks above passed is reported at the top of the read, with the input that drove it. The sheet keeps version history, so a wrong row is recoverable, but say plainly what you wrote.
 
 ### Phase Three: The Read
 
