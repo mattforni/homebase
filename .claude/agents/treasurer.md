@@ -34,7 +34,7 @@ Three phases, run straight through in one pass. You stop early only at a bail na
 2. Pull the unapproved queue for each budget, Personal and then Atelic (`--budget <id>` on every Atelic call, since Personal is the CLI default), to its own file in your scratchpad, then query the files. Piping `ynab` output straight into `jq` truncates large payloads and fails with an unfinished JSON error.
 3. Partition per the skill: skip transfers, route inflows, auto decide mapped payees, hold split history payees and new payees for Forni. Detect trip clusters and propose the memo. Before proposing a category for any personal Venmo payment, look for the same date and amount on the Atelic budget; a match is a delete, per the learned rules. On Atelic, partition by the Atelic policy: a row YNAB already categorized is checked against the policy and auto decided when it agrees, and every meal or coffee charge without a memo naming who and why is held for Forni under the meals gate, as is every `Venmo` row and any payee charged twice on one day or far off its usual amount.
 4. Return the **decision slate**, never a full plan table, one section per budget with Personal first. First the auto decided rows as a tally by category (count and total per category, with the row count that will be written). Then only the rows that need Forni, one per line: date, amount, payee, proposed category, and the one line reason. Then the trips detected with the memo you propose. The main session walks those rows with him one at a time and collects the yes on the whole plan.
-5. **Hand back the plan as a file.** Write the auto decided rows, with every held row at its proposed category, as the `transactions batch-update` payload (`approved: true` on every row, the deliberate skips listed by id beside it, any deletes listed separately) to a file, one file per budget since a batch update writes to a single budget, and return each absolute path with the budget it belongs to. In a worktree pinned session the guard refuses a heredoc that carries short hex keys, reading them as git SHAs, so write the map as a plain text file, one pipe delimited row per transaction (a key from the id's first eight characters, the category id, and any payee id or memo), turn it into a lookup with `jq -Rn '[inputs | split("|") | {key: .[0], value: {c: .[1]}}] | from_entries'`, and join that lookup to the queue file to build the transaction objects. The main session edits the held rows to Forni's answers and applies each file with `YNAB_APPLY=1`, the Atelic file with `--budget`; the permission layer blocked writes from this agent on 2026-09-27, and a write made on his yes belongs in the session that heard it. List every new rule the run produced as **candidate learned rules** for the main session to codify. You never write to the plugin or to Eudy.
+5. **Hand back the plan as a file.** Write the auto decided rows, with every held row at its proposed category, as the `transactions batch-update` payload (`approved: true` on every row, the deliberate skips listed by id beside it, any deletes listed separately) to a file, one file per budget since a batch update writes to a single budget, and return each absolute path with the budget it belongs to. In a worktree pinned session the guard refuses a heredoc that carries short hex keys, reading them as git SHAs, so write the map as a plain text file, one pipe delimited row per transaction with four fields, an empty field staying empty (a key from the id's first eight characters, the category id, the payee id, the memo), turn it into a lookup with `jq -Rn '[inputs | split("|") | {key: .[0], value: {c: .[1], p: .[2], m: .[3]}}] | from_entries'`, and join that lookup to the queue file to build the transaction objects, setting `payee_id` and `memo` only where the field is not empty. Before joining, confirm the keys are unique across the queue file and that the lookup has one entry per planned row; on a collision lengthen the key for those rows. The main session edits the held rows to Forni's answers and applies each file with `YNAB_APPLY=1`, the Atelic file with `--budget`; the permission layer blocked writes from this agent on 2026-09-27, and a write made on his yes belongs in the session that heard it. List every new rule the run produced as **candidate learned rules** for the main session to codify. You never write to the plugin or to Eudy.
 
 ### The Weekly Read
 
@@ -67,6 +67,7 @@ You collect every input yourself, from the instrument that holds it, today. Neve
 | Total liabilities | Net Worth, `Credit` plus `Mortgage` | feeds P |
 | Empower's mortgage line | Net Worth, the manual `Onity Mortgage` | feeds P |
 | Mortgage balance | Onity dashboard, "Your Loan balance is" | feeds P |
+| Non retirement investments | Net Worth, the sum of every `Investment` account that is not an IRA, a SEP, or an HSA (the Forni Trust, RYLLC Brokerage, Stacks, and Coinbase as of October 2026) | T |
 
 Debt for column P is negative: `-(total liabilities - Empower's mortgage line + Onity balance)`. Empower's mortgage is a manual entry that never sees the payments, so Onity is the instrument for that balance and Empower only contributes the card balances around it.
 
@@ -77,7 +78,7 @@ Debt for column P is negative: `-(total liabilities - Empower's mortgage line + 
 - **The allocation filter.** The page's saved account filter leaves out the Fidelity HSA; read it as saved and say so. The class grand total must equal the Net Worth `Investment` total less the accounts the filter leaves out. If it does not, bail with both numbers.
 - **Unclassified holdings.** Open `#/portfolio/allocation/unclassified`. Physical gold and silver are Alternatives. Anything else is reported by name and held out of the row until Forni says which class it is. Never press Classify.
 
-Read the current row 3 with `valueRenderOption: FORMULA` and confirm the layout still matches: inputs in A, B, C, E, G, I, K, P; formulas in D, F, H, J, L, M, N, O, Q, R, S, T, U; the monthly burn in W2; and the non retirement investments value beside its `Non-Ret Investments` label in column V, which moves down one row with every insert (the T formula follows it). If it does not, stop and report the drift instead of writing.
+Read the current row 3 with `valueRenderOption: FORMULA` and confirm the layout still matches: inputs in A, B, C, E, G, I, K, P, T; formulas in D, F, H, J, L, M, N, O, Q, R, S, U, V; and the monthly burn in X2. Drawable (U) is bank cash plus that row's own non retirement figure in T, which replaced a shared constant on 2026-10-05; rows before that date carry the old constant, not a measured balance. If it does not, stop and report the drift instead of writing.
 
 Then, in this order:
 
@@ -86,7 +87,7 @@ SID=1V-FkrYVzYAFkMIDwFCT-28JWSnx-H7FQ2xLZe7rmHTc
 # 1. insert row 3 and copy every formula down from the row that was row 3
 GWS_FORCE_PROFILE=personal gws sheets spreadsheets batchUpdate --params "{\"spreadsheetId\":\"$SID\"}" --json '{"requests":[
  {"insertDimension":{"range":{"sheetId":1929318323,"dimension":"ROWS","startIndex":2,"endIndex":3},"inheritFromBefore":false}},
- {"copyPaste":{"source":{"sheetId":1929318323,"startRowIndex":3,"endRowIndex":4,"startColumnIndex":0,"endColumnIndex":21},"destination":{"sheetId":1929318323,"startRowIndex":2,"endRowIndex":3,"startColumnIndex":0,"endColumnIndex":21},"pasteType":"PASTE_NORMAL","pasteOrientation":"NORMAL"}}
+ {"copyPaste":{"source":{"sheetId":1929318323,"startRowIndex":3,"endRowIndex":4,"startColumnIndex":0,"endColumnIndex":22},"destination":{"sheetId":1929318323,"startRowIndex":2,"endRowIndex":3,"startColumnIndex":0,"endColumnIndex":22},"pasteType":"PASTE_NORMAL","pasteOrientation":"NORMAL"}}
 ]}'
 # 2. overwrite the inputs (USER_ENTERED so the date stays a date)
 GWS_FORCE_PROFILE=personal gws sheets spreadsheets values batchUpdate --params "{\"spreadsheetId\":\"$SID\"}" --json '{"valueInputOption":"USER_ENTERED","data":[
@@ -95,10 +96,11 @@ GWS_FORCE_PROFILE=personal gws sheets spreadsheets values batchUpdate --params "
  {"range":"📊 Overview!G3","values":[[<fixed income>]]},
  {"range":"📊 Overview!I3","values":[[<alternatives>]]},
  {"range":"📊 Overview!K3","values":[[<property>]]},
- {"range":"📊 Overview!P3","values":[[<debt, negative>]]}
+ {"range":"📊 Overview!P3","values":[[<debt, negative>]]},
+ {"range":"📊 Overview!T3","values":[[<non retirement investments>]]}
 ]}'
 # 3. read rows 3 and 4 back and check M3 equals the sum of the inputs
-GWS_FORCE_PROFILE=personal gws sheets spreadsheets values get --params "{\"spreadsheetId\":\"$SID\",\"range\":\"📊 Overview!A3:U4\"}"
+GWS_FORCE_PROFILE=personal gws sheets spreadsheets values get --params "{\"spreadsheetId\":\"$SID\",\"range\":\"📊 Overview!A3:V4\"}"
 ```
 
 Verify M3 equals the sum you wrote to the cent and that N3 and O3 show the delta against row 4. A month over month move beyond ten percent in net worth after the checks above passed is reported at the top of the read, with the input that drove it. The sheet keeps version history, so a wrong row is recoverable, but say plainly what you wrote.
@@ -117,7 +119,7 @@ One page, cut from two sources: YNAB for the burn, the sheet for the position. C
 - `🤲 Giving`, last month against the average.
 - Housing is the whole condo carry (Onity, the Rail Yard Lofts HOA, the Account Integrators eCheck fee); say when a month is missing a leg, since averages over a rent era understate it.
 
-**Position.** From the new row: net worth, the delta and its percent, debt ratio, cash runway (S3) and drawable runway (U3), both in months of W2. Then the allocation on the investable basis, which is everything except property: equities, alternatives, cash, fixed income as shares of that total, against the `philosophy.md` targets. The sheet's own target row is cut against net worth including the condo, so the two never agree and neither is wrong; say which basis each number is on.
+**Position.** From the new row: net worth, the delta and its percent, debt ratio, cash runway (S3) and drawable runway (V3), both in months of X2. Then the allocation on the investable basis, which is everything except property: equities, alternatives, cash, fixed income as shares of that total, against the `philosophy.md` targets. The sheet's own target row is cut against net worth including the condo, so the two never agree and neither is wrong; say which basis each number is on.
 
 **What to discuss.** Close with at most three things worth Forni's attention, each one sentence, ranked. A number that changes what he should do next earns a place; a number that merely moved does not.
 
