@@ -138,7 +138,7 @@ Atelic budget policy (session 2026-07-23, tree rebuilt with an accountant's hat;
 
 Atelic payee corrections (session 2026-09-27):
 
-- `Cloudflare`, `Google Cloud` -> `🖥️ Infrastructure`. `Google Workspace` -> `🧰 Productivity`. `Granola` -> `🤖 AI Tools`.
+- `Cloudflare`, `Google Cloud`, `Google Workspace` -> `🖥️ Infrastructure` (Forni, 2026-10-05: "Google Workspace is not productivite. It's Infrastructure."). `Granola` -> `🤖 AI Tools`.
 - `Corporate Filings` (the billing name of Registered Agents Inc) and `Colorado Secretary of State` -> `🔖 Fees and Filings`.
 - `ACH Deposit ... MONEYLINE` (Fidelity MoneyLine) -> `Inflow: Ready to Assign`, a funding move from the RYLLC Fidelity account, not revenue. Every deposit mints a new payee name, so match the pattern.
 - `Improper City` on Atelic is `🤝 Client Meals`, memo `☕️ Client Coffee`: it is where Forni buys coffee for clients, never solo coffee (Forni, 2026-09-27, when all 27 charges since 2025-10 moved off `🙋 Personal`). Ask who was there while it is fresh and put the name in the memo; the generic memo stands when nobody can say. On the Personal budget it stays `☕️ Cafés`.
@@ -146,3 +146,4 @@ Atelic payee corrections (session 2026-09-27):
 - A purchase made to test a prospect's own checkout is `📦 Supplies`, memo naming the prospect (precedent: Outdoors Geek).
 - Parking, fares, and in flight wifi on a prospecting trip are `🛫 Travel`, memo naming the trip (precedents: Aspen parking, the August airport A Line fare and Alaska wifi). The legs of one trip follow the trip.
 - A transfer from FirstTech Operating to `BofA Checking` (the Atelic Bank of America account ending 6605, opened September 2026 and linked 2026-09-27) is company cash between business accounts, never an owner draw: match the legs as a transfer, or skip with a memo when unmatched.
+- A coffee bought at a meeting is `🤝 Client Meals` even when Forni buys only his own, memo naming who and why (precedent: `Crema Coffee House`, `🤝 w/ Kolton, re: Gremlin`, 2026-10-01). For an `Improper City` charge with no memo, check the calendar for a client event that day before falling back to the generic `☕️ Client Coffee`.
