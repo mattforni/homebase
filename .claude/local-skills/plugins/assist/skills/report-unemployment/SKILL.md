@@ -1,6 +1,6 @@
 ---
 name: report-unemployment
-description: File the weekly Colorado unemployment payment request in MyUI+ from the activities ledger in the Pinole work API, driving the browser headed and stopping hard at both certifications for Forni's explicit yes. Use when Forni says "report unemployment", "request UI payment", or "file the weekly claim". The claimer agent carries this method for background dispatch.
+description: File the weekly Colorado unemployment payment request in MyUI+ from the activities ledger in the Pinole work API, driving the browser headed, filling the whole request, and stopping at the certifications, which Forni signs and submits himself. Use when Forni says "report unemployment", "request UI payment", or "file the weekly claim". The claimer agent carries this method for background dispatch.
 ---
 
 # Report Unemployment
@@ -40,21 +40,19 @@ The agent-browser bundled Chromium cannot pass the ID.me Cloudflare challenge, h
 
 If a fresh ID.me login or MFA is needed, hand the keyboard to Forni in that window and wait. An existing session redirects the login URL straight into the claimant flow. When the claim is filed, `~/bin/chrome/stop-identity personal` returns the identity to headless on its next use.
 
-Passing ID.me's Cloudflare check from the Chrome identity is not yet proven (the first run was due after 2026-09-30). If it spins, stop and tell Forni rather than reaching for Brave.
+If ID.me's Cloudflare check spins, stop and tell Forni rather than reaching for Brave.
 
 ## The Flow
 
 Drive every control by DOM id, and read the section and error state rather than trusting a reported success. Snapshot ref clicks do fire on this site, but refs shift on every postback, so a stable id is the safer target. Ids and the entry path are in [learned-rules.md](learned-rules.md).
 
 1. **Confirm the week.** Start from My Claim Status and open the specific week row whose dates match the slate, not a generic start button. Only one week is ever certifiable, and the next week's row shows the date it opens.
-2. **Basic Questions are Forni's answers** (work, earnings, offers, able, available). Inline, walk them with him; a background run bails to the main session the moment the section is not already Complete, per the agent contract. Forni may hand the whole section over ("I trust you to answer these"), and most of it genuinely is derivable from the record: offers, refusals, quits, discharges, layoffs, holidays, able, available, and work search all follow from the ledger and the week. **Two never are, no matter how broad the authorization: whether he worked (self employment counts, so any Atelic work is work) and whether he received severance, retirement pay, 401(K), or pension.** Only he knows those, a wrong answer is a false certification under penalty of perjury, and a blanket yes does not create knowledge. Ask those two, answer the rest, and say which is which.
+2. **Basic Questions take Forni's standing answers** (see [learned-rules.md](learned-rules.md)). He volunteers billable work or income when it happens; never ask. Read each question's wording on the page before answering, and stop only if the wording has changed. A background run still bails to the main session the moment the section is not already Complete, per the agent contract.
 3. **Activity count**: select the radio matching the slate size (Five or More at cadence).
 4. **One form per activity**, saved individually. Field ids, dropdown mapping, and the ASPX gotchas live in [learned-rules.md](learned-rules.md). Verify each save by the numbered activity list growing.
 5. **Work Search Plan** checkboxes describe the coming week's intent: inquire online, apply online, interview online and by phone, other activities.
-6. **GATE: work search certification.** Checkbox plus initials (MGF), then FINISH. Requires Forni's explicit yes in that moment.
-7. **Summary readback.** Read every section back to Forni in full: Basic Questions answers, all activities, the plan.
-8. **GATE: penalty of perjury certification and Submit.** Requires Forni's explicit yes in that moment. Two gates, two yeses; never batch them.
-9. **Capture and close.** Record the confirmation number, submitted week, and timestamp. Inline, stamp every included activity with `pinole work activities report --confirmation <code> <id> [<id>...]` (one call, every id from the slate); a background run reports the number and the ids and leaves the stamp to the main session. Complete the Todoist task and report the number.
+6. **GATE: the certifications are Forni's hands.** Stop at the work search certification with everything filled, and read back the Basic Questions answers, every activity, and the plan. Forni checks the box, enters his initials (MGF), clicks FINISH, reviews the Summary, certifies under penalty of perjury, and submits. Claude never checks a certification box or clicks Submit.
+7. **Capture and close.** Once Forni reports the submit, read the confirmation number, submitted week, and timestamp off the confirmation page. Inline, stamp every included activity with `pinole work activities report --confirmation <code> <id> [<id>...]` (one call, every id from the slate); a background run reports the number and the ids and leaves the stamp to the main session. Complete the Todoist task and report the number.
 
 ## Activity Type Mapping
 
