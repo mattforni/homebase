@@ -127,9 +127,12 @@
       "WebFetch(domain:www.projectangelheart.org)",
       "WebFetch(domain:www.redfin.com)",
       "WebFetch(domain:www.zillow.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(agent-browser --session myui --identity personal --headed:*)"
     ],
-    "deny": [],
+    "deny": [
+      "Bash(agent-browser *chkEnhancedConfirmation*)"
+    ],
     "ask": [],
     "defaultMode": "auto"
   },
