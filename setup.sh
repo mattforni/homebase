@@ -619,6 +619,66 @@ def expand(value):
         return [expand(v) for v in value]
     return value
 
+def loads_lenient(text):
+    """Parse JSON the way an editor writes its settings: comments and trailing
+    commas allowed.
+
+    VS Code and Antigravity save settings.json as JSONC, so a strict parse
+    fails on a file the app itself wrote and the merge would refuse it on every
+    run. Strip both outside of strings, then parse strictly. The merge writes
+    plain JSON back, so comments in the destination do not survive it.
+    """
+    out, i, n, in_str = [], 0, len(text), False
+
+    def skip_comment(j):
+        if text.startswith("//", j):
+            k = text.find("\n", j)
+            return n if k == -1 else k
+        if text.startswith("/*", j):
+            k = text.find("*/", j + 2)
+            return n if k == -1 else k + 2
+        return j
+
+    while i < n:
+        c = text[i]
+        if in_str:
+            out.append(c)
+            if c == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if c == '"':
+                in_str = False
+            i += 1
+            continue
+        if c == '"':
+            in_str = True
+            out.append(c)
+            i += 1
+            continue
+        j = skip_comment(i)
+        if j != i:
+            i = j
+            continue
+        if c == ",":
+            # A comma is trailing when only whitespace and comments separate
+            # it from the closing bracket.
+            j = i + 1
+            while j < n:
+                if text[j] in " \t\r\n":
+                    j += 1
+                    continue
+                k = skip_comment(j)
+                if k == j:
+                    break
+                j = k
+            if j < n and text[j] in "}]":
+                i += 1
+                continue
+        out.append(c)
+        i += 1
+    return json.loads("".join(out))
+
 with open(src) as f:
     repo = expand(json.load(f))
 
@@ -629,9 +689,12 @@ if os.path.exists(dst):
     if text:
         try:
             current = json.loads(text)
-        except json.JSONDecodeError as exc:
-            sys.stderr.write(f"destination is not valid JSON ({exc}); refusing to merge\n")
-            sys.exit(2)
+        except json.JSONDecodeError:
+            try:
+                current = loads_lenient(text)
+            except json.JSONDecodeError as exc:
+                sys.stderr.write(f"destination is not valid JSON ({exc}); refusing to merge\n")
+                sys.exit(2)
 
 # Repo keys win; everything else the app wrote for itself survives.
 merged = dict(current)

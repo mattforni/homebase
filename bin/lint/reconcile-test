@@ -69,10 +69,18 @@ d["testHomeExpansion"] = "$HOMEBREW_PREFIX/bin:$HOME/bin"
 json.dump(d, open(p, "w"), indent=2)
 SEED
 
-# An app-owned settings file carrying keys the repo does not declare.
+# An app-owned settings file carrying keys the repo does not declare, written
+# the way an editor writes one: a comment, trailing commas, and a string whose
+# contents look like both. The merge has to read it rather than refuse it.
 mkdir -p "$FAKE/.claude"
 cat > "$FAKE/.claude/settings.json" <<'JSON'
-{ "theme": "dark", "language": "en", "permissions": { "allow": ["Bash(ls:*)"] } }
+{
+  // the app wrote this
+  "theme": "dark",
+  "language": "en", /* and this */
+  "appUrl": "https://example.com/a,]//b",
+  "permissions": { "allow": ["Bash(ls:*)",], },
+}
 JSON
 
 # --- run ----------------------------------------------------------------------
@@ -107,6 +115,8 @@ check "merge left \$HOMEBREW_PREFIX alone" \
   'python3 -c "import json;d=json.load(open(\"$FAKE/.claude/settings.json\"));assert d[\"testHomeExpansion\"].startswith(chr(36)+\"HOMEBREW_PREFIX/bin\")"'
 check "merge kept the app-owned keys" \
   'python3 -c "import json;d=json.load(open(\"$FAKE/.claude/settings.json\"));assert d[\"theme\"]==\"dark\" and d[\"language\"]==\"en\""'
+check "merge read a destination with comments and trailing commas" \
+  'python3 -c "import json;d=json.load(open(\"$FAKE/.claude/settings.json\"));assert d[\"appUrl\"]==\"https://example.com/a,]//b\""'
 check "merge replaced the repo-owned key" \
   'python3 -c "import json;d=json.load(open(\"$FAKE/.claude/settings.json\"));assert d[\"permissions\"][\"allow\"]!=[\"Bash(ls:*)\"]"'
 check "manifest was written" \
