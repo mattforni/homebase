@@ -13,6 +13,8 @@ HOOK="$REPO/.claude/hooks/voice-gate.sh"
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 read_line() { jq -cn --arg p "$1" '{type:"assistant",message:{content:[{type:"tool_use",name:"Read",input:{file_path:$p}}]}}'; }
 
+LOOKALIKE="$TMP/look.jsonl"
+{ read_line "/tmp/VOICE.md"; read_line "/tmp/Admin/Tools/email.md"; } > "$LOOKALIKE"
 EMPTY="$TMP/empty.jsonl"; : > "$EMPTY"
 VOICE_ONLY="$TMP/voice.jsonl"; read_line "/Users/x/Eudaimonia/VOICE.md" > "$VOICE_ONLY"
 BOTH="$TMP/both.jsonl"
@@ -43,6 +45,7 @@ expect deny "$EMPTY" "gws gmail users drafts create --params '{\"userId\":\"me\"
 expect deny "$EMPTY" "gws gmail users messages send --params '{\"userId\":\"me\"}' --json '{}'"
 expect deny "$EMPTY" "export GWS_FORCE_PROFILE=personal; gws gmail +send --to a@b.co --subject Hi --body x"
 expect deny "$VOICE_ONLY" "gws gmail +send --to a@b.co --subject Hi --body x"
+expect deny "$LOOKALIKE" "gws gmail +send --to a@b.co --subject Hi --body x"
 
 # Must pass: both files read, in the session or in a subagent beside it.
 expect allow "$BOTH" "gws gmail +send --to a@b.co --subject Hi --body x"

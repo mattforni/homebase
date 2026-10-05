@@ -51,8 +51,8 @@ read_of() {
 }
 
 missing=()
-read_of '/VOICE\.md' || missing+=("$HOME/Eudaimonia/VOICE.md")
-read_of '/Admin/Tools/email\.md' || missing+=("$HOME/Eudaimonia/Admin/Tools/email.md")
+read_of '/Eudaimonia/VOICE\.md' || missing+=("$HOME/Eudaimonia/VOICE.md")
+read_of '/Eudaimonia/Admin/Tools/email\.md' || missing+=("$HOME/Eudaimonia/Admin/Tools/email.md")
 [[ ${#missing[@]} -eq 0 ]] && exit 0
 
 list=$(printf '%s and ' "${missing[@]}"); list=${list% and }
