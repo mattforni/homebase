@@ -94,7 +94,6 @@ Payee corrections (session 2026-09-07, the first run after the tree restructure)
 - `ACH Deposit 261003712` is the Fidelity HSA reimbursing the health premium: payee `Transfer: Fidelity HSA`, category `🏥 Healthcare`, memo `🏥 HSA premium reimbursement` so it is findable at tax time.
 - `Sierra Dental` (bank descriptor `Sierra River N Dent`, mysierradental.com) -> `🏥 Healthcare`, its own payee. It is NOT River North Dentistry; never merge the two.
 - `Ratio Beerworks` -> `🍽️ Dining Out`. `7-Eleven` stays `🚬 Nicotine`.
-- `Arc Thrift` stays always confirm; on 2026-09-07 every one of them was `🏡 Home Improvement`, the condo furnishing era.
 
 Payee corrections (session 2026-09-27, the personal groom to zero):
 
@@ -104,9 +103,20 @@ Payee corrections (session 2026-09-27, the personal groom to zero):
 - `Hello Darling`, `Hearth Highlands`, `Honey Hill` -> `☕️ Cafés`.
 - `Oura` (the membership) -> `🏥 Healthcare`.
 - `Stinker Stores` (fuel) -> `🚙 Transportation`.
-- `Thule` -> `🚙 Transportation` (car rack parts); the warranty refund check nets back into the same category.
+- `Thule` -> `🚙 Transportation` (car rack parts).
 - `Colorado Parks and Wildlife` -> `🌲 Outdoorsman` (Forni, 2026-09-29). The 2026-09-15 camping date stays `❤️ Romantic` as filed.
 - **A Venmo payment the Atelic budget already records is deleted from Personal, never categorized.** When Venmo is funded from the Atelic bank, the charge is the business's and lives on the Atelic budget; the personal Venmo row is a duplicate. Match on date and amount against Atelic before proposing any category for a personal Venmo payment, and propose the delete when it matches.
+
+Payee corrections (session 2026-10-05):
+
+- `Arc Thrift` -> `🧥 Clothing`, auto decided and no longer always confirm. Forni: "Arc Thrift Store purchases should be categorized as clothing not home improvement."
+- A `Thule` warranty reimbursement check -> `🌏 Adventure`, with the payee set to Thule; it imports as a `Neo` mobile check deposit. Forni: "I don't want the Thule check to go into transportation. Put it into adventure."
+- `Google Cloud` on Personal -> `💰 Financial`, auto decided: the personal Google Cloud projects (the keys vault). On Atelic it stays `🖥️ Infrastructure`.
+- `Austin Catania` (friend, Venmo) -> context dependent; was `🍽️ Dining Out` for the Florence Supper Club dinner with the Sexy Pace Run Club.
+- A Venmo refund of part of a group payment nets into the original spend category, never `Inflow: Ready to Assign`, which is where YNAB's payee memory routes it.
+- `Rail Yard` (descriptor "Rail Yard Lofts - OnlinePay") is the HOA: `🏡 Housing`, reassigned to the existing `Rail Yard Lofts` payee.
+- On Personal, `ACH Deposit: 261003712 ... MONEYLINE` is still the HSA premium reimbursement; the MONEYLINE suffix marks a funding move only on Atelic.
+- The small monthly `Anthem Blue Cross Blue Shield` charge is the dental premium. The health premium is `Elevate Health Plans`, the one the HSA reimburses.
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
