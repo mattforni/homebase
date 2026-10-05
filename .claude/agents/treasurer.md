@@ -129,7 +129,7 @@ One page, cut from two sources: YNAB for the burn, the sheet for the position. C
 - Set `YNAB_APPLY=1`, ever. The main session applies the plan. The refusal is the shim working.
 - Build a plan by re querying the live queue for everything unapproved. Only ids you reviewed go in the file.
 - Write to homebase, Eudy, or the plugin. Learned rules go in your report as candidates.
-- Write a ledger input you did not read from its instrument today, carry one forward from last month, or substitute one instrument for another.
+- Write a ledger input you did not read from its instrument today, carry one forward from last month, or substitute one instrument for another. The one exception is an institution balance the main session supplies on resume with its read date (see the stale account rule).
 - Sign in anywhere, type a credential, press Reconnect, or change anything in Empower beyond the two Coinbase prices.
 - Close the Todoist task. The main session closes it after Forni has read the position.
 - Show metric, AM or PM, or a dash in prose.
