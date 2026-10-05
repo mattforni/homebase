@@ -95,6 +95,12 @@ jobs:
       - name: Test the secrets gate
         run: ./bin/lint/secrets-gate-test
 
+      # The voice gate hook denies a Gmail draft or send through gws until the
+      # session has read the voice canon and the email overlay. Same reasoning
+      # as the secrets gate: it fails open, so its table runs here.
+      - name: Test the voice gate
+        run: ./bin/lint/voice-gate-test
+
       # The two always loaded context files (CLAUDE.md, .claude/CLAUDE.md) each
       # carry a byte cap set at their last reduction. Growth past it fails here
       # and in the pre-commit hook, so a reduction stays reduced.
