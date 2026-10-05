@@ -363,7 +363,7 @@ install_python_packages() {
   local entry name module
   for entry in "${packages[@]}"; do
     IFS='|' read -r name module <<<"$entry"
-    if [[ "$FORCE" != true ]] && "$py" -m pip show "$name" &>/dev/null; then
+    if [[ "$FORCE" != true ]] && "$py" -c "import $module" &>/dev/null; then
       info "$name already installed"
     else
       info "Installing $name..."
