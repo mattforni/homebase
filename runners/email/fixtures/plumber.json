@@ -634,5 +634,37 @@
       }
     ]
   },
-  "roster_url": "https://github.com/atelic-action/practice/blob/main/Outreach/2026-W05-roster.md"
+  "roster_url": "https://github.com/atelic-action/practice/blob/main/Outreach/2026-W05-roster.md",
+  "drafting": {
+    "note": "2 of 3 payload(s) went to the routine; each draft lands in the matt@atelic.me Drafts a few minutes after its fire.",
+    "fires": [
+      {
+        "business": "Granite Peak Tile and Stone Restoration of the Front Range",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/501",
+        "touch": "bump",
+        "outcome": "fired",
+        "http_status": 200,
+        "session_url": "https://claude.example.test/code/session_01",
+        "session_id": "session_01"
+      },
+      {
+        "business": "Native Roofing",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/503",
+        "touch": "first_touch",
+        "outcome": "fired",
+        "http_status": 200,
+        "session_url": "",
+        "session_id": ""
+      },
+      {
+        "business": "Cherry Creek Appliance Repair",
+        "company_url": "",
+        "touch": "first_touch",
+        "outcome": "failed",
+        "http_status": 429,
+        "session_url": "",
+        "session_id": ""
+      }
+    ]
+  }
 }

@@ -143,6 +143,22 @@ VISIT · 1
     Walkable, open until 17:00.
 
 ================================================================
+DRAFTING · 3
+================================================================
+
+  2 of 3 payload(s) went to the routine; each draft lands in the
+  matt@atelic.me Drafts a few minutes after its fire.
+
+  Granite Peak Tile and Stone Restoration of the Front Range
+    Bump · fired · HTTP 200
+
+  Native Roofing
+    First touch · fired · HTTP 200
+
+  Cherry Creek Appliance Repair
+    First touch · failed · HTTP 429
+
+================================================================
 THE GROOM
 ================================================================
 

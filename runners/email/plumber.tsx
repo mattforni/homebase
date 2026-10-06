@@ -174,7 +174,41 @@ export type PipelineDraft = {
 	groom?: Groom;
 	/** Where the runner committed the roster; empty when it rode as the attachment instead. */
 	roster_url?: string | null;
+	/** What the runner sent to the Outreach routine after the roster was placed; absent on a run from before 2026-10-06. */
+	drafting?: Drafting;
 };
+type Fire = {
+	business?: unknown;
+	touch?: unknown;
+	/** fired, failed, dry run, or not fired. */
+	outcome?: unknown;
+	http_status?: number | null;
+	session_url?: string | null;
+	session_id?: unknown;
+};
+type Drafting = { note?: unknown; fires?: Fire[] | null } | null;
+
+const TOUCH_WORD: Record<string, string> = { first_touch: "First touch", bump: "Bump" };
+
+/**
+ * One line per payload the runner sent to the Outreach routine (Forni,
+ * 2026-10-06): the business, linked to its cloud session when the API named
+ * one, then the touch and how the fire went, so Tuesday knows which drafts to
+ * expect in the Drafts.
+ */
+function fireRecords(drafting: Drafting): RecordStackItem[] {
+	return alt(drafting?.fires, []).map((fire) => {
+		const touch = jqToString(alt(fire.touch, ""));
+		const outcome = jqToString(alt(fire.outcome, ""));
+		const status = fire.http_status === null || fire.http_status === undefined ? "" : `HTTP ${numberString(fire.http_status)}`;
+		const sessionUrl = jqToString(alt(fire.session_url, ""));
+		return {
+			title: jqToString(fire.business),
+			url: sessionUrl === "" ? null : sessionUrl,
+			meta: [TOUCH_WORD[touch] ?? touch, outcome, status].filter((x) => x !== ""),
+		};
+	});
+}
 
 /**
  * A parked name (an open task dated past this week) is noise until its week,
@@ -423,6 +457,8 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 	const moves = moveRecords(draft.groom ?? null);
 	const left = leftForYou(draft);
 	const rosterUrl = jqToString(alt(draft.roster_url, ""));
+	const drafting = draft.drafting ?? null;
+	const fires = fireRecords(drafting);
 
 	return renderEmail({
 		title: `${context.week} Pipeline`,
@@ -498,6 +534,22 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					</Fragment>
 				))}
 
+				{drafting === null ? null : (
+					<>
+						<Eyebrow text={`Drafting · ${numberString(fires.length)}`} strong={true} />
+						<Card>
+							<Row last={fires.length === 0}>
+								<DimLine text={jqToString(alt(drafting.note, ""))} />
+							</Row>
+							{fires.length === 0 ? null : (
+								<Row last={true}>
+									<RecordStack records={fires} />
+								</Row>
+							)}
+						</Card>
+					</>
+				)}
+
 				<Eyebrow text="The groom" strong={true} />
 				<Card>
 					<Row last={moves.length === 0 && left.length === 0}>
@@ -572,6 +624,14 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	for (const kind of owedKinds) {
 		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
 		out += recordStackText(owedRecords(kind.key, kind.names));
+	}
+
+	const drafting = draft.drafting ?? null;
+	if (drafting !== null) {
+		const fires = fireRecords(drafting);
+		out += textSection(`Drafting · ${numberString(fires.length)}`);
+		out += `${wrap(jqToString(alt(drafting.note, "")))}\n`;
+		if (fires.length > 0) out += `\n${recordStackText(fires)}`;
 	}
 
 	out += textSection("The Groom");

@@ -8,8 +8,8 @@
 # portal sweep, both mailboxes, the One Pager, and the candidate sites as
 # text), then one headless Claude Code call running the `plumber` agent,
 # which reads the method and the samples from the Atelic checkout and the
-# pulled files from the work directory, sorts the week, drafts every touch,
-# writes the roster into the work directory and returns a summary as JSON;
+# pulled files from the work directory, sorts the week, gives every touch its
+# routine payload, writes the roster into the work directory and returns a summary as JSON;
 # the node renderer turns that into the designed email and Resend delivers it as
 # "YYYY-Www Pipeline". The agent writes nothing outside its work directory;
 # the entrypoint then commits the roster into the Atelic checkout at
@@ -19,6 +19,15 @@
 # weeks and never got placed). Without the push key, or when the checkout is
 # this machine's own (a local run), the roster stays in the work directory and
 # rides as the attachment it used to be, so a rehearsal still delivers it.
+#
+# Then it fires the Outreach cloud routine once for every first touch and bump
+# payload the agent placed, a short pause between fires, so the Tuesday desk
+# opens with every draft already in the matt@atelic.me Drafts (Forni,
+# 2026-10-06: the rule said the desk fires the routine, and in W41 nobody
+# did). A reply never fires; it is answered at the desk. The fires are read
+# from the agent's JSON summary, which carries each payload with its business
+# and its touch kind, and are recorded in the summary so the mail carries a
+# Drafting card. DRY_RUN prints what would fire and fires nothing.
 #
 # Until 2026-09-15 (ATE-551) the agent did every read itself, one hs or gws
 # command per model turn, and a pass cost 7.54 USD; the fetching was most of
@@ -36,6 +45,8 @@
 #   ATELIC_DEPLOY_KEY               atelic-keys/github-deploy-key-atelic; only when no checkout is at $ATELIC
 #   ATELIC_PUSH_KEY                 atelic-keys/github-deploy-key-atelic-push; the write capable key the
 #                                   roster commit goes out over. Only used on a checkout this run cloned
+#   OUTREACH_TRIGGER_TOKEN          atelic-keys/outreach-trigger-token; the Outreach routine's API trigger
+#                                   token. Without it the payloads are listed as not fired and the run goes on
 # Plain configuration:
 #   REPORT_RECIPIENT          where the report goes; the Atelic mailbox, since
 #                             this is Atelic work
@@ -44,7 +55,11 @@
 #   ATELIC                    the Atelic checkout; defaults to its place inside Eudy
 #   ONE_PAGER_ID              the One Pager's Google Doc id
 #   WEEK                      optional YYYY-Www override; default is this week
-#   DRY_RUN                   1 renders the email and skips the send
+#   DRY_RUN                   1 renders the email and skips the send, and
+#                             fires no routine run (it prints what would fire)
+#   OUTREACH_ROUTINE_ID       the Outreach routine's id, the <routine id> in
+#                             the fire URL routine.md documents; not a secret
+#   FIRE_SPACING              seconds between routine fires; default 30
 #   SKIP_PULLS                1 skips every pull and runs the agent over the
 #                             files already in $WORK, so a prompt change costs
 #                             one model call and no fetches
@@ -190,6 +205,103 @@ place_roster() {
     done
     echo "roster: push failed: $(head -c 300 "$WORK/git-stderr.txt")"
     return 1
+}
+
+# ---------- firing the Outreach routine ----------
+# One POST per first touch or bump payload to the routine's API trigger, the
+# call plugins/atelic/skills/handle-sighting/routine.md documents (the iOS
+# Shortcut's call, made from a shell), with the payload as the text. Each fire
+# is its own cloud session of three to five minutes, so the fires are spaced
+# rather than sent as a burst. Every payload is recorded with its business,
+# its touch, the outcome, the HTTP status and the session the API names, and
+# the record is folded into the draft as `drafting` for the mail's Drafting
+# card. Never fatal: a payload that did not fire is still on the roster, and
+# the desk fires it by hand.
+FIRE_SPACING="${FIRE_SPACING:-30}"
+FIRES_JSONL=""
+
+# record_fire <payload json> <outcome> <http status> <session url> <session id>
+record_fire() {
+    jq -c --arg outcome "$2" --arg code "$3" --arg session_url "$4" --arg session_id "$5" \
+        '{business: (.business // .company // "(no business named)"), company_url: (.company_url // ""),
+          touch: .touch, outcome: $outcome,
+          http_status: (if $code == "" then null else ($code | tonumber? // null) end),
+          session_url: $session_url, session_id: $session_id}' <<<"$1" >> "$FIRES_JSONL"
+}
+
+fire_payloads() {
+    local firable="$WORK/payloads-firable.json" total n i payload business touch text body code \
+        session_url session_id note="" fired=0 url
+    FIRES_JSONL="$WORK/fires.jsonl"
+    : > "$FIRES_JSONL"
+    # Only a first touch or a bump is a routine touch. A reply is answered at
+    # the desk in the thread's own register and a visit is walked, so neither
+    # ever fires, whatever the summary says.
+    if ! jq '[(.payloads // [])[] | select(type == "object")]' "$DRAFT_JSON" > "$WORK/payloads.json" 2>/dev/null; then
+        echo "routine: the summary's payloads could not be read"
+        echo '[]' > "$WORK/payloads.json"
+    fi
+    jq '[.[] | select((.touch == "first_touch" or .touch == "bump") and ((.text // "") | type == "string" and length > 0))]' \
+        "$WORK/payloads.json" > "$firable"
+    total="$(jq 'length' "$WORK/payloads.json")"
+    n="$(jq 'length' "$firable")"
+    (( total == n )) || echo "routine: $((total - n)) payload(s) are not a first touch or a bump, or carry no text; they never fire"
+
+    if (( n == 0 )); then
+        note="The roster carried no first touch or bump payload, so nothing went to the routine."
+    elif [[ "$DRY_RUN" == "1" ]]; then
+        note="Dry run: $n payload(s) would have gone to the routine, and none did."
+    elif [[ -z "${OUTREACH_TRIGGER_TOKEN:-}" || -z "${OUTREACH_ROUTINE_ID:-}" ]]; then
+        note="No OUTREACH_TRIGGER_TOKEN or OUTREACH_ROUTINE_ID in the environment, so $n payload(s) did not go to the routine. Fire them from the roster at the desk."
+    fi
+    url="https://api.anthropic.com/v1/claude_code/routines/${OUTREACH_ROUTINE_ID:-}/fire"
+
+    for (( i = 0; i < n; i++ )); do
+        payload="$(jq -c ".[$i]" "$firable")"
+        business="$(jq -r '.business // .company // "(no business named)"' <<<"$payload")"
+        touch="$(jq -r '.touch' <<<"$payload")"
+        if [[ -n "$note" ]]; then
+            if [[ "$DRY_RUN" == "1" ]]; then
+                echo "routine: would fire $touch for $business ($(jq -r '.text | length' <<<"$payload") characters)"
+                record_fire "$payload" "dry run" "" "" ""
+            else
+                record_fire "$payload" "not fired" "" "" ""
+            fi
+            continue
+        fi
+        (( i == 0 )) || sleep "$FIRE_SPACING"
+        text="$(jq -r '.text' <<<"$payload")"
+        body="$WORK/fire-$i.json"
+        code="$(jq -n --arg text "$text" '{text: $text}' | curl -sS --max-time 60 -X POST "$url" \
+            -H "Authorization: Bearer $OUTREACH_TRIGGER_TOKEN" \
+            -H "anthropic-beta: experimental-cc-routine-2026-04-01" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "Content-Type: application/json" \
+            --data-binary @- -o "$body" -w '%{http_code}' 2>"$WORK/fire-stderr.txt")" || :
+        [[ -n "$code" ]] || code="000"
+        session_url="$(jq -r '.claude_code_session_url // empty' "$body" 2>/dev/null)"
+        session_id="$(jq -r '.claude_code_session_id // .session_id // .id // empty' "$body" 2>/dev/null)"
+        if [[ "$code" == 2* ]]; then
+            fired=$((fired + 1))
+            echo "routine: fired $touch for $business, http $code${session_url:+, $session_url}"
+            record_fire "$payload" "fired" "$code" "$session_url" "$session_id"
+        else
+            echo "routine: $touch for $business did not fire, http $code: $(head -c 200 "$body" 2>/dev/null) $(head -c 200 "$WORK/fire-stderr.txt")"
+            record_fire "$payload" "failed" "$code" "$session_url" "$session_id"
+        fi
+    done
+    if [[ -z "$note" ]]; then
+        note="$fired of $n payload(s) went to the routine; each draft lands in the matt@atelic.me Drafts a few minutes after its fire."
+        (( fired == n )) || note="$note The ones that failed are on the roster for the desk to fire by hand."
+    fi
+    echo "routine: $note"
+    if ! jq -s '.' "$FIRES_JSONL" > "$WORK/fires.json" \
+        || ! jq --arg note "$note" --slurpfile fires "$WORK/fires.json" \
+            '. + {drafting: {note: $note, fires: $fires[0]}}' "$DRAFT_JSON" > "$WORK/draft-fired.json"; then
+        echo "routine: could not fold the fires into the draft; the mail goes without the Drafting card"
+        return 0
+    fi
+    mv "$WORK/draft-fired.json" "$DRAFT_JSON"
 }
 
 # ---------- the pulls ----------
@@ -400,6 +512,7 @@ model_args=()
 runner_claude "$(fill_prompt "$PROMPT_FILE")" --agent plumber "${model_args[@]}" --allowedTools "${ALLOWED_TOOLS[@]}" || exit 1
 runner_draft '(.headline | type == "array") and (.lede | type == "string")
     and (.owed | type == "object") and (.flags | type == "array")
+    and ((.payloads // []) | type == "array")
     and (.unverified | type == "array") and (.not_in_block | type == "array")' || exit 1
 
 # The funnel strip and its stage lists are the pull's, never the model's:
@@ -449,6 +562,10 @@ else
     ATTACHMENT="$ROSTER_MD"
     echo "roster: riding as the attachment"
 fi
+
+# The roster is placed (or attached) first, so a fire never points at a week
+# that was lost; then every first touch and bump goes to the routine.
+fire_payloads
 
 runner_render || exit 1
 runner_render_text || exit 1
