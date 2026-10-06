@@ -34,9 +34,12 @@
 #     printed the request line and a "Response:" header first. Piping to jq no
 #     longer needs the preamble stripped.
 #   - The service key can write, where the personal access key was read only by
-#     accident of its scopes. That safety was load bearing and is not given up:
-#     anything but a read is refused unless HS_APPLY=1 is set on the
-#     invocation, the same speed bump bin/ynab puts in front of YNAB writes.
+#     accident of its scopes. Until 2026-10-06 the shim refused anything but a
+#     read unless HS_APPLY=1 was set on the invocation; that bump came out on
+#     Forni's call, because it stacked with the session's permission classifier
+#     (which read the flag itself as a bypass) and blocked writes he had asked
+#     for. Writes pass through; the gate on a write is the classifier plus his
+#     instruction in the session.
 
 set -euo pipefail
 
@@ -151,21 +154,6 @@ if [[ "${1:-}" == "api" && -n "$keychain_service" ]]; then
         if [[ -n "$data" ]]; then method="POST"; else method="GET"; fi
     fi
     method="$(printf '%s' "$method" | tr '[:lower:]' '[:upper:]')"
-
-    # HubSpot answers several genuinely read only endpoints over POST, so the
-    # write gate keys on what the call does rather than on its verb alone.
-    is_read=0
-    [[ "$method" == "GET" ]] && is_read=1
-    if [[ "$method" == "POST" ]]; then
-        case "${endpoint%%\?*}" in
-            */search|*/batch/read) is_read=1 ;;
-        esac
-    fi
-    if (( ! is_read )) && [[ "${HS_APPLY:-0}" != "1" ]]; then
-        echo "hs shim: refusing $method ${endpoint%%\?*}: the service key can write to the CRM." >&2
-        echo "hs shim: set HS_APPLY=1 on this invocation to mean it." >&2
-        exit 3
-    fi
 
     key="$(security find-generic-password -s "$keychain_service" -w 2>/dev/null || true)"
     if [[ -z "$key" ]]; then

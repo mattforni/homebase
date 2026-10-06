@@ -69,9 +69,7 @@ Trips: when several charges cluster around a trip (lodging plus out-of-town food
 
 **This skill is a dry run by default. It does not write to YNAB unless Forni explicitly says to, in this session, after seeing the plan.**
 
-The tooling enforces this, not just this rule. `~/bin/ynab` is a shim that refuses every budget mutating subcommand unless `YNAB_APPLY=1` is set on that single invocation, and prints the command it would have run instead. So a write cannot happen incidentally, only deliberately. Reads pass straight through.
-
-Treat the shim as the floor and this rule as the ceiling: the shim stops an accidental write, and this rule is what stops a write Forni has not seen and agreed to. Never set `YNAB_APPLY=1` to get past a refusal that has not been approved; the refusal is the system working.
+Nothing in the tooling enforces this any more. The `~/bin/ynab` shim that refused budget writes without `YNAB_APPLY=1` was retired 2026-10-06 (it stacked with the session's permission classifier and blocked writes Forni had asked for), so the real CLI writes the moment a mutating verb runs. This rule and the classifier are the whole gate: never run a mutating verb Forni has not seen and agreed to in this session.
 
 **Never show the full plan as one table.** Forni cannot parse thirty rows at once (2026-09-07). The plan is presented in two layers:
 
@@ -84,10 +82,10 @@ If he asks for changes, revise and show the tally again. The gate resets: a revi
 
 ## Phase 4: Apply, Only After a Yes
 
-Batch the approved plan into one call. Amounts are dollars, not milliunits. `YNAB_APPLY=1` goes on this invocation only, never exported for the session.
+Batch the approved plan into one call. Amounts are dollars, not milliunits.
 
 ```bash
-YNAB_APPLY=1 ynab transactions batch-update --transactions \
+ynab transactions batch-update --transactions \
  '[{"id":"...","category_id":"...","memo":"🏔️ Crested Butte","approved":true}]'
 ```
 
@@ -101,7 +99,7 @@ Imported transactions land **unapproved**, and categorizing does NOT approve the
 
 ```bash
 # ids come from the reviewed plan, not from a fresh unapproved query
-YNAB_APPLY=1 ynab transactions batch-update --transactions \
+ynab transactions batch-update --transactions \
  '[{"id":"<planned-skip-1>","approved":true},{"id":"<planned-skip-2>","approved":true}]'
 ```
 

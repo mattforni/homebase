@@ -67,10 +67,7 @@ async function api(path, body, method) {
     }
     const args = ["api", path, "--account=" + ACCOUNT];
     if (body) args.push("-X", method, "--data", JSON.stringify(body));
-    // The shim refuses a write unless HS_APPLY is set; a groom through the
-    // shim (a local run with no service key) has to opt in the same way.
-    const env = method === "GET" || method === "POST" ? process.env : { ...process.env, HS_APPLY: "1" };
-    return JSON.parse(execFileSync("hs", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, env }));
+    return JSON.parse(execFileSync("hs", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }));
 }
 
 const EMAIL_PROPS = [
