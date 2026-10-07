@@ -81,7 +81,7 @@ jobs:
           if [[ "$EVENT" == "workflow_dispatch" ]]; then
             if [[ "$CHOICE" == "all" ]]; then
               names="$every"
-            elif printf '%s\n' "$every" | grep -qxF -- "$CHOICE"; then
+            elif grep -qxF -- "$CHOICE" <<< "$every"; then
               names="$CHOICE"
             else
               echo "::error::No runner named '$CHOICE' has a Dockerfile on main."

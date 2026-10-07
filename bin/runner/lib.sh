@@ -280,7 +280,11 @@ RUNNER_CONTEXT_EXCLUDES="out .build .env.local agents mounts"
 # above: the staging and the promote rules must see the same names.
 runner_agent_names() {
     local n
-    while read -r n; do
+    # The second test is for a last line with no newline after it: `read`
+    # fills the variable and still reports failure there, and a bare
+    # `while read` would drop that name. IFS is left alone on purpose, since
+    # the trimming is `read` splitting on it.
+    while read -r n || [[ -n "$n" ]]; do
         [[ -n "$n" && "$n" != \#* ]] || continue
         printf '%s\n' "$n"
     done

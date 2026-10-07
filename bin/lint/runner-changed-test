@@ -81,7 +81,12 @@ for r in alpha beta gamma; do
   put "runners/$r/prompt.md"
   put "runners/$r/README.md"
 done
-put runners/alpha/agents "alpha"
+# Three names with alpha first and no newline after the last: a match on the
+# first name must not depend on what follows it, and the last name is one a
+# bare `while read` would drop.
+printf 'alpha\nextra\nthird' > "$FAKE/runners/alpha/agents"
+put .claude/agents/extra.md
+put .claude/agents/third.md
 # `shared` is indented with a trailing space: the staging reads the manifest
 # with `read`, which trims both, so that line ships the agent and has to match.
 printf '# what beta runs\n\nbeta\n  shared \n' > "$FAKE/runners/beta/agents"
@@ -144,7 +149,8 @@ change "README beside an entrypoint"             "alpha" runners/alpha/README.md
 change "README in one runner, prompt in another" "beta"  runners/alpha/README.md runners/beta/prompt.md
 
 echo "Agents follow the manifests"
-change "an agent reaches the runner naming it"   "alpha" .claude/agents/alpha.md
+change "the first agent of several in a manifest" "alpha" .claude/agents/alpha.md
+change "the last, with no newline after it"      "alpha" .claude/agents/third.md
 change "an agent on an indented manifest line"   "beta"  .claude/agents/shared.md
 change "an agent no manifest names"              ""      .claude/agents/unlisted.md
 change "a file under agents that is no agent"    ""      .claude/agents/notes/alpha.md

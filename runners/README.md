@@ -160,9 +160,11 @@ service account, so there is nothing to store, rotate, or leak.
 | Role on the three runtime accounts and the compute default account | `iam.serviceAccountUser` (point a job at an image while it runs as its own account; build as the default one) |
 | Workload identity pool and provider | `github` and `homebase`, issuer `https://token.actions.githubusercontent.com` |
 | Provider resource | `projects/897452392033/locations/global/workloadIdentityPools/github/providers/homebase` |
-| Attribute condition | `assertion.repository=='mattforni/homebase' && assertion.ref=='refs/heads/main'` |
+| Attribute condition | pins the repository id, the owner id, and `refs/heads/main` |
 
-The condition is why the workflow has no `pull_request` trigger and must never
+The condition names the repository and its owner by their numeric ids and not
+only by name, which is what makes a renamed or re registered repository name
+useless: a name can be taken over, an id cannot. The condition is why the workflow has no `pull_request` trigger and must never
 gain one: only a run on main of this repository can become the deploy
 identity, and a pull request runs code nobody has merged. To remove the whole
 thing, delete the provider (or the pool), then the service account, then the

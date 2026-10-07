@@ -92,7 +92,24 @@ manifest() {
     git -C "$repo" show "$head:runners/$1/agents" 2>/dev/null | runner_agent_names || true
 }
 
-is_runner() { printf '%s\n' "$every" | grep -qxF -- "$1"; }
+# Usage: has_line <lines> <line>
+# Whether a newline separated list holds a line, whole and exact. Matched in
+# the shell and never by piping into grep -q: under pipefail a grep that
+# exits on its first match can leave the writer dying of SIGPIPE, the
+# pipeline then reads as a failure, and a real match is dropped in silence.
+# With no pipe there is no race to lose.
+has_line() {
+    case "
+$1
+" in
+        *"
+$2
+"*) return 0 ;;
+    esac
+    return 1
+}
+
+is_runner() { has_line "$every" "$1"; }
 
 # Whether a path inside a runner's directory is one that never reaches its
 # image. The list is the one runner_build_context excludes by, minus the
@@ -146,7 +163,8 @@ while IFS= read -r -d '' path; do
             [[ "$agent" != */* ]] || continue
             while IFS= read -r name; do
                 [[ -n "$name" ]] || continue
-                if manifest "$name" | grep -qxF -- "$agent"; then
+                names="$(manifest "$name")"
+                if has_line "$names" "$agent"; then
                     affected="$affected$name
 "
                 fi
