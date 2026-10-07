@@ -64,7 +64,7 @@ git -C "$repo" rev-parse --verify --quiet "$head^{commit}" >/dev/null \
 
 # Every runner that has a Dockerfile at <head>. A runner without one is local
 # only and promote refuses it by name, so it is never printed.
-every="$(git -C "$repo" ls-tree -r --name-only "$head" -- runners \
+every="$(git -C "$repo" -c core.quotePath=false ls-tree -r --name-only "$head" -- runners \
     | sed -n 's|^runners/\([^/]*\)/Dockerfile$|\1|p' | sort -u)"
 
 # An unusable base widens to everything instead of failing: the push still
@@ -85,23 +85,42 @@ if (( all )); then
     exit 0
 fi
 
-# The names in a runner's agents manifest at <head>, read the way
-# runner_build_context reads the file: blank lines and comments skipped.
+# The names in a runner's agents manifest at <head>, through the same reader
+# runner_build_context stages from, so a line the staging would ship (indented,
+# say) is a line this matches.
 manifest() {
-    git -C "$repo" show "$head:runners/$1/agents" 2>/dev/null \
-        | sed -e 's/[[:space:]]*$//' | grep -v -e '^$' -e '^#' || true
+    git -C "$repo" show "$head:runners/$1/agents" 2>/dev/null | runner_agent_names || true
 }
 
 is_runner() { printf '%s\n' "$every" | grep -qxF -- "$1"; }
 
+# Whether a path inside a runner's directory is one that never reaches its
+# image. The list is the one runner_build_context excludes by, minus the
+# agents manifest (it decides which agents ship, so it counts), plus the
+# README, which is staged and which no Dockerfile copies.
+never_ships() {
+    local rest="$1" e
+    [[ "$rest" != README.md ]] || return 0
+    for e in $RUNNER_CONTEXT_EXCLUDES; do
+        [[ "$e" != agents ]] || continue
+        [[ "$rest" == "$e" || "$rest" == "$e"/* ]] && return 0
+    done
+    return 1
+}
+
 # The diff is tree against tree, so it is right whether or not base is an
 # ancestor of head. Renames are listed as a delete and an add, which makes a
-# file moved out of one runner and into another count against both.
-paths="$(git -C "$repo" diff --name-only --no-renames "$base" "$head")" \
+# file moved out of one runner and into another count against both. NUL
+# separated, because git otherwise quotes and escapes a name with anything
+# past ASCII in it, and a quoted path matches no rule below. Through a file
+# so a failed diff is an error and not an empty list.
+paths="$(mktemp)"
+trap 'rm -f "$paths"' EXIT
+git -C "$repo" diff -z --name-only --no-renames "$base" "$head" > "$paths" \
     || die "could not diff $base against $head in $repo"
 
 everything=0; affected=""
-while IFS= read -r path; do
+while IFS= read -r -d '' path; do
     [[ -n "$path" ]] || continue
     case "$path" in
         bin/runner/promote|bin/runner/lib.sh|runners/lib/*)
@@ -118,15 +137,9 @@ while IFS= read -r path; do
             name="${rest%%/*}"
             rest="${rest#*/}"
             is_runner "$name" || continue
-            # What runner_build_context leaves out of the staged context, plus
-            # the README, which no Dockerfile copies. The agents manifest is
-            # left out of the context too, but it decides which agents go in,
-            # so a change to it does count.
-            case "$rest" in
-                README.md|mounts|.env.local|out/*|.build/*) ;;
-                *) affected="$affected$name
-" ;;
-            esac ;;
+            never_ships "$rest" || affected="$affected$name
+"
+            ;;
         .claude/agents/*.md)
             agent="${path#.claude/agents/}"
             agent="${agent%.md}"
@@ -140,7 +153,7 @@ while IFS= read -r path; do
             done <<< "$every"
             ;;
     esac
-done <<< "$paths"
+done < "$paths"
 
 if (( everything )); then
     [[ -z "$every" ]] || printf '%s\n' "$every"

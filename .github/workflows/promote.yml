@@ -9,17 +9,14 @@ name: Promote
 # attribute condition on the workload identity provider), and a pull request
 # runs code nobody has merged. Lint is where a pull request is checked.
 on:
+  # Every push to main, with no paths filter. GitHub's filter reads only the
+  # first 300 changed files of a push, so a large merge could have skipped
+  # this workflow without a word. bin/runner/changed is the one place the
+  # rules live, and a run that finds nothing to promote costs a few seconds.
   push:
     branches: [main]
-    # Wider than what bin/runner/changed acts on, on purpose: the script is
-    # the one place the rules live, so this filter only has to never miss. A
-    # run that starts and finds nothing to promote costs a few seconds.
-    paths:
-      - "runners/**"
-      - ".claude/agents/**"
-      - "bin/runner/promote"
-      - "bin/runner/lib.sh"
-      - "bin/runner/changed"
+  # The choices are spelled out because a choice input has to be static. The
+  # plan job still holds the pick against the runners main really has.
   workflow_dispatch:
     inputs:
       runner:
@@ -101,7 +98,7 @@ jobs:
             if [[ "$json" == "[]" ]]; then
               echo "Nothing in this push reaches a runner image, so nothing is promoted."
             else
-              echo "Promoting from \`$AFTER\`:"
+              echo "Changed as of \`$AFTER\`, each built from the tip of main when its job starts:"
               echo
               printf '%s\n' "$names" | sed 's/^/- /'
             fi
@@ -133,9 +130,25 @@ jobs:
       group: promote-${{ matrix.runner }}
       cancel-in-progress: false
     steps:
+      # The tip of main as it is when this job starts, never the commit that
+      # triggered the run. Runs in a group start in no promised order, and a
+      # failed one can be run again days later, so building the triggering
+      # commit would let an older run point a job at an older image after a
+      # newer one had promoted. Built this way, whichever run goes last
+      # promotes the newest main. The plan job above still decides which
+      # runners from its own push's diff.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+          ref: refs/heads/main
+
+      # The commit actually built, for the summary and the log.
+      - name: Name the commit being built
+        id: built
+        run: |
+          sha="$(git rev-parse HEAD)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Building main at $sha (this run was triggered at $GITHUB_SHA)"
 
       # Keyless: GitHub signs a token saying which repository and ref this run
       # is, and Google trades it for an hour as the deploy service account.
@@ -167,6 +180,7 @@ jobs:
         env:
           RUNNER: ${{ matrix.runner }}
           OUTCOME: ${{ steps.promote.outcome }}
+          BUILT: ${{ steps.built.outputs.sha }}
         run: |
           # shellcheck source=/dev/null
           . ./bin/runner/lib.sh
@@ -177,9 +191,9 @@ jobs:
             echo "## $RUNNER"
             echo
             if [[ "$OUTCOME" == "success" ]]; then
-              echo "Promoted from \`$GITHUB_SHA\`."
+              echo "Promoted, built from main at \`$BUILT\`."
             else
-              echo "**Not promoted** (the promote step ended as $OUTCOME). The job still fires the image it had before this run, unless the log above shows the job update itself went through."
+              echo "**Not promoted** (the promote step ended as $OUTCOME, building main at \`${BUILT:-unread}\`). The job still fires the image it had before this run, unless the log above shows the job update itself went through. No later push retries this on its own: run the Promote workflow on main for this runner, or wait for the next merge that changes it."
             fi
             echo
             echo "| | |"

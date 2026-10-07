@@ -82,7 +82,9 @@ for r in alpha beta gamma; do
   put "runners/$r/README.md"
 done
 put runners/alpha/agents "alpha"
-printf '# what beta runs\n\nbeta\nshared\n' > "$FAKE/runners/beta/agents"
+# `shared` is indented with a trailing space: the staging reads the manifest
+# with `read`, which trims both, so that line ships the agent and has to match.
+printf '# what beta runs\n\nbeta\n  shared \n' > "$FAKE/runners/beta/agents"
 put runners/alpha/mounts
 put runners/localonly/entrypoint.sh
 put runners/localonly/prompt.md
@@ -119,11 +121,16 @@ change "a Dockerfile reaches its runner"         "gamma"      runners/gamma/Dock
 change "a new file reaches its runner"           "alpha"      runners/alpha/listings.jq
 change "two runners in one diff, sorted"         "alpha gamma" runners/gamma/prompt.md runners/alpha/prompt.md
 change "a nested README still ships"             "beta"       runners/beta/docs/README.md
+# git quotes and escapes a name like this one unless asked not to, and a
+# quoted path would match no rule.
+change "a name past ASCII reaches its runner"    "gamma"      "runners/gamma/café.jq"
+change "a name with a space reaches its runner"  "beta"       "runners/beta/two words.jq"
 
 echo "Paths that never ship reach nothing"
 change "a runner's README"                       "" runners/alpha/README.md
 change "a runner's mounts"                       "" runners/alpha/mounts
 change "a runner's out, .build and .env.local"   "" runners/alpha/out/email.html runners/alpha/.build/Dockerfile runners/alpha/.env.local
+change "a name past ASCII under out"             "" "runners/alpha/out/café.html"
 change "the renderer's tests"                    "" runners/email/tst/render.test.mjs
 change "the renderer's fixtures and goldens"     "" runners/email/fixtures/alpha.json runners/email/goldens/alpha.html
 change "the library's tests in runners/tst"      "" runners/tst/lib.test.mjs
@@ -138,7 +145,7 @@ change "README in one runner, prompt in another" "beta"  runners/alpha/README.md
 
 echo "Agents follow the manifests"
 change "an agent reaches the runner naming it"   "alpha" .claude/agents/alpha.md
-change "an agent listed after a comment"         "beta"  .claude/agents/shared.md
+change "an agent on an indented manifest line"   "beta"  .claude/agents/shared.md
 change "an agent no manifest names"              ""      .claude/agents/unlisted.md
 change "a file under agents that is no agent"    ""      .claude/agents/notes/alpha.md
 # The manifest never reaches the staged context itself, but it decides which

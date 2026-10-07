@@ -86,10 +86,13 @@ promote by hand, a scheduler change, or any other deploy still takes his
 explicit yes each time, and that includes starting the workflow by hand or
 running a failed promote again.
 
-`.github/workflows/promote.yml` runs on every push to main that touches a
-runner path. It asks `bin/runner/changed` which images the push changed and
-runs `bin/runner/promote <name>` for each, the same script a hand promote
-uses, so there is one path to production and not two.
+`.github/workflows/promote.yml` runs on every push to main. It asks
+`bin/runner/changed` which images the push changed and runs
+`bin/runner/promote <name>` for each, the same script a hand promote uses, so
+there is one path to production and not two. Each runner is built from the tip
+of main as it is when its job starts, not from the commit that triggered the
+run, so a run that starts late or is run again can only ever promote the
+newest main and never an older one; the job summary names the commit built.
 
 | A Change To | Promotes |
 |---|---|
@@ -101,12 +104,18 @@ uses, so there is one path to production and not two.
 | `runners/email/tst/`, `fixtures/`, `goldens/` | nothing: the image's first stage bundles `render.tsx` and what it imports, and copies only that file forward |
 | anything else (`runners/tst/`, this README, the other `bin/runner/` scripts) | nothing |
 
-The rules live in `bin/runner/changed` and nowhere else; the workflow's own
-path filter is only wide enough to never miss. Runners and manifests are read
-from the tree being promoted, so a new runner is covered the day its Dockerfile
-lands. A push with no usable starting point (a force push, a first push)
-promotes every runner. `bin/lint/runner-changed-test` holds each row of the
-table.
+The rules live in `bin/runner/changed` and nowhere else; the workflow carries
+no path filter of its own. What a runner's directory keeps out of its image is
+one list in `bin/runner/lib.sh` (`RUNNER_CONTEXT_EXCLUDES`), read by both the
+staging and the rules, and one function there reads an `agents` manifest for
+both. Runners and manifests are read from the tree at the pushed commit, so a
+new runner's path rules apply the day its Dockerfile lands. **Its Cloud Run
+job does not: the workflow updates a job and never creates one**, so a brand
+new runner needs its job created by hand once (with its service account,
+secrets and schedule) before a merge can promote it, and until then its
+promote fails red. A push with no usable starting point (a force push, a first
+push) promotes every runner. `bin/lint/runner-changed-test` holds each row of
+the table.
 
 **Between the merge and the end of its Actions run, the old image still
 fires.** A build takes a few minutes per runner, each runner is its own job,
@@ -117,8 +126,11 @@ schedule, or check the run before trusting a fire.
 **A failure is loud and changes nothing.** The runner's job fails, the run
 goes red, and GitHub's own failed workflow notice is the mail. The job summary
 names each runner, whether it was promoted, and the digest the registry holds.
-One runner failing does not stop the others. A runner that failed keeps firing
-the image it already had, and the next merge that touches it tries again.
+One runner failing does not stop the others. **A red promote is not retried
+by a later push that leaves that runner alone**: the runner keeps firing the
+image it already had until the workflow is run by hand on main for it, or the
+next merge that changes it lands. The dispatch is the fix, and either way the
+build is the newest main.
 
 **By hand, with Forni's yes.** From the Actions tab, run the Promote workflow
 on main and pick one runner or all of them, or from a clean checkout of main:

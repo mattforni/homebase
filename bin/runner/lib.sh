@@ -263,6 +263,29 @@ runner_execute() {
     "$dir/entrypoint.sh"
 }
 
+# What sits in a runner's directory and never reaches its staged context, as
+# names relative to that directory. Stated once because two things have to
+# agree on it: runner_build_context, which leaves these out of the image, and
+# bin/runner/changed, which must not promote a runner over a change to one of
+# them. A copy kept in each would drift toward a merge that changes an image
+# and promotes nothing. `agents` and `mounts` are the manifests that drive the
+# staging and never ship themselves, though a change to `agents` changes
+# which agents do, and changed knows that.
+RUNNER_CONTEXT_EXCLUDES="out .build .env.local agents mounts"
+
+# Usage: runner_agent_names < <agents manifest>
+# The agent names in a manifest, one per line: blank lines and comments
+# dropped, and the whitespace around a name with them, since that is what
+# `read` does. The one reader of the format, for the same reason as the list
+# above: the staging and the promote rules must see the same names.
+runner_agent_names() {
+    local n
+    while read -r n; do
+        [[ -n "$n" && "$n" != \#* ]] || continue
+        printf '%s\n' "$n"
+    done
+}
+
 # Usage: runner_build_context <runner-dir> [staging-dir]
 # Stages what a runner's image is built from and prints the directory. The
 # staging directory is the runner's own .build/ unless a second argument
@@ -276,14 +299,14 @@ runner_execute() {
 # runner's `agents` file. Built fresh every time, under the runner's gitignored
 # .build/, so a stale copy of the library can never ship.
 runner_build_context() {
-    local dir="$1" root staged n
+    local dir="$1" root staged n excludes=() e
     root="$(runner_repo_root)"
     staged="${2:-$dir/.build}"
     rm -rf "$staged" && mkdir -p "$staged/lib" || return 1
     # The `agents` and `mounts` manifests drive this side and never ship; and
     # `agents` the file would collide with agents/ the directory below.
-    (cd "$dir" && tar --exclude=./out --exclude=./.build --exclude=./.env.local \
-        --exclude=./agents --exclude=./mounts -cf - .) \
+    for e in $RUNNER_CONTEXT_EXCLUDES; do excludes+=("--exclude=./$e"); done
+    (cd "$dir" && tar "${excludes[@]}" -cf - .) \
         | (cd "$staged" && tar -xf -) || return 1
     # The whole shared library: runner.sh for the entrypoint, the pull
     # scripts, and whatever joins them. Files only: this copy is flat, so a
@@ -302,13 +325,12 @@ runner_build_context() {
     if [[ -r "$dir/agents" ]]; then
         mkdir -p "$staged/agents" || return 1
         while read -r n; do
-            [[ -n "$n" && "$n" != \#* ]] || continue
             if [[ ! -r "$root/.claude/agents/$n.md" ]]; then
                 echo "no agent named '$n' in .claude/agents (listed in $dir/agents)" >&2
                 return 1
             fi
             cp "$root/.claude/agents/$n.md" "$staged/agents/$n.md" || return 1
-        done < "$dir/agents"
+        done < <(runner_agent_names < "$dir/agents")
     fi
     printf '%s' "$staged"
 }
