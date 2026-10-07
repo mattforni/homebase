@@ -73,7 +73,7 @@ Never hard code a username in tracked config or documentation. Homebase deploys 
 
 ## Code Review
 
-**`~/bin/review/run <worktree> --effort high` is the gate, here and everywhere else.** It runs Claude's `/code-review` (the gate) and, when a slot is free, the CodeRabbit CLI as evidence. The rules, the stream shape, and triage live in `plugins/sdlc/reference/code-review.md`.
+**`~/bin/review/run <worktree> --effort high` is the gate, here and everywhere else.** It runs Claude's `/code-review` (the gate) and, when a slot is free, the CodeRabbit CLI as evidence. The rules, the stream shape, and triage live in this repo's [plugins/sdlc/reference/code-review.md](plugins/sdlc/reference/code-review.md).
 
 Homebase is **public**, so it is one of the repos where the PR bot also works: the free Open Source plan gives CodeRabbit full inline review on pull requests here, unlike the private repos where it can only summarize. That makes the bot a genuine second look on this repo and it stays enabled, but it is the fallback, not the thing to wait on. It posts within seconds of a PR opening, does not re review on a bare push (trigger with `@coderabbitai review`), and leaves a stale "Changes requested" status until it does; dismiss that through the API once every comment is addressed. Gemini Code Assist reviewed here until 2026-07-17, when Google sunset the consumer app.
 

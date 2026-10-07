@@ -65,7 +65,7 @@ This is the review gate, and it runs against the branch's current HEAD in the PR
 ~/bin/review/run <worktree> --effort high
 ```
 
-It fetches, resolves the base itself (pass `--base` when the repo's base branch is not the remote default), changes directory internally, and echoes the directory and HEAD in its leading `review_context` line, so the call carries no `cd`. It runs every reviewer at once and prints one JSONL stream; the shape and the triage rules are in [reference/code-review.md](../../reference/code-review.md).
+It fetches, resolves the base itself (pass `--base origin/<branch>` when the PR's base is not the remote default: `gh pr view PR_NUMBER --json baseRefName --jq .baseRefName`, which also covers a stacked PR), changes directory internally, and echoes the directory and HEAD in its leading `review_context` line, so the call carries no `cd`. It runs every reviewer at once and prints one JSONL stream; the shape and the triage rules are in [reference/code-review.md](../../reference/code-review.md).
 
 Store the findings for Step 4, and record the `sha` from the claude `complete` line as REVIEWED_SHA, which Step 5 compares against HEAD before merging. **A run counts as clean only when the claude `complete` line arrives with `ran: true` and no finding at major or above remains unaddressed.** A claude line with `ran: false` reviewed nothing: retry once after sixty seconds, then bail with its `reason`. The other reviewers' lines are evidence, never something to wait for.
 

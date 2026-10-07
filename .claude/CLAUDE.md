@@ -91,7 +91,7 @@ Read Google Workspace links (Docs/Sheets/Slides/Drive) and work Gmail through th
 
 ## Code Review
 
-- **`~/bin/review/run <worktree> --effort high` is the review gate, every repo, before a merge.** Never wait on the PR bot: on a private repo it summarizes and never reviews. Rules and triage: `plugins/sdlc/reference/code-review.md`.
+- **`~/bin/review/run <worktree> --effort high` is the review gate, every repo, before a merge.** Never wait on a PR bot. Rules and triage: `~/Eudaimonia/Craft/Development/personal/homebase/plugins/sdlc/reference/code-review.md`.
 - **Triage findings, do not comply blindly.** Fix genuine bugs, adopt good suggestions, decline false positives with a reason and anything conflicting with an explicit directive or tested behavior. Address only NEW or UNRESOLVED comments; ask if unclear which are new. Converge rather than loop. The merge gate hook and `sdlc:land` enforce it; per repo setup lives in that repo's CLAUDE.md.
 
 ## Linear Ticket Preferences

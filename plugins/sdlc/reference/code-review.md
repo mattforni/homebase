@@ -12,7 +12,7 @@ What skips review is what already lands direct to main by each repo's landing he
 
 `review/run` asks every reviewer it has at once and prints one stream. The reviewers:
 
-- **claude**, the gate. Claude Code's built in `/code-review` at high effort, run headless inside the worktree with read only git tools and a findings schema. It is uncapped, bills against the Max plan already paid for, and returns in a minute or two.
+- **claude**, the gate. Claude Code's built in `/code-review` at high effort, run headless inside the worktree with read only git tools and a system prompt that fixes the findings shape (file, line, summary, failure scenario, severity). It is uncapped, bills against the Max plan already paid for, and returns in about a minute, with a hard stop at the run's timeout.
 - **coderabbit**, evidence. The CodeRabbit CLI on the Free plan, run only when `coderabbit usage` shows a slot free this hour and the diff is under 150 files. It never waits and never retries: a rejected attempt still spends a slot. Account mechanics and gotchas: `~/Eudaimonia/Admin/Tools/coderabbit.md`.
 - **codex**, planned. The second model family, since a reviewer from the family that wrote the code catches less (about ten points less in the one study that measured it). It reports itself absent until the CLI and a plan exist; which plan is Forni's call from his Usage page, and it will never be pay per review.
 

@@ -54,6 +54,36 @@ expect "array: ran true"          'map(select(.type=="complete"))[0].ran' true
 expect "array: fallback severity" 'map(select(.type=="finding")) | map(.severity) | join(",")' "major,minor"
 expect "array: fileName mapped"   'map(select(.type=="finding"))[0].fileName' a.sh
 
+# 2b. Prose around one fenced json block is accepted; the block is the payload.
+cat >"$tmp/raw" <<'EOF'
+{"type":"result","subtype":"success","is_error":false,"result":"I reviewed the range. Findings:\n\n```json\n[{\"file\":\"c.sh\",\"line\":7,\"summary\":\"off by one\",\"failure_scenario\":\"last row skipped\",\"severity\":\"major\"}]\n```\n\nThat is all."}
+EOF
+normalise_claude "$tmp/raw" 0 fenced 40 1 >"$tmp/out"
+expect "fenced in prose: ran true"  'map(select(.type=="complete"))[0].ran' true
+expect "fenced in prose: findings"  'map(select(.type=="complete"))[0].findings' 1
+
+# 2c. A bare bracket fragment inside prose is not a findings array (fail closed).
+cat >"$tmp/raw" <<'EOF'
+{"type":"result","subtype":"success","is_error":false,"result":"Looked at [bin/x, bin/y] and found nothing worth raising; the list [] above is empty."}
+EOF
+normalise_claude "$tmp/raw" 0 frag 40 1 >"$tmp/out"
+expect "bracket prose: ran false"   'map(select(.type=="complete"))[0].ran' false
+
+# 2d. An array holding non objects is not a findings array either.
+cat >"$tmp/raw" <<'EOF'
+{"type":"result","subtype":"success","is_error":false,"result":"[\"no findings\", 0]"}
+EOF
+normalise_claude "$tmp/raw" 0 scalars 40 1 >"$tmp/out"
+expect "scalar array: ran false"    'map(select(.type=="complete"))[0].ran' false
+
+# 2e. An empty array is an honest clean run.
+cat >"$tmp/raw" <<'EOF'
+{"type":"result","subtype":"success","is_error":false,"result":"[]"}
+EOF
+normalise_claude "$tmp/raw" 0 empty 40 1 >"$tmp/out"
+expect "empty array: ran true"      'map(select(.type=="complete"))[0].ran' true
+expect "empty array: zero findings" 'map(select(.type=="complete"))[0].findings' 0
+
 # 3. Prose instead of findings is not a clean run.
 cat >"$tmp/raw" <<'EOF'
 {"type":"result","subtype":"success","is_error":false,"result":"I reviewed the diff and found no issues worth raising."}

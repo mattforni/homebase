@@ -16,6 +16,8 @@ need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required and not on PATH"
 
 review_state_dir() {
   mkdir -p "$REVIEW_STATE/runs" || die "cannot create $REVIEW_STATE"
+  # Raw reviewer output is kept for forensics, not forever.
+  find "$REVIEW_STATE/runs" -type f -mtime +14 -delete 2>/dev/null || true
   printf '%s' "$REVIEW_STATE"
 }
 
@@ -64,10 +66,16 @@ normalise_claude() {
        failure_scenario:(.failure_scenario // "")};
     def fallback_sev: if ((.failure_scenario // "") | length) > 0 then "major" else "minor" end;
     def unfence: tostring | gsub("^\\s*```(json)?\\s*"; "") | gsub("\\s*```\\s*$"; "");
-    # Prose around the array is tolerated: fall back to the outermost [ ... ].
-    def arr: (unfence | try fromjson catch null) as $a
-      | if ($a | type) == "array" then $a
-        else ((tostring | capture("(?<a>\\[[\\s\\S]*\\])").a? // "") | try fromjson catch null) end;
+    # The findings array is accepted in two forms only: the whole reply
+    # (optionally fenced), or one fenced json block inside prose. A bare
+    # bracket fragment inside prose is not one, and an array holding anything
+    # but objects is not one either: both fall through to ran:false, because a
+    # prose reply normalised to "zero findings" would be a gate that fails open.
+    def objects_only: if (type == "array") and (all(.[]; type == "object")) then . else null end;
+    def arr: (unfence | try fromjson catch null | objects_only) as $a
+      | if $a != null then $a
+        else ((tostring | capture("```(json)?\\s*(?<a>\\[[\\s\\S]*?\\])\\s*```").a? // "")
+              | try fromjson catch null | objects_only) end;
     if (.is_error // false) or $rc != 0 then
       complete(false; ((.result // "error") | tostring | gsub("\\s+"; " ") | .[0:200]); 0)
     elif ((.structured_output.findings? // null) | type) == "array" then

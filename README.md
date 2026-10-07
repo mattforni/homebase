@@ -25,7 +25,7 @@ claude plugin install sdlc@skillset
 
 #### Per clone config
 
-The review gate is `coderabbit review --base origin/main --committed --agent`, run locally on the branch, and it needs no configuration. `git config sdlc.review-command` only feeds the **public repo fallback**: the trigger comment `sdlc:review` posts so the PR bot takes a second look, which is worth having here because homebase is public and the free Open Source plan reviews properly on it. Nothing waits on that trigger. The plugin default is `/gemini review`, which is dead since Google sunset the consumer app, so `setup.sh` sets the local config automatically, or you can run it by hand:
+The review gate is `~/bin/review/run <worktree>`, run locally on the branch, and it needs no configuration; the rules live in [plugins/sdlc/reference/code-review.md](plugins/sdlc/reference/code-review.md). `git config sdlc.review-command` only feeds the **public repo fallback**: the trigger comment `sdlc:review` posts so the PR bot takes a second look, which is worth having here because homebase is public and the free Open Source plan reviews properly on it. Nothing waits on that trigger. The plugin default is `/gemini review`, which is dead since Google sunset the consumer app, so `setup.sh` sets the local config automatically, or you can run it by hand:
 
 ```bash
 git config sdlc.review-command "@coderabbitai review"

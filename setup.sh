@@ -1271,7 +1271,7 @@ configure_repo() {
   # sdlc:review reads the optional PR bot trigger from
   # `git config sdlc.review-command`. The plugin default is "/gemini review"
   # but this repo uses CodeRabbit, so pin it locally. This is the public repo
-  # fallback only; the review gate itself is the CodeRabbit CLI run on the
+  # fallback only; the review gate itself is review/run, run locally on the
   # branch, which needs no config (2026-08-29).
   local desired_command="@coderabbitai review"
   local current

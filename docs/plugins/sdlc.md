@@ -29,7 +29,7 @@ The typical flow is:
 /sdlc:land                # Open PR, iterate with bot, merge, clean up
 ```
 
-`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → CLI review → poll → (address findings)* → merge → clean up and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded).
+`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → `review/run` → poll → (address findings)* → merge → clean up and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded).
 
 ## Installation
 
@@ -101,7 +101,7 @@ Drives the back half of SDLC autonomously, from "ready for review" through "merg
 3. **Polls** for state changes via Monitor: CI settled, CI failure, human review, or timeout
 4. **Decides** per event:
    - Review clean, or only advisory findings → merges
-   - Actionable findings → fixes them in place and pushes, then re-runs the CLI review on the new HEAD
+   - Actionable findings → fixes them in place and pushes, then re-runs `review/run` on the new HEAD
    - CI failure self-introduced → fixes in place and pushes
    - CI failure not self-introduced, human review, merge conflict, or timeout → bails to the user with state summary
 5. **Merges** (squash, with branch delete), then removes the local worktree and branch

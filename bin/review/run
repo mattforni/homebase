@@ -25,13 +25,16 @@ usage() {
 }
 
 worktree=""; base=""; reviewers="claude,coderabbit,codex"; effort="high"; max=""; budget=540
+# An option given without its value would otherwise end the script silently
+# under set -e (shift 2 fails) or swallow the next option as the value.
+value() { [[ $# -ge 2 && "$2" != -* ]] || die "$1 needs a value"; printf '%s' "$2"; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --base) base="${2:-}"; shift 2 ;;
-    --reviewers) reviewers="${2:-}"; shift 2 ;;
-    --effort) effort="${2:-}"; shift 2 ;;
-    --max-findings) max="${2:-}"; shift 2 ;;
-    --timeout) budget="${2:-}"; shift 2 ;;
+    --base) base=$(value "$@") || exit 1; shift 2 ;;
+    --reviewers) reviewers=$(value "$@") || exit 1; shift 2 ;;
+    --effort) effort=$(value "$@") || exit 1; shift 2 ;;
+    --max-findings) max=$(value "$@") || exit 1; shift 2 ;;
+    --timeout) budget=$(value "$@") || exit 1; shift 2 ;;
     -h|--help) usage ;;
     -*) die "unknown option $1" ;;
     *) [[ -z "$worktree" ]] || die "one worktree only"; worktree="$1"; shift ;;
@@ -90,7 +93,7 @@ run_claude() {
   target="$effort $base...HEAD"
   [[ -z "$max" ]] || target+=" --max-findings $max"
   local rc=0
-  timeout "$budget" claude -p "/code-review $target" \
+  timeout -k 15 "$budget" claude -p "/code-review $target" \
     --output-format json --append-system-prompt "$REVIEW_SHAPE_PROMPT" \
     --permission-mode dontAsk --no-session-persistence \
     --allowedTools "Read,Grep,Glob,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git blame *)" \
@@ -121,7 +124,7 @@ run_coderabbit() {
     echo "no slot free; next at $(date -v +"$(( next_ms / 60000 + 1 ))M" "+%H:%M %Z" 2>/dev/null || date "+%H:%M %Z")" >"$dir/skip"
     return 0
   fi
-  timeout "$(( budget > 90 ? budget - 90 : budget ))" coderabbit review --base "$base" --committed --agent >"$dir/raw" 2>"$dir/err" || true
+  timeout -k 15 "$(( budget > 90 ? budget - 90 : budget ))" coderabbit review --base "$base" --committed --agent >"$dir/raw" 2>"$dir/err" || true
   echo $(( $(date +%s) - start )) >"$dir/seconds"
 }
 
