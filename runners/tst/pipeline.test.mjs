@@ -389,6 +389,7 @@ test("a customer with a Linear project keeps its due HubSpot tasks, said once wh
             { id: "t1", subject: "Call about the invoice", due: "2026-10-07", reading: "due", companies: ["1"], contacts: [] },
             { id: "t2", subject: "Audit the tag container", due: "2026-10-08", reading: "due", companies: ["1"], contacts: [] },
             { id: "t3", subject: "W41: audit the tag container", due: "2026-10-01", reading: "stale", companies: ["1"], contacts: [] },
+            { id: "t6", subject: "Company 1: audit the tag container", due: "2026-10-02", reading: "stale", companies: ["1"], contacts: [] },
             { id: "t4", subject: "Someday, the renewal", due: "", reading: "undated", companies: ["1"], contacts: [] },
             { id: "t5", subject: "Renewal check in", due: "2026-12-01", reading: "parked", companies: ["1"], contacts: [] },
         ],
@@ -397,7 +398,7 @@ test("a customer with a Linear project keeps its due HubSpot tasks, said once wh
     assert.deepEqual(tier(needsOf(portal, linear).needs, "paying_build").map((l) => [l.ref, l.owed, l.due]), [
         [undefined, "Call about the invoice", "2026-10-07"],
         ["EXA-2", "audit the tag container", "2026-10-08"],
-    ], "the two tasks that repeat the issue's title, trimmed or whole, are the issue; undated and parked tasks are not due");
+    ], "the three tasks that repeat the issue's title, whole, bare, or under the customer's own prefix, are the issue; undated and parked tasks are not due");
 });
 
 test("a SQL whose only next step is a drafted touch gets no warm line, since the counts carry it", () => {
@@ -632,9 +633,16 @@ test("no word of what Linear sends back can reach the mail, on any failure", asy
     assert.equal(run.stdout, "");
 });
 
+const oneCustomer = () => portalOf({
+    companies: [company("1", { lifecyclestage: "customer", linear_project: "Westbrook" })],
+    stages: { customer: [row("1")] },
+});
+
 test("a Linear read reused from an earlier pull is said under Left for You, and the saved file is read once", () => {
-    const out = fold({ flags: [{ lead: "An older flag." }], owed: {} }, portalOf({}), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [], linearReused: "written 2026-10-05" });
+    const out = fold({ flags: [{ lead: "An older flag." }], owed: {} }, oneCustomer(), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [], linearReused: "written 2026-10-05" });
     assert.deepEqual(out.flags.map((f) => f.lead), ["The Linear read is from an earlier pull (written 2026-10-05), so the customer lines may be behind.", "An older flag."]);
+    const nobody = fold({ flags: [], owed: {} }, portalOf({}), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [], linearReused: "written 2026-10-05" });
+    assert.deepEqual(nobody.flags, [], "with no customer there is no line for the read's age to matter to");
     const fresh = fold({ flags: [], owed: {} }, portalOf({}), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [] });
     assert.deepEqual(fresh.flags, [], "a fresh read says nothing");
 
@@ -643,7 +651,7 @@ test("a Linear read reused from an earlier pull is said under Left for You, and 
     const write = (file, value) => { writeFileSync(join(dir, file), JSON.stringify(value)); return join(dir, file); };
     const run = spawnSync(process.execPath, [
         new URL("../lib/pipeline.mjs", import.meta.url).pathname, "fold",
-        write("draft.json", { flags: [], owed: {} }), write("portal.json", portalOf({})), "2026-10-05",
+        write("draft.json", { flags: [], owed: {} }), write("portal.json", oneCustomer()), "2026-10-05",
         write("linear.json", { issues: [], truncated: true }), "", "written 2026-10-05",
     ], { encoding: "utf8" });
     rmSync(dir, { recursive: true, force: true });

@@ -93,12 +93,19 @@ for entry in "$ROOT"/runners/lib/*/; do
 done
 
 # 5. And the thing itself: stage every runner that ships a Dockerfile, the
-#    way promote would. It writes only that runner's gitignored .build/, and
-#    it is the one check that fails on whatever breaks staging next.
+#    way promote would. It is the one check that fails on whatever breaks
+#    staging next. Staged into a scratch directory and never the runner's
+#    own .build/: the function wipes its destination first, sessions run
+#    side by side here, and a pre-commit in one must not delete the context
+#    a promote or a run-local in another is building from. What the staging
+#    printed is shown only when it fails, since the reason is the point.
+stage_root="$(mktemp -d)"
+trap 'rm -rf "$stage_root"' EXIT
 for dockerfile in "$ROOT"/runners/*/Dockerfile; do
     runner="$(dirname "$dockerfile")"
-    if ! ( runner_build_context "$runner" ) >/dev/null 2>&1; then
+    if ! stage_output="$( ( runner_build_context "$runner" "$stage_root/$(basename "$runner")" ) 2>&1 )"; then
         fail "${runner#"$ROOT"/} does not stage: runner_build_context failed, so promote and run-local would too"
+        printf '%s\n' "$stage_output" | sed 's/^/      /' >&2
     fi
 done
 

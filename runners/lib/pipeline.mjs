@@ -370,13 +370,17 @@ function customerTiers(portal, linear) {
         let lines;
         if (linear && project) {
             const issues = linear.filter((issue) => (issue.project || "").trim().toLowerCase() === project.toLowerCase());
-            const titles = new Set(issues.flatMap((issue) => [norm(issue.title), norm(trimTitle(issue.title, [company.name, project]))]));
+            // Both sides are trimmed the same way before they are compared: a
+            // task filed as "<Customer>: audit the tag container" and an issue
+            // titled "W41: audit the tag container" are one piece of work.
+            const trimmed = (text) => norm(trimTitle(text, [company.name, project]));
+            const titles = new Set(issues.map((issue) => trimmed(issue.title)));
             lines = [
                 ...issues.map((issue) => ({
                     who: company.name, owed: trimTitle(issue.title, [company.name, project]), due: issue.dueDate || "",
                     url: company.url, ref: issue.identifier, ref_url: issue.url, priority: issue.priority,
                 })),
-                ...taskLines(portal, company, { due: true }).filter((line) => !titles.has(norm(line.owed))),
+                ...taskLines(portal, company, { due: true }).filter((line) => !titles.has(trimmed(line.owed))),
             ];
         } else {
             if (linear) unmapped.push(company.name);
@@ -507,8 +511,9 @@ export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null,
         flags.unshift({ lead: `No linear_project on ${built.unmapped.join(", ")}, so ${built.unmapped.length === 1 ? "its" : "their"} lines are open HubSpot tasks.` });
     }
     // A read saved by an earlier pull is the cycle as it stood then. The
-    // lines are still worth having, and the mail says how old they are.
-    if (linear !== null && linearReused) {
+    // lines are still worth having, and the mail says how old they are, when
+    // there is a customer for it to matter to, as with the line above.
+    if (linear !== null && linearReused && built.customers > 0) {
         flags.unshift({ lead: `The Linear read is from an earlier pull (${linearReused}), so the customer lines may be behind.` });
     }
     if (linear !== null && linearTruncated) {
