@@ -93,8 +93,8 @@ normalise_claude() {
               | try fromjson catch null | objects_only) end;
     if (.is_error // false) or $rc != 0 then
       complete(false; ((.result // "error") | tostring | gsub("\\s+"; " ") | .[0:200]); 0)
-    elif ((.structured_output.findings? // null) | type) == "array" then
-      (.structured_output.findings | map(select(type == "object") | finding("major"))) as $f
+    elif ((.structured_output.findings? // null) | objects_only | type) == "array" then
+      (.structured_output.findings | map(finding("major"))) as $f
       | ($f[]), complete(true; ""; ($f | length))
     elif (((.result // "") | arr) | type) == "array" then
       (((.result // "") | arr) | map(select(type == "object") | finding(fallback_sev))) as $f

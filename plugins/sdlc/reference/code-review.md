@@ -26,7 +26,7 @@ Anthropic reads every repo by construction, since Claude writes the code. Any ot
 ~/bin/review/run <worktree> --effort high        # Bash timeout 600000
 ```
 
-It changes into the worktree itself and reports the directory and HEAD in a leading `review_context` line, so the call carries no `cd`. Flags: `--base <ref>` (default the remote's default branch), `--reviewers claude,coderabbit,codex`, `--effort low|medium|high|max`, `--max-findings N`, `--timeout <seconds>` (default 540, so it always returns inside the Bash call).
+It changes into the worktree itself and reports the directory and HEAD in a leading `review_context` line, so the call carries no `cd`. Flags: `--base <ref>` (default the remote's default branch), `--reviewers claude,coderabbit,codex`, `--effort low|medium|high|max`, `--max-findings N`, `--timeout <seconds>` (default 480, so it always returns inside the Bash call).
 
 ## Reading the Stream
 
