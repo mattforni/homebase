@@ -102,6 +102,14 @@ jobs:
       - name: Test the promote path rules
         run: ./bin/lint/runner-changed-test
 
+      # A promote takes its verdict from runner_build_wait, and the two ways
+      # that can be wrong are both silent: a success reported for a build that
+      # did not succeed, and a build left running with nobody to cancel it. A
+      # fake gcloud replays each ending and the row holds the exit code and
+      # whether a cancel was sent.
+      - name: Test the build wait
+        run: ./bin/lint/runner-build-test
+
       # The secrets gate hook denies any Bash command that would print a
       # credentials file into a transcript. A hook that fails open is one
       # regex edit from guarding nothing, so a table of commands that must

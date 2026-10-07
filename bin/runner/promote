@@ -57,67 +57,113 @@ context="$(runner_build_context "$dir")" || die "could not stage the build conte
 image="$RUNNER_REGISTRY/$name:$tag"
 echo "building $image from $context"
 
-# Submitted without waiting, and the wait done here, because gcloud's own wait
-# is welded to its log tail. The tail reads the build's log out of Cloud
-# Build's default logs bucket, which only a project Viewer or Owner may read,
-# and when that read is refused gcloud waits the build out and then exits non
-# zero with "This tool can only stream logs if you are Viewer/Owner of the
-# project", whatever the build did. The deploy identity the promote workflow
-# runs as is not a Viewer and should not be: the first automatic promotes
-# built all three images and then stopped right here, with every job still on
-# its old one (2026-10-07). --suppress-logs is no way out. It only takes the
-# output stream away; the tail still polls the bucket and raises the same
-# refusal (googlecloudsdk/api_lib/cloudbuild/logs.py, SDK 588).
+# Submitted without waiting, and followed here by its status, because gcloud's
+# own wait is welded to its log tail. The tail reads the build's log out of
+# Cloud Build's default logs bucket, which only a project Viewer or Owner may
+# read, and when that read is refused gcloud waits the build out and then
+# exits non zero with "This tool can only stream logs if you are Viewer/Owner
+# of the project", whatever the build did. The deploy identity the promote
+# workflow runs as is not a Viewer and should not be: the first automatic
+# promotes built all three images and then stopped right here, with every job
+# still on its old one (2026-10-07). --suppress-logs is no way out. It only
+# takes the output stream away; the tail still polls the bucket and raises the
+# same refusal (googlecloudsdk/api_lib/cloudbuild/logs.py, SDK 588).
 #
-# So the result is read from the build's status, which needs nothing beyond
-# the right to see the build, and the log is a courtesy tried for every caller
-# alike: a person at a terminal watches it live exactly as before, and a
-# caller who may not read it gets one line saying so. One path, with no test
-# for where it is running. The one thing given up is that Ctrl C no longer
-# cancels the build; `gcloud builds cancel` with the id printed below does.
-submitted="$(gcloud builds submit "$context" --tag "$image" --project="$RUNNER_PROJECT" \
-    --async --format='value(id,logUrl)')" \
-    || die "Cloud Build did not accept the build for $name"
+# So the verdict is the build's status (runner_build_wait in lib.sh), which
+# needs nothing beyond the right to see the build, and the log is a courtesy
+# running beside it, tried for every caller alike. One path, with no test for
+# where it is running. Whether the log can be read, and how gcloud words it
+# when it cannot, changes what a reader sees and never what the promote does.
+
+# A build submitted this way outlives the script that submitted it, so the
+# script has to end it whenever it stops short of a verdict: Ctrl C, a
+# cancelled or timed out workflow, any error on the way. Left running, the
+# build would later move the tag behind whichever promote came next, and that
+# promote's prune could then delete the image a job runs. `settled` is 1 while
+# there is no build to cancel: before one exists, and once the wait has
+# returned, since the wait ends or cancels the build itself.
+build_id=""; settled=1; stream_pid=""; stream_err=""
+cleanup() {
+    local rc=$?
+    trap - EXIT INT TERM
+    [[ -z "$stream_pid" ]] || kill "$stream_pid" 2>/dev/null || true
+    [[ -z "$stream_err" ]] || rm -f "$stream_err"
+    if (( ! settled )); then
+        echo "stopped before build $build_id finished; cancelling it so it is not left running" >&2
+        runner_build_cancel "$build_id" \
+            || echo "WARNING: could not cancel build $build_id; cancel it by hand: gcloud builds cancel $build_id --project=$RUNNER_PROJECT" >&2
+        (( rc != 0 )) || rc=1
+    fi
+    exit "$rc"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# The build's own time limit is the same deadline the wait holds, so a build
+# nobody is watching any more still ends. The log goes to a bucket the caller
+# can read when one is named (RUNNER_BUILD_LOG_DIR in lib.sh). If Cloud Build
+# will not take the build with that log directory, it is submitted once more
+# without it: the build account's right to write there is granted by its
+# builder role on paper and was never proven, and a promote must not hang on
+# where its log lands.
+submit() {
+    gcloud builds submit "$context" --tag "$image" --project="$RUNNER_PROJECT" \
+        --timeout="${RUNNER_BUILD_DEADLINE}s" --async --format='value(id,logUrl)' "$@"
+}
+started="$SECONDS"
+if [[ -n "$RUNNER_BUILD_LOG_DIR" ]]; then
+    if ! submitted="$(submit --gcs-log-dir="$RUNNER_BUILD_LOG_DIR")"; then
+        echo "Cloud Build did not take the build with its log in $RUNNER_BUILD_LOG_DIR; submitting it again with the default logs bucket" >&2
+        started="$SECONDS"
+        submitted="$(submit)" || die "Cloud Build did not accept the build for $name"
+    fi
+else
+    submitted="$(submit)" || die "Cloud Build did not accept the build for $name"
+fi
 build_id="${submitted%%$'\t'*}"
 [[ -n "$build_id" ]] || die "Cloud Build accepted the build for $name and returned no id"
+settled=0
 build_url=""
 [[ "$submitted" != *$'\t'* ]] || build_url="${submitted#*$'\t'}"
 [[ -n "$build_url" ]] || build_url="https://console.cloud.google.com/cloud-build/builds/$build_id?project=$RUNNER_PROJECT"
 echo "build $build_id"
 echo "console: $build_url"
 
-# The log, live, for whoever may read it. It returns when the build ends
-# either way; a refusal is one line and anything else is shown as it came.
+# The log, live, beside the wait. Everything it prints goes straight through,
+# errors included, and its errors are also kept so a refusal can be named in
+# plain words afterwards. It usually ends when the build does, refused or
+# not, but nothing waits on it: the wait below is what decides, and it prints
+# the build's status every half minute whatever this is doing.
 stream_err="$(mktemp)"
-if ! gcloud builds log --stream "$build_id" --project="$RUNNER_PROJECT" 2>"$stream_err"; then
-    if grep -q "can only stream logs" "$stream_err"; then
-        echo "this identity may not read the build log, so the build is followed by its status alone; the log is at the console link above"
-    else
-        cat "$stream_err" >&2
-        echo "the build log could not be followed; waiting on the build's status instead" >&2
-    fi
-fi
-rm -f "$stream_err"
+gcloud builds log --stream "$build_id" --project="$RUNNER_PROJECT" 2> >(tee "$stream_err" >&2) &
+stream_pid=$!
 
-# The verdict. A read that fails is retried a few times before it is believed,
-# since one dropped call must not fail a promote whose build is fine.
-misses=0
-while :; do
-    if build_status="$(gcloud builds describe "$build_id" --project="$RUNNER_PROJECT" \
-        --format='value(status)' 2>/dev/null)" && [[ -n "$build_status" ]]; then
-        misses=0
-        case "$build_status" in
-            SUCCESS) break ;;
-            QUEUED|PENDING|WORKING|STATUS_UNKNOWN) ;;
-            *) die "build $build_id ended as $build_status, so $name is not promoted and its job still points at the image it had. Read the log at $build_url or, as a project Viewer, with: gcloud builds log $build_id --project=$RUNNER_PROJECT" ;;
-        esac
-    else
-        misses=$((misses + 1))
-        (( misses < 6 )) || die "could not read the status of build $build_id after $misses tries, so $name is not promoted. See $build_url"
-    fi
-    sleep 5
+wait_rc=0
+runner_build_wait "$build_id" "$started" || wait_rc=$?
+settled=1
+
+# Give the log a moment to print its last lines, then stop it either way.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    kill -0 "$stream_pid" 2>/dev/null || break
+    sleep 1
 done
-echo "build $build_id succeeded"
+kill "$stream_pid" 2>/dev/null || true
+wait "$stream_pid" 2>/dev/null || true
+stream_pid=""
+# A nicety for the reader and nothing more: the match is on gcloud's English
+# and may stop matching in any release, which would cost this one line.
+if grep -q "can only stream logs" "$stream_err"; then
+    echo "this identity may not read the build log, so the build was followed by its status alone; the log is at the console link above"
+fi
+rm -f "$stream_err"; stream_err=""
+trap - EXIT INT TERM
+
+case "$wait_rc" in
+    0) echo "build $build_id succeeded" ;;
+    1) die "build $build_id did not succeed, so $name is not promoted and its job still points at the image it had. Read the log at $build_url or with: gcloud builds log $build_id --project=$RUNNER_PROJECT" ;;
+    *) die "build $build_id was cancelled before it finished, so $name is not promoted and its job still points at the image it had. See $build_url" ;;
+esac
 
 echo "pointing the job at it"
 gcloud run jobs update "$name" --project="$RUNNER_PROJECT" --region="$RUNNER_REGION" --image="$image"

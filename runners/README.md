@@ -195,12 +195,35 @@ This tool can only stream logs if you are Viewer/Owner of the project and, if ap
 
 The builds had succeeded; the job update and the prune never ran.
 `--suppress-logs` does not help, since it silences the output and the tail
-still reads the bucket. So `bin/runner/promote` submits the build without
-waiting, prints its id and console link, tries the live log for every caller
-(a person at a terminal sees it as before; the workflow gets one line saying
-it may not), and takes the verdict from the build's status, which needs only
-the right to see the build. A failed build fails the promote with the console
-link, which is where the workflow's log is read.
+still reads the bucket. So `bin/runner/promote` no longer lets gcloud wait:
+
+- It submits the build without waiting, prints its id and console link, and
+  takes the verdict from the build's status (`runner_build_wait` in
+  `bin/runner/lib.sh`), which needs only the right to see the build. Only
+  `SUCCESS` points a job at the image.
+- The build writes its log to `gs://atelic_cloudbuild/logs`
+  (`RUNNER_BUILD_LOG_DIR`), a bucket the deploy identity holds a role on, so
+  the live log can be read by the workflow as well as by a person. Google's
+  documentation names a logs bucket of your own as the route for a reader who
+  is not a project Viewer (Storage Object Viewer on it is enough to read). For
+  the account that writes, it asks for Storage Admin on the bucket unless the
+  build runs as the legacy Cloud Build account. Builds here run as the compute
+  default account, which holds `cloudbuild.builds.builder` on the project and
+  through it `storage.objects.create`, and no role on the bucket itself. That
+  should be enough to write a log and was not proven before this shipped, so
+  if Cloud Build refuses the build with that log directory the script submits
+  it once more with the default logs bucket and says so. Setting
+  `RUNNER_BUILD_LOG_DIR` empty turns it off.
+- The log is a courtesy beside the wait and never the verdict. The wait
+  prints the build's status every thirty seconds either way, and when the log
+  cannot be read the promote says so in one line.
+- A build submitted this way outlives the script, so the script cancels it
+  whenever it stops short of a verdict: Ctrl C, a cancelled workflow, an
+  error, twenty minutes without an ending (`RUNNER_BUILD_DEADLINE`; builds
+  take under two), or two minutes of status reads that all fail. A build left
+  running would later move the tag behind the next promote.
+
+`bin/lint/runner-build-test` holds the wait against a fake gcloud.
 
 ### The Commands
 
