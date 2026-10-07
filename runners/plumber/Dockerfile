@@ -1,8 +1,12 @@
 # The Pipeline Runner. A Cloud Run Job image: the entrypoint puts Eudaimonia
 # and the Atelic repo in place over read only deploy keys, pulls the portal,
 # both mailboxes, the One Pager and the candidate sites, then headless Claude
-# Code runs the plumber agent over those files and Resend delivers the
-# report with the roster attached. Nothing here writes to the world.
+# Code runs the plumber agent over those files. The run writes to the world
+# in four places, each named in the entrypoint's header: the groom's derived
+# stage and Lead Status moves in HubSpot, the roster committed and pushed to
+# the Atelic repo's main, one Outreach routine fire per first touch and bump,
+# and the report Resend delivers. The agent itself writes only its work
+# directory.
 #
 # Built from the staged context bin/runner/lib.sh assembles, which is this
 # directory plus lib/ and agents/plumber.md copied in from the repo, since
@@ -35,8 +39,9 @@ WORKDIR /home/runner
 
 COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
 COPY --chown=runner:runner prompt.md /home/runner/prompt.md
-# The shared library: runner.sh for the entrypoint, hubspot.mjs, gmail.mjs
-# and text.mjs for the pulls.
+# The shared library: runner.sh for the entrypoint, hubspot.mjs, gmail.mjs,
+# linear.mjs and text.mjs for the pulls, and pipeline.mjs for the fold that
+# turns the pulls into the mail's named lines and send weeks.
 COPY --chown=runner:runner lib/ /home/runner/lib/
 # The bundled renderer, at the first place runner.sh looks for it, and the
 # only renderer in the image since the jq one retired (ATE-563).

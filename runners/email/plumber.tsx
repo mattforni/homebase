@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import {
 	asciiUpcase,
 	Card,
@@ -7,13 +6,16 @@ import {
 	Footer,
 	List,
 	ListRow,
+	lpad,
 	Masthead,
-	type RecordBadge,
+	Note,
+	Records,
+	type RecordsCell,
 	RecordStack,
 	type RecordStackItem,
 	recordStackText,
-	RecordTimelineLegend,
 	Row,
+	spaces,
 	StatStrip,
 	type StatStripEntry,
 	SubEyebrow,
@@ -24,68 +26,56 @@ import {
 	wrap,
 } from "@atelic-action/ui/email";
 import { renderEmail } from "@atelic-action/ui/email/render";
-import { alt, jqToString, numberString, shortDate, unindent, weekNumber } from "./jq";
-import { DimLine, NameRun, RosterLine } from "./local";
-import { recordCard, statusWord, TIMELINE_DAYS, type TouchLine } from "./records";
+import { alt, fromDate, jqToString, numberString, shortDate, unindent, weekdayName, weekNumber } from "./jq";
+import { DimLine, Link, type NeedsGroup, type NeedsItem, NeedsList, RosterLine, type WeekCell, WeekTable } from "./local";
+import { money } from "./records";
+import { hang } from "./text";
 import type { RenderContext } from "./types";
 
 /*
- * The Pipeline email: the state of the pipeline first, then what the week
- * owes. Reshaped 2026-09-24 on the retro's Atelic section (ATE-551), after
- * the board first layout read to Forni as the same email in different words,
- * then tuned the same morning off his phone: relative times instead of ISO
- * dates on a record, the last open beside the last touch, a strip that holds
- * two rows (New left off it and read as a line), one card per listed stage
- * so the boundaries show, and every record on the same two lines so the eye
- * learns where each number sits.
+ * The Pipeline email: what needs Forni first, then the health of the funnel.
+ * Reshaped 2026-10-07 (ATE-630) after he opened the W41 mail, met dozens of
+ * MQL names, and could not tell which of them needed him: it was a to do list
+ * problem wearing a report. So the mail is two things now. Needs You Now is
+ * one numbered list in his own order, customers before proposals before
+ * conversations before cold outreach: a named line for everything that needs
+ * his judgment, replies owed among them, then a count for each kind of cold
+ * touch with the people it counts in one sentence beneath, because a bare
+ * "7" made him ask who the seven were (his read of the first mockup, the
+ * same day). The count in the section's heading is the named lines alone.
+ * Funnel Health is the strip, how many names entered and left each stage,
+ * and the opens and responses of the last four send weeks, newest first,
+ * each number with its change on the week before beside it.
  *
- * The runner, not the model, supplies the funnel, the groom and the numbers
- * on the owed names: the sweep reads the groom's seven buckets now and seven
- * days ago off HubSpot's own entered dates, moves every stage and status the
+ * The runner, not the model, supplies the funnel, the groom, the named lines
+ * (`needs`), the send weeks (`health`) and the other routines' fires
+ * (`routines`): the sweep reads the groom's seven buckets now and seven days
+ * ago off HubSpot's own entered dates, moves every stage and status the
  * record justifies, and the entrypoint folds all of it into the draft before
- * the render. The model writes the read, the names owed with a note each,
- * and up to five flags. New and Closed are read as a count and a week over
- * week change on the strip; Lead, MQL, SQL and Oppty list every company;
- * Customer lists only a customer with activity this week, and the card stays
- * out when there was none (Forni, 2026-09-29). Every list is a RecordStack so a name
- * never squashes on a phone. Everything the email leaves out lives in the
- * roster, which the runner commits into the Atelic repo and the read card
- * links as its last line (roster_url); a run that could not push attaches it
- * instead.
+ * the render. The model writes the read and the names owed a touch.
+ * Everything the email leaves out lives in the roster, which the runner
+ * commits into the Atelic repo and the read card links as its last line
+ * (roster_url); a run that could not push attaches it instead.
  *
- * The cards are the Company Cards IA (Forni, 2026-09-29): a thirty day
- * timeline of the sends and last open, the counts, and the open's age set
- * right. The strip is followed by the stage lists, every company in the
- * card's compact form (a New pill when it entered the stage this week, no
- * strip), the waiting names (nothing owed yet) as one linked sentence at the
- * foot, since a card each ran the mail past Gmail's clip; then This Week,
- * broken out by the touch owed, each person on the full card with the
- * model's note (Forni, 2026-09-29: the pipeline, then all the businesses
- * below it, then the individual actions to take). The stage lists were grouped by the next touch for one afternoon and
- * read as the same thing twice.
+ * What this replaced, for the record. From 2026-09-24 (ATE-551) the mail was
+ * the state of the pipeline first and what the week owed second: the strip, a
+ * card per listed stage with every company on the Company Cards IA (Forni,
+ * 2026-09-29: a thirty day timeline, the counts, the open's age), the waiting
+ * names as one linked sentence at each stage's foot, then This Week with a
+ * card per person per kind of touch. Each tuning made a name easier to read
+ * and none of them made the mail shorter, and the stage lists were the part
+ * he stopped reading.
  */
 
-type Metrics = {
-	days_since_send?: number | null;
-	touches?: number | null;
-	/** Sends that carried tracking, so a card can say "1 of 2 tracked". */
-	tracked?: number | null;
-	opens?: number | null;
-	days_since_open?: number | null;
-	last_reply?: unknown;
-	fit?: number | null;
-	email?: unknown;
-	/** The person's sends and last open as day counts, for the strip on an owed card. */
-	touch_days?: number[] | null;
-	open_days?: number[] | null;
-} | null;
+/** A name owed a touch: a line of its own when a reply is owed, one of the people under a count otherwise. */
 type Name = {
 	person?: unknown;
 	company?: unknown;
 	contact_url?: string | null;
 	company_url?: string | null;
+	/** What the touch is and why it is owed; a reply's line says it, a counted name's does not. */
 	note?: unknown;
-	metrics?: Metrics;
+	metrics?: { opens?: number | null } | null;
 };
 type Owed = {
 	reply?: Name[] | null;
@@ -95,51 +85,6 @@ type Owed = {
 	decide?: Name[] | null;
 };
 type LeadNote = { lead?: unknown; note?: unknown };
-type Deal = { name?: unknown; stage?: unknown; amount?: number | null; close?: unknown } | null;
-type Closed = { reason?: unknown; date?: unknown } | null;
-type FunnelCompany = {
-	name?: unknown;
-	url?: string | null;
-	fit?: number | null;
-	status?: unknown;
-	last_touch?: unknown;
-	last_send?: unknown;
-	touches?: number | null;
-	opens?: number | null;
-	replied?: unknown;
-	days_since_send?: number | null;
-	days_since_open?: number | null;
-	days_since_reply?: number | null;
-	deal?: Deal;
-	closed?: Closed;
-	task?: { due?: unknown; reading?: unknown; subject?: unknown } | null;
-	note?: { date?: unknown; text?: unknown } | null;
-	/** Every send as days back from today, and the last known open the same way. */
-	touch_days?: number[] | null;
-	open_days?: number[] | null;
-	/** True when the company was not in this stage a week ago. */
-	entered?: boolean | null;
-	/** The touch the record owes next: reply, decide, visit, bump, first, wait, parked. */
-	next?: unknown;
-};
-
-/** The waiting names as one linked sentence; nothing is owed on them, so they take no card. */
-function nameRun(companies: FunnelCompany[]): { text: string; url?: string | null }[] {
-	return companies.map((c) => ({ text: jqToString(c.name), url: c.url }));
-}
-
-/** The two deal stages keep a card for every name, waiting or not: the deal's stage and its money are the read. */
-function onDeal(stage: FunnelStage): boolean {
-	const key = jqToString(stage.key);
-	return key === "opportunity" || key === "customer";
-}
-
-/** A stage's companies split into the ones that get a card and the waiting ones that read as a sentence. */
-function splitWaiting(stage: FunnelStage, companies: FunnelCompany[]): { carded: FunnelCompany[]; waiting: FunnelCompany[] } {
-	if (onDeal(stage)) return { carded: companies, waiting: [] };
-	const waiting = companies.filter((c) => jqToString(alt(c.next, "")) === "wait");
-	return { carded: companies.filter((c) => !waiting.includes(c)), waiting };
-}
 type FunnelStage = {
 	key?: unknown;
 	label?: unknown;
@@ -147,20 +92,62 @@ type FunnelStage = {
 	then?: number | null;
 	delta?: number | null;
 	pct?: number | null;
+	/** The names that entered and left the stage this week; the mail counts them and prints none. */
 	entered?: unknown[] | null;
 	left?: unknown[] | null;
-	companies?: FunnelCompany[] | null;
 };
 type Funnel = { from?: unknown; to?: unknown; stages?: FunnelStage[] | null } | null;
-type StageMove = { name?: unknown; url?: string | null; from?: unknown; to?: unknown; why?: unknown };
-type StatusMove = { name?: unknown; company?: unknown; from?: unknown; to?: unknown; why?: unknown };
 type Proposed = { kind?: unknown; name?: unknown; company?: unknown; url?: string | null; note?: unknown };
 type Groom = {
 	applied?: boolean | null;
-	companies?: StageMove[] | null;
-	contacts?: StatusMove[] | null;
+	/** The stage moves and the status moves the groom made; the mail counts them and the roster names them. */
+	companies?: unknown[] | null;
+	contacts?: unknown[] | null;
 	proposed?: Proposed[] | null;
 } | null;
+
+/**
+ * One named line of the list, a sentence in four parts: who, what is owed,
+ * by when, and a link. The line links twice (Forni, 2026-10-07): the name to
+ * its HubSpot record (`url`) and the ticket key (`ref`, "ATE-633") to Linear
+ * (`ref_url`). Either may be missing; a HubSpot hold has no ticket. `due` is
+ * an ISO date. `amount` is a proposal's money, in dollars.
+ */
+type NeedLine = {
+	who?: unknown;
+	owed?: unknown;
+	due?: unknown;
+	url?: string | null;
+	ref?: unknown;
+	ref_url?: string | null;
+	amount?: number | null;
+};
+/** A tier of named lines. `key` is one of NEED_TIERS; `label` overrides the label there. The runner sorts a tier's lines, soonest due first. */
+type NeedTier = { key?: unknown; label?: unknown; lines?: NeedLine[] | null };
+/** `first_touch_target` is the week's standing number of first touches, which the count is read against; absent, the line says only the count. */
+type Needs = { tiers?: NeedTier[] | null; first_touch_target?: number | null } | null;
+
+/**
+ * One send week: the tracked sends, how many were opened and how many drew a
+ * response, and the two rates in whole percent. The renderer works a rate
+ * out of its two counts when the runner leaves it null, and it works out
+ * every change itself from the week beneath, so a change can never disagree
+ * with the two numbers it sits between.
+ */
+type SendWeek = {
+	/** "2026-W38", which reads as W38. */
+	week?: unknown;
+	tracked?: number | null;
+	opened?: number | null;
+	rate?: number | null;
+	responded?: number | null;
+	respond_rate?: number | null;
+};
+/** The trailing send weeks in any order (the table sorts them newest first) and one sentence to call out when a rate has turned. */
+type Health = { weeks?: SendWeek[] | null; flag?: string | null } | null;
+
+/** A cloud routine other than Outreach and how its fires went this run: "Writeup: 2 of 2 fired". */
+type Routine = { name?: unknown; fired?: number | null; total?: number | null; url?: string | null };
 
 export type PipelineDraft = {
 	preheader?: unknown;
@@ -176,9 +163,18 @@ export type PipelineDraft = {
 	roster_url?: string | null;
 	/** What the runner sent to the Outreach routine after the roster was placed; absent on a run from before 2026-10-06. */
 	drafting?: Drafting;
+	/** The named lines of Needs You Now, from the runner; absent on a run from before ATE-630, which still gets the counts. */
+	needs?: Needs;
+	/** The trailing send weeks, from the runner; absent on a run from before ATE-630. */
+	health?: Health;
+	/** The cloud routines beside Outreach, from the runner; Outreach itself is read off `drafting`. */
+	routines?: Routine[] | null;
 };
+
 type Fire = {
 	business?: unknown;
+	/** The company the payload was for, which is how a fire is matched to the name it drafted. */
+	company_url?: string | null;
 	touch?: unknown;
 	/** fired, failed, dry run, or not fired. */
 	outcome?: unknown;
@@ -191,13 +187,16 @@ type Drafting = { note?: unknown; fires?: Fire[] | null } | null;
 const TOUCH_WORD: Record<string, string> = { first_touch: "First touch", bump: "Bump" };
 
 /**
- * One line per payload the runner sent to the Outreach routine (Forni,
- * 2026-10-06): the business, linked to its cloud session when the API named
- * one, then the touch and how the fire went, so Tuesday knows which drafts to
- * expect in the Drafts.
+ * One line per payload that did not reach the Outreach routine: the business,
+ * linked to its cloud session when the API named one, then the touch and how
+ * the fire went. From 2026-10-06 the card listed every payload, so Tuesday
+ * knew which drafts to expect; a fire that went is only a name, though, and
+ * the note above already counts them, so the ones that failed are the ones
+ * that need Forni (2026-10-07, ATE-630).
  */
-function fireRecords(drafting: Drafting): RecordStackItem[] {
-	return alt(drafting?.fires, []).map((fire) => {
+function misfireRecords(drafting: Drafting): RecordStackItem[] {
+	const misfires = alt(drafting?.fires, []).filter((fire) => jqToString(alt(fire.outcome, "")) !== "fired");
+	return misfires.map((fire) => {
 		const touch = jqToString(alt(fire.touch, ""));
 		const outcome = jqToString(alt(fire.outcome, ""));
 		const status = fire.http_status === null || fire.http_status === undefined ? "" : `HTTP ${numberString(fire.http_status)}`;
@@ -210,77 +209,245 @@ function fireRecords(drafting: Drafting): RecordStackItem[] {
 	});
 }
 
-/**
- * A parked name (an open task dated past this week) is noise until its week,
- * whatever stage it sits in, so the stage lists leave it out (Forni,
- * 2026-09-29). It comes back the week its task falls due, or sooner when a
- * reply lands on the record: the sweep reads that as the next touch, and a
- * name whose next is not the park itself still shows, in its group, with
- * the park as its callout.
- */
-function shownCompanies(stage: FunnelStage): FunnelCompany[] {
-	return alt(stage.companies, []).filter(
-		(company) => jqToString(alt(company.task?.reading, "")) !== "parked" || jqToString(alt(company.next, "")) !== "parked",
-	);
-}
+/* ---------- needs you now ---------- */
 
 /**
- * A customer shows only with activity this week: a send or a reply inside
- * the window, a note dated in it, or a deal closed in it. Without one the
- * Customer card stays out of the mail altogether (Forni, 2026-09-29).
+ * The order of the list, Forni's own (2026-10-07, ATE-630): paying customers
+ * in build, then trade customers in build, then customers in operate, then
+ * open proposals, then warm SQLs in a live conversation. Inside a tier the
+ * soonest due date leads, which the runner sorts. A tier with no lines stays
+ * out. A tier whose key is not here follows these in the order it arrived,
+ * so a new tier in the runner shows before the renderer learns its place.
  */
-function activeThisWeek(company: FunnelCompany, from: string): boolean {
-	const within = (days: number | null | undefined) => days !== null && days !== undefined && days <= 7;
-	if (within(company.days_since_send) || within(company.days_since_reply)) return true;
-	const note = jqToString(alt(company.note?.date, ""));
-	if (note !== "" && note >= from) return true;
-	const close = jqToString(alt(company.deal?.close, ""));
-	return close !== "" && close >= from;
-}
-
-/** The companies a stage card lists: parked names out everywhere, and on Customer only the active ones. */
-function listedCompanies(stage: FunnelStage, funnel: Funnel): FunnelCompany[] {
-	const shown = shownCompanies(stage);
-	if (jqToString(stage.key) !== "customer") return shown;
-	return shown.filter((company) => activeThisWeek(company, jqToString(alt(funnel?.from, ""))));
-}
-
-function emptyText(stage: FunnelStage): string {
-	if (alt(stage.companies, []).length > 0) return "Everyone here is parked until a later week.";
-	return "Nobody here this week.";
-}
-
-/* ---------- shared readings ---------- */
-
-/**
- * The week's order (Forni, 2026-09-29): the new names first, then the bumps,
- * then the calls only Forni makes, then the replies owed, then Thursday's
- * visits. Until W40 replies led and first touches came fourth.
- */
-const OWED_KINDS: { key: keyof Owed; label: string }[] = [
-	{ key: "first_touch", label: "First touch" },
-	{ key: "bump", label: "Bump" },
-	{ key: "decide", label: "Decide" },
-	{ key: "reply", label: "Reply to" },
-	{ key: "visit", label: "Visit" },
+const NEED_TIERS: { key: string; label: string }[] = [
+	{ key: "paying_build", label: "Paying Customers in Build" },
+	{ key: "trade_build", label: "Trade Customers in Build" },
+	{ key: "operate", label: "Customers in Operate" },
+	{ key: "proposal", label: "Open Proposals" },
+	{ key: "warm_sql", label: "Warm SQLs in a Live Conversation" },
 ];
+
+/**
+ * The cold end of the list, a count per kind of touch with its people named
+ * beneath, in Forni's order (2026-10-07, ATE-630, reordered the same day on
+ * his read of the first mockup): second touches to people who opened, first
+ * touches, visits, second touches to people who have not opened, and the
+ * names to close or keep last. The words are his too. A bump is the second
+ * email at about seven days, and "bump" read to him as possibly a second
+ * bump, so the line says second touch; "decide" said nothing, so the line
+ * says what the decision is. Until W41 the mail carried a card per person
+ * here, first touches leading (2026-09-29), and until W40 replies led;
+ * replies are named lines now, under the warm SQLs.
+ */
+const OWED_COUNTS: {
+	label: string;
+	names: (owed: Owed) => Name[];
+	/** The kind of fire that drafts this touch, when the Outreach routine drafts it. */
+	drafted?: string;
+	/** True on the line that is read against the week's target. */
+	target?: boolean;
+	tail?: (count: number) => string;
+}[] = [
+	{ label: "Second touch to people who opened", names: (owed) => bumps(owed, true), drafted: "bump" },
+	{ label: "First touches", names: (owed) => alt(owed.first_touch, []), drafted: "first_touch", target: true },
+	{ label: "Visits", names: (owed) => alt(owed.visit, []), tail: () => ", Thursday walkabout" },
+	{ label: "Second touch to people who have not opened", names: (owed) => bumps(owed, false), drafted: "bump" },
+	{
+		label: "Close or keep",
+		names: (owed) => alt(owed.decide, []),
+		tail: (count) => ` ${count === 1 ? "name" : "names"} past the three week clock`,
+	},
+];
+
+/**
+ * How many people a count line names before it stops. Forni asked for a line
+ * per person on 2026-10-07, and the first real read the same day put 76 of
+ * them under four counts, which is the wall of names the list exists to
+ * remove. So a line names ten and says how many more are in the roster; the
+ * count itself stays whole.
+ */
+const NAMES_SHOWN = 10;
+
+/** The bumps owed to people who opened a send, or to the ones who did not; an untracked send counts as not opened. */
+function bumps(owed: Owed, opened: boolean): Name[] {
+	return alt(owed.bump, []).filter((name) => alt(name.metrics?.opens, 0) > 0 === opened);
+}
+
+/**
+ * How many of a line's own names have a draft, read off the fires: a fire of
+ * the line's kind of touch that went, for a business one of its names is at,
+ * matched on the company's record and on its name when the fire carries no
+ * record. Counted per line and never per kind, because the two second touch
+ * lines share a kind and each has to speak for its own people, and counted
+ * from what fired rather than from what is owed, so a dry run or a missing
+ * token says nothing about drafts at all (review, 2026-10-07; the first cut
+ * keyed on the kind alone and read every one of those cases wrong). A fire
+ * is one draft, so it is spent on the first name it matches: `spent` is the
+ * list's own tally, shared by its lines, without which two people at one
+ * company claimed the same draft, on one line or on both second touch lines.
+ */
+function draftsReady(drafting: Drafting, touch: string, names: Name[], spent: Set<Fire>): number {
+	const same = (a: unknown, b: unknown) => {
+		const x = jqToString(alt(a, "")).trim().toLowerCase();
+		return x !== "" && x === jqToString(alt(b, "")).trim().toLowerCase();
+	};
+	const fired = alt(drafting?.fires, []).filter(
+		(fire) => jqToString(alt(fire.touch, "")) === touch && jqToString(alt(fire.outcome, "")) === "fired",
+	);
+	let ready = 0;
+	for (const name of names) {
+		const fire = fired.find((f) => !spent.has(f) && (same(f.company_url, name.company_url) || same(f.business, name.company)));
+		if (fire === undefined) continue;
+		spent.add(fire);
+		ready += 1;
+	}
+	return ready;
+}
+
+/** "Person, Company", or whichever of the two the record has. */
+function whoOf(name: Name): string {
+	return [jqToString(alt(name.person, "")), jqToString(alt(name.company, ""))].filter((part) => part !== "").join(", ");
+}
+
+/** The person's record, or the company's when the person has none. */
+function recordOf(name: Name): string | null {
+	return jqToString(alt(name.contact_url, "")) || jqToString(alt(name.company_url, "")) || null;
+}
+
+/** "Due Thu 10-08." from an ISO date; anything else is said as the runner wrote it. */
+function dueText(due: unknown): string {
+	const day = jqToString(alt(due, ""));
+	if (day === "") return "";
+	const at = /^\d{4}-\d{2}-\d{2}$/.test(day) ? fromDate(`${day}T00:00:00Z`) : Number.NaN;
+	if (Number.isNaN(at)) return `Due ${day}.`;
+	return `Due ${weekdayName(at)} ${day.slice(5)}.`;
+}
+
+/** What is owed as a sentence, closed with a period when the runner left it open. */
+function sentence(text: string): string {
+	return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
+/**
+ * A named line: "Westbrook: audit GA4 and Tag Manager, update the writeup. Due
+ * Thu 10-08. ATE-633." The money follows the name on a proposal. The name
+ * links to the record and the key to its ticket.
+ */
+function needItem(line: NeedLine): NeedsItem {
+	const ref = jqToString(alt(line.ref, ""));
+	const cash = money(line.amount);
+	const owed = jqToString(alt(line.owed, ""));
+	const due = dueText(line.due);
+	return {
+		lead: jqToString(line.who),
+		url: line.url,
+		rest: `${cash === "" ? "" : `, ${cash}`}${owed === "" && due === "" ? "" : ":"}${owed === "" ? "" : ` ${sentence(owed)}`}`,
+		due: due === "" ? undefined : due,
+		ref: ref === "" ? undefined : ref,
+		refUrl: ref === "" ? null : line.ref_url,
+	};
+}
+
+/** A reply owed, as a named line: the person and the company, the model's note as what is owed, a link to the contact. */
+function replyItem(name: Name): NeedsItem {
+	const note = jqToString(alt(name.note, ""));
+	return { lead: whoOf(name), url: recordOf(name), rest: note === "" ? "" : `: ${sentence(note)}` };
+}
+
+/**
+ * The named part of the list: the tiers in order, each under its label, then
+ * the replies owed directly under the warm SQLs (Forni, 2026-10-07: a reply
+ * is a line with a person on it, never a count), then any tier the renderer
+ * does not know. Empty groups drop.
+ */
+function namedGroups(draft: PipelineDraft): NeedsGroup[] {
+	const tiers = alt(draft.needs?.tiers, []);
+	const known = NEED_TIERS.map((tier) => tier.key);
+	const group = (tier: NeedTier): NeedsGroup => {
+		const fallback = NEED_TIERS.find((t) => t.key === jqToString(alt(tier.key, "")))?.label ?? jqToString(alt(tier.key, ""));
+		const label = jqToString(alt(tier.label, ""));
+		return { label: label === "" ? fallback : label, items: alt(tier.lines, []).map(needItem) };
+	};
+	return [
+		...NEED_TIERS.flatMap((tier) => tiers.filter((t) => jqToString(alt(t.key, "")) === tier.key)).map(group),
+		{ label: "Replies Owed", items: alt(draft.owed?.reply, []).map(replyItem) },
+		...tiers.filter((t) => !known.includes(jqToString(alt(t.key, "")))).map(group),
+	].filter((g) => g.items.length > 0);
+}
+
+/**
+ * The count lines, one per kind of cold touch with anyone owed it; a zero
+ * says nothing. "First touches: 5 drafts ready of 15 a week" reads the count,
+ * what the routine did about it, and the week's target, in that order; when
+ * only some of a line's drafts went it reads "5 of 15 a week, 3 of 5 drafts
+ * ready", and when none did it makes no claim about drafts.
+ */
+function countGroup(draft: PipelineDraft): NeedsGroup[] {
+	const owed = alt(draft.owed, {});
+	const target = draft.needs?.first_touch_target;
+	const spent = new Set<Fire>();
+	const items = OWED_COUNTS.map((line) => ({ line, names: line.names(owed) }))
+		.filter(({ names }) => names.length > 0)
+		.map(({ line, names }) => {
+			const count = names.length;
+			const drafts = line.drafted === undefined ? 0 : draftsReady(draft.drafting ?? null, line.drafted, names, spent);
+			const ready = drafts === count ? (count === 1 ? " draft ready" : " drafts ready") : "";
+			const against = line.target && target !== null && target !== undefined ? ` of ${numberString(target)} a week` : "";
+			const partial = drafts > 0 && drafts < count ? `, ${numberString(drafts)} of ${numberString(count)} drafts ready` : "";
+			return {
+				lead: line.label,
+				rest: `: ${numberString(count)}${ready}${against}${partial}${line.tail === undefined ? "" : line.tail(count)}`,
+				names: names.slice(0, NAMES_SHOWN).map((name) => ({ text: whoOf(name), url: recordOf(name) })),
+				more: count > NAMES_SHOWN ? `and ${numberString(count - NAMES_SHOWN)} more in the roster` : undefined,
+				moreUrl: jqToString(alt(draft.roster_url, "")) || null,
+			};
+		});
+	return items.length === 0 ? [] : [{ label: "Cold Touches", items }];
+}
+
+function lineCount(groups: NeedsGroup[]): number {
+	return groups.reduce((sum, group) => sum + group.items.length, 0);
+}
+
+/** The section's heading. Its count is the named lines alone, the ones that need his judgment; the cold touches are drafted for him. */
+function needsHeading(named: NeedsGroup[]): string {
+	return named.length === 0 ? "Needs You Now" : `Needs You Now · ${numberString(lineCount(named))}`;
+}
+
+/**
+ * The list's plain text twin: each group under its label in upper case, each
+ * line under its number with a hanging indent, each link on a line of its
+ * own beneath (the record, then the ticket), since a url is the one token the
+ * wrap cannot break, and a count's people a line each, unlinked.
+ */
+function needsText(groups: NeedsGroup[]): string {
+	const width = numberString(lineCount(groups)).length + 2;
+	let n = 0;
+	return groups
+		.map((group) => {
+			const lines = group.items.map((item) => {
+				n += 1;
+				const text = `${item.lead}${item.rest}${item.due ? ` ${item.due}` : ""}${item.ref ? ` ${item.ref}.` : ""}`;
+				const urls = [item.url, item.refUrl].map((url) => jqToString(alt(url, ""))).filter((url) => url !== "");
+				return [
+					hang(lpad(`${numberString(n)}.`, width - 1), text, width),
+					...urls.map((url) => `${spaces(2 + width)}${url}\n`),
+					...alt(item.names, []).map((name) => hang("", name.text, width)),
+					item.more ? hang("", item.more, width) : "",
+				].join("");
+			});
+			return `${wrap(asciiUpcase(group.label))}\n${lines.join("")}`;
+		})
+		.join("\n");
+}
+
+/* ---------- funnel health ---------- */
 
 /** The strip: the funnel Forni works, each stage with its week over week change. New stays off it. */
 const STRIP_STAGES = ["lead", "mql", "sql", "opportunity", "customer", "closed"];
-/** The stages that list their companies; Customer lists only the active ones. */
-const LISTED_STAGES = new Set(["lead", "mql", "sql", "opportunity", "customer"]);
 
-const STAGE_WORD: Record<string, string> = {
-	lead: "Lead",
-	marketingqualifiedlead: "MQL",
-	salesqualifiedlead: "SQL",
-	opportunity: "Oppty",
-	customer: "Customer",
-};
-
-function stageWord(value: unknown): string {
-	const key = jqToString(value);
-	return STAGE_WORD[key] === undefined ? key : STAGE_WORD[key];
+function stripStages(funnel: Funnel): FunnelStage[] {
+	return alt(funnel?.stages, []).filter((stage) => STRIP_STAGES.includes(jqToString(stage.key)));
 }
 
 function signed(n: number): string {
@@ -302,9 +469,7 @@ function deltaText(stage: FunnelStage): string {
 }
 
 function stripStats(funnel: Funnel): StatStripEntry[] {
-	return alt(funnel?.stages, [])
-		.filter((stage) => STRIP_STAGES.includes(jqToString(stage.key)))
-		.map((stage) => ({ n: alt(stage.now, 0), label: jqToString(stage.label), delta: deltaText(stage) }));
+	return stripStages(funnel).map((stage) => ({ n: alt(stage.now, 0), label: jqToString(stage.label), delta: deltaText(stage) }));
 }
 
 function plural(count: number, noun: string): string {
@@ -312,106 +477,108 @@ function plural(count: number, noun: string): string {
 	return `${numberString(count)} ${noun.endsWith("y") ? `${noun.slice(0, -1)}ies` : `${noun}s`}`;
 }
 
-/*
- * A company on a stage list, on the same two lines every time. The meta line
- * is the state (status, touches, opens); the note line is the clock (the last
- * touch and when, the last open, the reply). A deal stage reads the deal
- * instead: its stage and the money, then the date and the status.
- */
-/**
- * A company on a stage list: the shared card in its compact form. New when
- * it entered the stage this week, the deal on the two deal stages and the
- * touch line on the rest, a park as the only callout. The strip and the next
- * touch live on the person's card under This Week; drawn here as well they
- * ran the mail past Gmail's clip, and read as the same thing twice.
- */
-function companyRecord(stage: FunnelStage, company: FunnelCompany): RecordStackItem {
-	const key = jqToString(stage.key);
-	const onDeal = key === "opportunity" || key === "customer";
-	const pills: RecordBadge[] = [];
-	if (company.entered === true) pills.push({ text: "New", tone: "accent" });
-	return recordCard({
-		title: company.name,
-		url: company.url,
-		pills,
-		deal: onDeal
-			? company.deal
-				? { stage: company.deal.stage, amount: company.deal.amount, close: company.deal.close, signed: key === "customer" }
-				: null
-			: undefined,
-		touch: onDeal
-			? undefined
-			: {
-					touches: company.touches,
-					opens: company.opens,
-					lastTouch: company.last_touch,
-					daysSinceSend: company.days_since_send,
-					daysSinceOpen: company.days_since_open,
-					daysSinceReply: company.days_since_reply,
-				},
-		callout: nextStep(company),
-	});
+/** How many names entered a stage this week and how many left it, as two counts. */
+function flow(stage: FunnelStage): { entered: number; left: number } {
+	return { entered: alt(stage.entered, []).length, left: alt(stage.left, []).length };
+}
+
+/** A count in a table cell, quiet when it is zero. */
+function countCell(n: number): RecordsCell {
+	return { value: numberString(n), mono: true, muted: n === 0 };
+}
+
+/** The send weeks, newest first, whatever order the runner sent them in. */
+function healthWeeks(health: Health): SendWeek[] {
+	return [...alt(health?.weeks, [])].sort((a, b) => jqToString(alt(b.week, "")).localeCompare(jqToString(alt(a.week, ""))));
+}
+
+/** "W38" from "2026-W38"; anything else as the runner wrote it. */
+function weekLabel(week: SendWeek): string {
+	const raw = jqToString(alt(week.week, ""));
+	return /^\d{4}-W\d{2}$/.test(raw) ? `W${weekNumber(raw)}` : raw;
+}
+
+/** A rate in whole percent: the runner's own when it sent one, the two counts' otherwise, nothing when there is no send to divide by. */
+function rateOf(given: number | null | undefined, part: number | null | undefined, whole: number | null | undefined): number | null {
+	if (given !== null && given !== undefined) return given;
+	if (part === null || part === undefined || whole === null || whole === undefined || whole === 0) return null;
+	return Math.round((part * 100) / whole);
+}
+
+/** A week's five numbers in the table's order: tracked, opened, open rate, responded, respond rate. */
+function weekNumbers(week: SendWeek): (number | null)[] {
+	return [
+		week.tracked ?? null,
+		week.opened ?? null,
+		rateOf(week.rate, week.opened, week.tracked),
+		week.responded ?? null,
+		rateOf(week.respond_rate, week.responded, week.tracked),
+	];
 }
 
 /**
- * The one callout a stage card carries: a park, with its date. A task due
- * and the newest note used to show here too, and read as noise on every
- * windshield sighting (Forni, 2026-09-29: no notes on the cards unless the
- * note is that the name is parked for now).
+ * The table's rows. Each number carries its change on the week before in
+ * brackets, "33 (+18)" for a count and "58% (+3%)" for a rate, which is the
+ * plain difference of the two percentages (Forni, 2026-10-07: no change
+ * column and never the word points). A row with no week beneath it shows no
+ * change, which is why the caller draws one row fewer than it is handed.
  */
-function nextStep(company: FunnelCompany): { eyebrow: string; text: string } | undefined {
-	const task = company.task;
-	if (!task || jqToString(alt(task.subject, "")) === "" || jqToString(alt(task.reading, "")) !== "parked") return undefined;
-	return { eyebrow: `Parked until ${jqToString(alt(task.due, ""))}`, text: jqToString(task.subject) };
-}
-
-/** The five kinds of touch owed as a strip, in the desk block's order. */
-function owedStats(draft: PipelineDraft): StatStripEntry[] {
-	const owed = alt(draft.owed, {});
-	return OWED_KINDS.map((kind) => ({ n: alt(owed[kind.key], []).length, label: kind.label }));
-}
-
-/** The numbers under an owed name, from the sweep, in the same slots for every kind. */
-/**
- * A person owed a touch: the shared card with the company leading the meta
- * line. A first touch carries the fit and the door instead of a touch line,
- * since nothing has been sent; every other kind carries the sweep's numbers.
- */
-function owedRecords(kind: keyof Owed, names: Name[]): RecordStackItem[] {
-	return names.map((name) => {
-		const m = name.metrics ?? null;
-		const lead: unknown[] = [name.company];
-		let touch: TouchLine | undefined;
-		if (kind === "first_touch") {
-			if (m && m.fit !== null && m.fit !== undefined) lead.push(`fit ${numberString(m.fit)}`);
-			if (m) lead.push(jqToString(alt(m.email, "")) === "" ? "shared inbox" : "owner direct");
-		} else if (m) {
-			touch = {
-				touches: m.touches,
-				tracked: m.tracked,
-				opens: m.opens,
-				daysSinceSend: m.days_since_send,
-				daysSinceOpen: m.days_since_open,
-				lastReply: kind === "reply" ? m.last_reply : undefined,
+function weekRows(weeks: SendWeek[]): WeekCell[][] {
+	const numbers = weeks.map(weekNumbers);
+	return weeks.map((week, row) => [
+		{ value: weekLabel(week) },
+		...numbers[row].map((now, i) => {
+			const unit = i === 2 || i === 4 ? "%" : "";
+			if (now === null) return { value: "" };
+			const before = numbers[row + 1]?.[i];
+			return {
+				value: `${numberString(now)}${unit}`,
+				change: before === null || before === undefined ? undefined : `(${signed(now - before)}${unit})`,
+				tone: before === null || before === undefined || now === before ? undefined : now > before ? ("up" as const) : ("down" as const),
 			};
-		}
-		const days = m && kind !== "first_touch" ? { touches: m.touch_days, opens: m.open_days } : undefined;
-		return recordCard({ title: name.person, url: name.contact_url, lead, touch, days, note: name.note });
-	});
+		}),
+	]);
 }
 
-function moveRecords(groom: Groom): RecordStackItem[] {
-	const stages = alt(groom?.companies, []).map((m) => ({
-		title: jqToString(m.name),
-		url: m.url,
-		meta: [`${stageWord(m.from)} to ${stageWord(m.to)}`, jqToString(alt(m.why, ""))].filter((x) => x !== ""),
+const WEEK_COLUMNS = ["Week", "Tracked", "Opened", "Open Rate", "Responded", "Respond Rate"];
+
+/**
+ * The table draws four weeks. The runner hands over a fifth, older one, which
+ * is never drawn: it is what the oldest row shown reads its change against,
+ * since a row with no week beneath it has none to show.
+ */
+const WEEKS_SHOWN = 4;
+
+/* ---------- cloud routines ---------- */
+
+/**
+ * One row per cloud routine: how many of its payloads fired, and how many
+ * there were (Forni, 2026-10-07: the card was Drafting, and Outreach is not
+ * the only routine the week runs on; a small table on his next read, where
+ * it had been a sentence per routine). Outreach is counted off the fires the
+ * runner recorded; the rest arrive counted.
+ */
+function routineRows(draft: PipelineDraft): { name: string; url?: string | null; fired: number; total: number }[] {
+	const fires = alt(draft.drafting?.fires, []);
+	const outreach = draft.drafting
+		? [{ name: "Outreach", fired: fires.length - misfireRecords(draft.drafting).length, total: fires.length }]
+		: [];
+	const others = alt(draft.routines, []).map((routine) => ({
+		name: jqToString(routine.name),
+		url: routine.url,
+		fired: alt(routine.fired, 0),
+		total: alt(routine.total, 0),
 	}));
-	const contacts = alt(groom?.contacts, []).map((m) => ({
-		title: `${jqToString(m.name) === "" ? "(no name)" : jqToString(m.name)}, ${jqToString(m.company)}`,
-		url: null,
-		meta: [`${statusWord(m.from)} to ${statusWord(m.to)}`, jqToString(alt(m.why, ""))].filter((x) => x !== ""),
-	}));
-	return [...stages, ...contacts];
+	return [...outreach, ...others];
+}
+
+const ROUTINE_COLUMNS = ["Routine", "Fired", "Total"];
+
+/** The runner's own sentence about Outreach, kept only when a fire did not go, which is when it explains something. */
+function draftingNote(drafting: Drafting): string {
+	const fires = alt(drafting?.fires, []);
+	if (fires.length > 0 && misfireRecords(drafting).length === 0) return "";
+	return jqToString(alt(drafting?.note, ""));
 }
 
 /** What the groom could not settle plus what the model flagged: one line each. */
@@ -435,30 +602,20 @@ function groomLine(groom: Groom): string {
 	return `The groom moved ${plural(stages, "company")} and ${plural(contacts, "contact")} to match what the record already showed.`;
 }
 
-/** The stages that get a card: the listed set, minus Customer in a week no customer had activity. */
-function listedStages(funnel: Funnel): FunnelStage[] {
-	return alt(funnel?.stages, [])
-		.filter((stage) => LISTED_STAGES.has(jqToString(stage.key)))
-		.filter((stage) => jqToString(stage.key) !== "customer" || listedCompanies(stage, funnel).length > 0);
-}
-
-function owedKindsOf(draft: PipelineDraft) {
-	const owed = alt(draft.owed, {});
-	return OWED_KINDS.map((kind) => ({ ...kind, names: alt(owed[kind.key], []) })).filter((kind) => kind.names.length > 0);
-}
-
 /* ---------- html ---------- */
 
 export function pipelineHTML(input: unknown, context: RenderContext): string {
 	const draft = input as PipelineDraft;
 	const funnel = draft.funnel ?? null;
-	const listed = listedStages(funnel);
-	const owedKinds = owedKindsOf(draft);
-	const moves = moveRecords(draft.groom ?? null);
+	const named = namedGroups(draft);
+	const needs = [...named, ...countGroup(draft)];
+	const weeks = healthWeeks(draft.health ?? null);
+	const flag = jqToString(alt(draft.health?.flag, ""));
 	const left = leftForYou(draft);
 	const rosterUrl = jqToString(alt(draft.roster_url, ""));
-	const drafting = draft.drafting ?? null;
-	const fires = fireRecords(drafting);
+	const routines = routineRows(draft);
+	const note = draftingNote(draft.drafting ?? null);
+	const misfires = misfireRecords(draft.drafting ?? null);
 
 	return renderEmail({
 		title: `${context.week} Pipeline`,
@@ -476,75 +633,79 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 					stats={rosterUrl === "" ? undefined : <RosterLine url={rosterUrl} />}
 				/>
 
-				<Eyebrow text="The pipeline" strong={true} aside={<RecordTimelineLegend days={TIMELINE_DAYS} />} />
+				<Eyebrow text={needsHeading(named)} strong={true} />
+				<Card>
+					{needs.length === 0 ? (
+						<EmptyRow text="Nothing needs you this week." />
+					) : (
+						<Row last={true}>
+							<NeedsList groups={needs} />
+						</Row>
+					)}
+				</Card>
+
+				<Eyebrow text="Funnel Health" strong={true} />
 				<Card>
 					{funnel === null ? (
 						<EmptyRow text="The portal sweep carried no funnel this run." />
 					) : (
-						<Row last={true}>
-							<StatStrip stats={stripStats(funnel)} />
-						</Row>
-					)}
-				</Card>
-
-				{listed.map((stage, index) => {
-					const { carded, waiting } = splitWaiting(stage, listedCompanies(stage, funnel));
-					return (
-						// biome-ignore lint/suspicious/noArrayIndexKey: a stage's position is its identity
-						<Fragment key={index}>
-							<Eyebrow text={`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`} strong={true} />
-							<Card>
-								{carded.length === 0 && waiting.length === 0 ? <EmptyRow text={emptyText(stage)} /> : null}
-								{carded.length === 0 ? null : (
-									<Row last={waiting.length === 0}>
-										<RecordStack records={carded.map((c) => companyRecord(stage, c))} />
-									</Row>
-								)}
-								{waiting.length === 0 ? null : (
-									<Row last={true}>
-										<DimLine text={`Waiting on a send, ${numberString(waiting.length)}: `} />
-										<NameRun names={nameRun(waiting)} />
-									</Row>
-								)}
-							</Card>
-						</Fragment>
-					);
-				})}
-
-				<Eyebrow text="This week" strong={true} />
-				<Card>
-					{owedKinds.length === 0 ? (
-						<EmptyRow text="Nothing is owed this week." />
-					) : (
-						<Row last={true}>
-							<StatStrip stats={owedStats(draft)} />
-						</Row>
-					)}
-				</Card>
-
-				{owedKinds.map((kind, index) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: a kind's position is its identity
-					<Fragment key={index}>
-						<Eyebrow text={`${kind.label} · ${numberString(kind.names.length)}`} strong={true} />
-						<Card>
+						<>
+							<Row last={false}>
+								<StatStrip stats={stripStats(funnel)} />
+							</Row>
+							<SubEyebrow text="In and Out This Week" />
 							<Row last={true}>
-								<RecordStack records={owedRecords(kind.key, kind.names)} />
+								<Records
+									columns={[{ label: "Stage" }, { label: "In", right: true, keep: true }, { label: "Out", right: true, keep: true }]}
+									rows={stripStages(funnel).map((stage) => [
+										{ value: jqToString(stage.label) },
+										countCell(flow(stage).entered),
+										countCell(flow(stage).left),
+									])}
+								/>
+							</Row>
+						</>
+					)}
+				</Card>
+
+				{weeks.length === 0 ? null : (
+					<>
+						<Eyebrow text="Opens and Responses by Week" />
+						<Card>
+							{flag === "" ? null : <Note eyebrowText="Flag" text={flag} accented={true} last={false} />}
+							<Row last={true}>
+								<WeekTable columns={WEEK_COLUMNS} rows={weekRows(weeks).slice(0, WEEKS_SHOWN)} />
 							</Row>
 						</Card>
-					</Fragment>
-				))}
+					</>
+				)}
 
-				{drafting === null ? null : (
+				{routines.length === 0 ? null : (
 					<>
-						<Eyebrow text={`Drafting · ${numberString(fires.length)}`} strong={true} />
+						<Eyebrow text="Cloud Routines" strong={true} />
 						<Card>
-							<Row last={fires.length === 0}>
-								<DimLine text={jqToString(alt(drafting.note, ""))} />
+							<Row last={note === "" && misfires.length === 0}>
+								<Records
+									columns={ROUTINE_COLUMNS.map((label, i) => ({ label, right: i > 0, keep: true }))}
+									rows={routines.map((routine) => [
+										{ value: routine.name, html: <Link text={routine.name} url={routine.url} /> },
+										countCell(routine.fired),
+										{ value: numberString(routine.total), mono: true },
+									])}
+								/>
 							</Row>
-							{fires.length === 0 ? null : (
-								<Row last={true}>
-									<RecordStack records={fires} />
+							{note === "" ? null : (
+								<Row last={misfires.length === 0}>
+									<DimLine text={note} />
 								</Row>
+							)}
+							{misfires.length === 0 ? null : (
+								<>
+									<SubEyebrow text={`Did Not Fire · ${numberString(misfires.length)}`} />
+									<Row last={true}>
+										<RecordStack records={misfires} />
+									</Row>
+								</>
 							)}
 						</Card>
 					</>
@@ -552,14 +713,9 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 
 				<Eyebrow text="The groom" strong={true} />
 				<Card>
-					<Row last={moves.length === 0 && left.length === 0}>
+					<Row last={left.length === 0}>
 						<DimLine text={groomLine(draft.groom ?? null)} />
 					</Row>
-					{moves.length === 0 ? null : (
-						<Row last={left.length === 0}>
-							<RecordStack records={moves} />
-						</Row>
-					)}
 					{left.length === 0 ? null : (
 						<>
 							<SubEyebrow text={`Left for you · ${numberString(left.length)}`} />
@@ -587,8 +743,10 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	const draft = input as PipelineDraft;
 	const number = weekNumber(context.week);
 	const funnel = draft.funnel ?? null;
-	const listed = listedStages(funnel);
-	const moves = moveRecords(draft.groom ?? null);
+	const named = namedGroups(draft);
+	const needs = [...named, ...countGroup(draft)];
+	const weeks = healthWeeks(draft.health ?? null);
+	const flag = jqToString(alt(draft.health?.flag, ""));
 	const left = leftForYou(draft);
 
 	let out = `ATELIC · PIPELINE · WEEK ${number} · ${shortDate(context.monday)} TO ${shortDate(context.sunday)}\n\n`;
@@ -598,45 +756,44 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	const rosterUrl = jqToString(alt(draft.roster_url, ""));
 	if (rosterUrl !== "") out += `\nThe full read is in the roster: ${rosterUrl}\n`;
 
-	out += textSection("The Pipeline");
+	out += textSection(needsHeading(named));
+	out += needs.length === 0 ? "  Nothing needs you this week.\n" : needsText(needs);
+
+	out += textSection("Funnel Health");
 	if (funnel === null) {
 		out += "  The portal sweep carried no funnel this run.\n";
 	} else {
-		const strip = stripStats(funnel);
-		out += `${textTable(["Stage", "Now", "Change"], strip.map((s) => [s.label, numberString(Number(s.n)), s.delta ?? ""]), [1])}\n`;
-		out += `\n  # a send · o an open · @ both · | today · ${numberString(TIMELINE_DAYS)} days to today\n`;
+		const rows = stripStages(funnel).map((stage) => [
+			jqToString(stage.label),
+			numberString(alt(stage.now, 0)),
+			deltaText(stage),
+			numberString(flow(stage).entered),
+			numberString(flow(stage).left),
+		]);
+		out += `${textTable(["Stage", "Now", "Change", "In", "Out"], rows, [1, 3, 4])}\n`;
+	}
+	if (weeks.length > 0) {
+		out += "\nOpens and Responses by Week\n";
+		if (flag !== "") out += `${wrap(`Flag: ${flag}`)}\n\n`;
+		const rows = weekRows(weeks)
+			.slice(0, WEEKS_SHOWN)
+			.map((cells) => cells.map((cell) => `${cell.value}${cell.change ? ` ${cell.change}` : ""}`));
+		out += `${textTable(WEEK_COLUMNS, rows, [1, 2, 3, 4, 5])}\n`;
 	}
 
-	if (funnel !== null) {
-		for (const stage of listed) {
-			out += textSection(`${jqToString(stage.label)} · ${numberString(alt(stage.now, 0))}`);
-			const { carded, waiting } = splitWaiting(stage, listedCompanies(stage, funnel));
-			if (carded.length === 0 && waiting.length === 0) out += `  ${emptyText(stage)}\n`;
-			if (carded.length > 0) out += `${recordStackText(carded.map((c) => companyRecord(stage, c)))}\n`;
-			if (waiting.length > 0) out += `\n${wrap(`Waiting on a send, ${numberString(waiting.length)}: ${nameRun(waiting).map((n) => n.text).join(", ")}`)}\n`;
-		}
-	}
-
-	out += textSection("This Week");
-	const owedKinds = owedKindsOf(draft);
-	if (owedKinds.length === 0) out += "  Nothing is owed this week.\n";
-	else out += `${textTable(["Touch", "Owed"], owedStats(draft).map((s) => [s.label, numberString(Number(s.n))]), [1])}\n`;
-	for (const kind of owedKinds) {
-		out += textSection(`${kind.label} · ${numberString(kind.names.length)}`);
-		out += recordStackText(owedRecords(kind.key, kind.names));
-	}
-
-	const drafting = draft.drafting ?? null;
-	if (drafting !== null) {
-		const fires = fireRecords(drafting);
-		out += textSection(`Drafting · ${numberString(fires.length)}`);
-		out += `${wrap(jqToString(alt(drafting.note, "")))}\n`;
-		if (fires.length > 0) out += `\n${recordStackText(fires)}`;
+	const routines = routineRows(draft);
+	if (routines.length > 0) {
+		const note = draftingNote(draft.drafting ?? null);
+		const misfires = misfireRecords(draft.drafting ?? null);
+		out += textSection("Cloud Routines");
+		const rows = routines.map((routine) => [routine.name, numberString(routine.fired), numberString(routine.total)]);
+		out += `${textTable(ROUTINE_COLUMNS, rows, [1, 2])}\n`;
+		if (note !== "") out += `\n${wrap(note)}\n`;
+		if (misfires.length > 0) out += `\nDid Not Fire · ${numberString(misfires.length)}\n${recordStackText(misfires)}\n`;
 	}
 
 	out += textSection("The Groom");
 	out += `${wrap(groomLine(draft.groom ?? null))}\n`;
-	if (moves.length > 0) out += `\n${recordStackText(moves)}`;
 	if (left.length > 0) {
 		out += `\nLeft for you · ${numberString(left.length)}\n${left.map((line) => wrap(line)).join("\n")}\n`;
 	}

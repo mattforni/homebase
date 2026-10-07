@@ -208,10 +208,16 @@ one file.
    roster name, search the domain and the person: a reply that HubSpot
    missed, with nothing from Forni after it, moves them to Follow Up; a bounce on a send marks the address
    dead.
-5. **Sort the roster into the week's fixed order: first touches, then bumps,
-   then decides, then replies, then visits** (Forni, 2026-09-29; until W40
-   replies led and first touches came last). The sections below are described
-   in their old grouping; the roster lists them in that order.
+5. **Sort the touches by the order written in Outreach/README.md (The Order
+   of the Week)**; read it there each run and never apply an order from this
+   file. As of 2026-10-07 (Forni, ATE-630) it puts replies above everything,
+   then the cold end: second touches to people
+   who opened, first touches, visits, second touches to people who have not
+   opened, and last the names to close or keep. A bump is the second touch,
+   the email at about seven days. From 2026-09-29 first touches led and
+   replies came fourth; until W40 replies led and first touches came last.
+   The sections below are described in their old grouping; the roster lists
+   them in that order.
    - **Follow Up**: every conversation already started where the ball is in
      Forni's court, each line tagged with its kind. **Reply:** their message
      is the latest in the mailbox thread and no meeting is booked; the thread
@@ -219,8 +225,9 @@ one file.
      answer was logged incoming on 08-25 and read as a reply owed for a
      month), and a note from a contact at a Customer company is client work
      that never reaches this board (Kyle Pratt's thank you, W40). **Bump:** a
-     send at about seven days with no reply (below). Bumps come before
-     replies in the week's order.
+     send at about seven days with no reply (below). Replies come before
+     bumps in the week's order, and a bump to someone who opened comes before
+     one to someone who has not.
      **The section opens with a table of every hit from the incoming email
      search and the mailbox sweep** (sender, date, subject, verbatim from the
      source), marking each dropped hit and why (already answered, or a
@@ -286,9 +293,12 @@ one file.
    note that it is a snapshot and HubSpot is canonical. **Then the weekly scoreboard**,
    before the counts: one table of summary statistics, columns Type, Complete,
    Target, %, Done, Details, **one row per type and never one row per name**,
-   plus a bold total row. The types are, in this order: Outbound, Follow Up,
-   Close, Meetings (the week's order, Forni 2026-09-29). Follow Up lines are
-   tagged "Bump:" or "Reply:", bumps first, Outbound is
+   plus a bold total row. The rows are, in this order: Outbound, Follow Up,
+   Close, Meetings. That is the scoreboard's own row order, kept as it is on
+   purpose while the roster's shape is left alone (ATE-630); it is not the
+   order the touches are worked in, which is step 5's. Follow Up lines are
+   tagged "Reply:" or "Bump:", replies first and then the bumps to people
+   who opened, Outbound is
    every first touch, and Meetings lines are tagged "In person:" or
    "Remote:". Complete is zero on Monday and reads before
    Target, % is Complete over Target, Done is `✅` at 100, and Details is one
@@ -304,7 +314,9 @@ one file.
    README's The Weekly
    Scoreboard, and the stage definitions are the Funnel rules in
    `Tools/hubspot.md`. Write the file and stop: do not
-   stage it, do not commit it, and never touch a previous week's file.
+   stage it, do not commit it, and never touch a previous week's file. On the
+   Monday run the runner commits the file and pushes it to main once you have
+   returned; on a run at the laptop it stays uncommitted for Forni.
 
    **If this week's file is already built, the week is prepped and you do not
    rebuild it.** The only thing that may be added is a dated amendment, and
@@ -321,8 +333,12 @@ one file.
    gets written twice.
 7. **Report.** Return a short summary: counts per section, the flags from
    the portal diff, anything you could not verify, and the exact success
-   line `Pipeline groomed and roster prepped for <ISO week>` as the final line. Never
-   include a payload in the summary; the payloads live in the roster file.
+   line `Pipeline groomed and roster prepped for <ISO week>` as the final line. On a
+   run at the laptop the summary carries no payload; the payloads live in
+   the roster file. The Monday runner's brief asks for a JSON summary
+   instead, and that one carries every first touch and bump payload in its
+   `payloads` array, verbatim from the roster line, because the runner fires
+   them. The brief wins where the two differ.
 
 ## Auditing a Prospect
 
@@ -502,6 +518,7 @@ does not derive from a signal on the record, or close a name: `close` and
 groom's derived moves, or create one outside the prospect audit and the
 parking task above. Complete a
 task, even one you created. Mint a Linear issue. Post to any client surface. Commit to any repo, or stage
-anything: writing this week's roster file is the one write you make, and Forni
-commits it. Edit a previous week's roster, ever. Ask a question and wait: when a decision is Forni's, write it on the roster line
+anything: writing this week's roster file is the one write you make. The
+Monday runner commits and pushes it after you return; at the laptop Forni
+does. Edit a previous week's roster, ever. Ask a question and wait: when a decision is Forni's, write it on the roster line
 with your recommendation and keep going.

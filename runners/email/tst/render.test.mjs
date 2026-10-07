@@ -79,6 +79,53 @@ test("a long company name never runs into its reason", () => {
 	assert.ok(!lines[reasonAt].includes(lastCompanyWord), "with none of the company on the reason's line");
 });
 
+/*
+ * What a count line says about its drafts (ATE-630). The goldens freeze the
+ * mixed case; these hold the rule: a line speaks for its own names, from the
+ * fires that went, and says nothing about drafts when none did.
+ */
+const plumberDraft = () => JSON.parse(readFileSync(new URL("../fixtures/plumber.json", import.meta.url), "utf8"));
+const countLines = (draft) => renderRaw("plumber", "text", JSON.stringify(draft)).stdout.split("\n").filter((line) => /^\s+\d+\. (Second touch|First touches)/.test(line));
+
+test("a count line claims only the drafts that fired for its own names", () => {
+    assert.deepEqual(countLines(plumberDraft()).map((line) => line.replace(/^\s+\d+\. /, "")), [
+        "Second touch to people who opened: 1 draft ready",
+        "First touches: 12 of 15 a week, 1 of 12 drafts ready",
+        "Second touch to people who have not opened: 1",
+    ]);
+});
+
+test("a dry run, a missing token, and a week with no fires make no claim about drafts", () => {
+    for (const outcome of ["dry run", "not fired", "failed"]) {
+        const draft = plumberDraft();
+        for (const fire of draft.drafting.fires) fire.outcome = outcome;
+        assert.ok(countLines(draft).every((line) => !/draft/.test(line)), `${outcome}: ${countLines(draft).join(" | ")}`);
+    }
+    const none = plumberDraft();
+    delete none.drafting;
+    assert.ok(countLines(none).every((line) => !/draft/.test(line)));
+});
+
+test("a fire is one draft, spent on one name, never claimed by two people at one company", () => {
+    const draft = plumberDraft();
+    const [opened, unopened] = draft.owed.bump;
+    // A second person at the opened name's company, on the other second touch line and on the same one.
+    draft.owed.bump.push({ ...unopened, person: "Second Contact", company: opened.company, company_url: opened.company_url, contact_url: null });
+    draft.owed.bump.push({ ...opened, person: "Third Contact", contact_url: null });
+    assert.deepEqual(countLines(draft).filter((line) => /Second touch/.test(line)).map((line) => line.replace(/^\s+\d+\. /, "")), [
+        "Second touch to people who opened: 2, 1 of 2 drafts ready",
+        "Second touch to people who have not opened: 2",
+    ]);
+});
+
+test("the week table draws four weeks and reads the oldest one's change off the fifth", () => {
+    const text = renderRaw("plumber", "text", JSON.stringify(plumberDraft())).stdout;
+    const rows = text.split("\n").filter((line) => /^\s+W\d+\s/.test(line));
+    assert.equal(rows.length, 4);
+    assert.match(rows[3], /^\s+W2\s+12 \(\+2\)\s+9 \(\+3\)\s+75% \(\+15%\)/);
+    assert.ok(!/^\s+W1\s/m.test(text), "the fifth week is never drawn");
+});
+
 test("an unknown runner fails loudly", () => {
 	const result = render("nosuchrunner", "html", "retro");
 	assert.equal(result.status, 1);

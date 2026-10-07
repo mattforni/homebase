@@ -75,6 +75,27 @@
             2
           ]
         }
+      },
+      {
+        "person": "Callum Rhys",
+        "company": "Juniper Street Framing",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/104",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/204",
+        "note": "Day 8 on the first send, tracked and never opened.",
+        "metrics": {
+          "days_since_send": 8,
+          "touches": 1,
+          "opens": 0,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": 12,
+          "email": "x@example.test",
+          "tracked": 1,
+          "touch_days": [
+            8
+          ],
+          "open_days": []
+        }
       }
     ],
     "visit": [
@@ -130,6 +151,166 @@
           "days_since_open": null,
           "last_reply": "",
           "fit": 17,
+          "email": ""
+        }
+      },
+      {
+        "person": "Odalys Brandt",
+        "company": "Cedar Hollow Veterinary",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/310",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/410",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Jonas Whitlock",
+        "company": "Whitlock and Sons Masonry",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/311",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/411",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Mireille Okafor",
+        "company": "Lantern Street Bookshop",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/312",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/412",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Teodor Vance",
+        "company": "Vance Garage Doors",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/313",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/413",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Priscilla Yu",
+        "company": "Blue Door Acupuncture",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/314",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/414",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Anselm Reyes",
+        "company": "Reyes Family Dentistry",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/315",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/415",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Greta Lindqvist",
+        "company": "Northside Piano Tuning",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/316",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/416",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Hollis Adeyemi",
+        "company": "Adeyemi Window Cleaning",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/317",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/417",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Saoirse Blake",
+        "company": "Marigold Day Spa",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/318",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/418",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Caspian Moreau",
+        "company": "Front Range Locksmiths",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/319",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/419",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
           "email": ""
         }
       }
@@ -639,8 +820,8 @@
     "note": "2 of 3 payload(s) went to the routine; each draft lands in the matt@atelic.me Drafts a few minutes after its fire.",
     "fires": [
       {
-        "business": "Granite Peak Tile and Stone Restoration of the Front Range",
-        "company_url": "https://app.example.test/contacts/1/record/0-2/501",
+        "business": "Sable Creek Landscaping",
+        "company_url": "",
         "touch": "bump",
         "outcome": "fired",
         "http_status": 200,
@@ -648,8 +829,8 @@
         "session_id": "session_01"
       },
       {
-        "business": "Native Roofing",
-        "company_url": "https://app.example.test/contacts/1/record/0-2/503",
+        "business": "Ridgeback Fencing",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/402",
         "touch": "first_touch",
         "outcome": "fired",
         "http_status": 200,
@@ -657,8 +838,8 @@
         "session_id": ""
       },
       {
-        "business": "Cherry Creek Appliance Repair",
-        "company_url": "",
+        "business": "Harbor Lane Bakery and Provisions of Old Town",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/401",
         "touch": "first_touch",
         "outcome": "failed",
         "http_status": 429,
@@ -666,5 +847,126 @@
         "session_id": ""
       }
     ]
-  }
+  },
+  "needs": {
+    "tiers": [
+      {
+        "key": "proposal",
+        "label": "Open Proposals",
+        "lines": [
+          {
+            "who": "Rivermark Kitchen and Bath",
+            "owed": "proposal out; reach back out to Odette once she has walked it with her partner",
+            "due": "2026-01-30",
+            "url": "https://app.example.test/contacts/1/record/0-2/9",
+            "amount": 8500
+          }
+        ]
+      },
+      {
+        "key": "paying_build",
+        "label": "Paying Customers in Build",
+        "lines": [
+          {
+            "who": "Westbrook Skylights",
+            "owed": "audit the analytics and the tag container, then update the writeup",
+            "due": "2026-01-29",
+            "ref": "EXA-101",
+            "url": "https://app.example.test/contacts/1/record/0-2/9",
+            "ref_url": "https://tracker.example.test/issue/EXA-101"
+          },
+          {
+            "who": "Westbrook Skylights",
+            "owed": "this week's follow ups",
+            "ref": "EXA-102",
+            "url": null,
+            "ref_url": "https://tracker.example.test/issue/EXA-102"
+          }
+        ]
+      },
+      {
+        "key": "operate",
+        "lines": []
+      },
+      {
+        "key": "trade_build",
+        "lines": [
+          {
+            "who": "Thistle Lane Florist",
+            "owed": "Countersign, or nudge Marguerite if the agreement is still unsigned.",
+            "due": "next week",
+            "url": "https://app.example.test/contacts/1/record/0-2/203"
+          }
+        ]
+      },
+      {
+        "key": "warm_sql",
+        "lines": [
+          {
+            "who": "Granite Peak Tile",
+            "owed": "Priya is scoping; reply when she answers"
+          }
+        ]
+      }
+    ],
+    "first_touch_target": 15
+  },
+  "health": {
+    "weeks": [
+      {
+        "week": "2026-W01",
+        "tracked": 10,
+        "opened": 6,
+        "rate": 60,
+        "responded": 1,
+        "respond_rate": 10
+      },
+      {
+        "week": "2026-W02",
+        "tracked": 12,
+        "opened": 9,
+        "rate": 75,
+        "responded": 2,
+        "respond_rate": 17
+      },
+      {
+        "week": "2026-W03",
+        "tracked": 20,
+        "opened": 12,
+        "rate": 60,
+        "responded": 2,
+        "respond_rate": 10
+      },
+      {
+        "week": "2026-W04",
+        "tracked": 30,
+        "opened": 18,
+        "rate": null,
+        "responded": 5,
+        "respond_rate": null
+      },
+      {
+        "week": "2026-W05",
+        "tracked": 8,
+        "opened": 3,
+        "rate": 38,
+        "responded": null,
+        "respond_rate": null
+      }
+    ],
+    "flag": "The open rate fell twenty two percent on eight tracked sends, which is too few to call a trend and enough to watch."
+  },
+  "routines": [
+    {
+      "name": "Writeup",
+      "fired": 2,
+      "total": 2,
+      "url": "https://claude.example.test/code/routines/writeup"
+    },
+    {
+      "name": "Sighting",
+      "fired": 0,
+      "total": 1
+    }
+  ]
 }

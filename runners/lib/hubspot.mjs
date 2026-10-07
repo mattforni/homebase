@@ -516,8 +516,12 @@ const COMPANY_PROPS = [
     "address", "city", "phone", "description", "notes_last_contacted", "createdate",
     "hs_v2_date_entered_lead", "hs_v2_date_entered_marketingqualifiedlead", "hs_v2_date_entered_salesqualifiedlead",
     "hs_v2_date_entered_opportunity", "hs_v2_date_entered_customer",
+    // The Linear project a Customer's work is tracked in, by name: the join
+    // pipeline.mjs makes between a company and its open issues (ATE-630).
+    "linear_project",
 ];
-const SWEEP_DEAL_PROPS = ["dealname", "dealstage", "amount", "closedate", "hs_is_closed", "hs_is_closed_won"];
+// engagement_phase is build or operate on a won deal (ATE-630); unset reads as build.
+const SWEEP_DEAL_PROPS = ["dealname", "dealstage", "amount", "closedate", "hs_is_closed", "hs_is_closed_won", "engagement_phase"];
 const CONTACT_PROPS = [
     "firstname", "lastname", "email", "phone", "jobtitle", "hs_lead_status", "lifecyclestage",
     "associatedcompanyid", "notes_last_contacted", "hs_email_last_send_date",
@@ -1072,8 +1076,20 @@ async function sweep(argv) {
     mkdirSync(outDir, { recursive: true });
     const nameOf = (id) => { const c = contacts.get(id); return c ? `${c.firstname || ""} ${c.lastname || ""}`.trim() : `contact ${id}`; };
     const coName = (id) => companies.get(id)?.name || `company ${id}`;
+    // Every deal with the companies it sits on. The funnel rows carry one deal
+    // per company, the won one before an open one, which is right for a card
+    // and wrong for a list of open proposals: a customer with a second deal
+    // open would lose it. pipeline.mjs reads the proposals and the won deals'
+    // money and phase from here (ATE-630).
+    const deals = dealRows.map((d) => ({
+        id: d.id, name: d.properties.dealname || "", stage: stageLabels[d.properties.dealstage] || d.properties.dealstage || "",
+        amount: d.properties.amount ? Number(d.properties.amount) : null, close: denverDate(d.properties.closedate),
+        closed: d.properties.hs_is_closed === "true", won: d.properties.hs_is_closed_won === "true",
+        engagement_phase: d.properties.engagement_phase || "",
+        companies: (dlToCo.get(d.id) || []).filter((co) => co !== SELF_COMPANY),
+    }));
     const json = {
-        counts, funnel, groom, sections, tasks, meetings, notes,
+        counts, funnel, groom, sections, tasks, meetings, notes, deals,
         companies: Object.fromEntries([...companies.values()].map((c) => [c.id, { ...c, url: companyUrl(c.id) }])),
         contacts: Object.fromEntries(reads.map((r) => [r.contact_id, r])),
     };

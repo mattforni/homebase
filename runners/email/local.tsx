@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from "react";
-import { useEmailTheme } from "@atelic-action/ui/email";
+import { eyebrowStyle, useEmailTheme } from "@atelic-action/ui/email";
 
 /*
  * The handful of rows and spans the three jq renderers built by hand rather
@@ -102,26 +102,223 @@ export function RosterLine({ url }: RosterLineProps) {
 	);
 }
 
-export type NameRunProps = { names: { text: string; url?: string | null }[] };
+/**
+ * One line of the list: a bold lead (linked when it carries the record), the
+ * sentence after it, the due date, and a linked key at the end. The due date
+ * and the key each hold to one line, since a browser breaks "10-15" and
+ * "ATE-633" at the hyphen and leaves half a date at the end of a row. A count
+ * line carries `names`, the people it counts, which read as one linked
+ * sentence beneath it.
+ */
+export type NeedsItem = {
+	lead: string;
+	url?: string | null;
+	rest: string;
+	due?: string;
+	ref?: string;
+	refUrl?: string | null;
+	names?: { text: string; url?: string | null }[];
+	/** The closing line when the names were capped, "and 20 more in the roster", linked to the roster when the mail knows where it is. */
+	more?: string;
+	moreUrl?: string | null;
+};
+export type NeedsGroup = { label: string; items: NeedsItem[] };
+export type NeedsListProps = { groups: NeedsGroup[] };
 
 /**
- * Names in one sentence, each linked, a comma between them. The waiting names
- * in a stage read this way rather than as cards (Forni, 2026-09-29): nothing
- * is owed on them, and a card each ran a sixty name mail past the hundred
- * kilobytes where Gmail clips.
+ * The numbered list the mail opens on (Forni, 2026-10-07, ATE-630): one line
+ * per thing that needs him, numbered straight through, with a quiet label
+ * over each group so a line's rank explains itself. The number is a cell of
+ * its own rather than an ordered list's marker, since Gmail drops list
+ * markers inside a table cell on some accounts and a to do list without its
+ * numbers is a paragraph.
  */
-export function NameRun({ names }: NameRunProps) {
+export function NeedsList({ groups }: NeedsListProps) {
+	const { palette, fonts } = useEmailTheme();
+	const starts = groups.map((_, g) => groups.slice(0, g).reduce((sum, group) => sum + group.items.length, 0));
+	const line = `1px solid ${palette.hair}`;
+	return (
+		<table role="presentation" cellPadding="0" cellSpacing="0" border={0} width="100%">
+			<tbody>
+				{groups.map((group, g) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a group's position is its identity
+					<Fragment key={g}>
+						<tr>
+							<td colSpan={2} style={{ padding: g === 0 ? "0 0 6px" : "18px 0 6px", ...eyebrowStyle(fonts), color: palette.faint }}>
+								{group.label}
+							</td>
+						</tr>
+						{group.items.map((item, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: a line's position is its identity
+							<tr key={i}>
+								<td
+									width="26"
+									valign="top"
+									align="right"
+									style={{
+										width: "26px",
+										padding: "8px 10px 8px 0",
+										borderTop: line,
+										fontFamily: fonts.mono,
+										fontSize: "12px",
+										lineHeight: "22px",
+										color: palette.faint,
+										whiteSpace: "nowrap",
+									}}
+								>
+									{`${starts[g] + i + 1}.`}
+								</td>
+								<td valign="top" style={{ padding: "8px 0", borderTop: line, fontSize: "15px", lineHeight: "22px", color: palette.ink }}>
+									<b style={{ fontWeight: "600" }}>
+										<Link text={item.lead} url={item.url} />
+									</b>
+									{item.rest.split(/(\S*\d-\d\S*)/).map((part, k) =>
+										// biome-ignore lint/suspicious/noArrayIndexKey: a part's position is its identity
+										k % 2 === 1 ? <span key={k} style={{ whiteSpace: "nowrap" }}>{part}</span> : part,
+									)}
+									{item.due ? (
+										<>
+											{" "}
+											<span style={{ whiteSpace: "nowrap" }}>{item.due}</span>
+										</>
+									) : null}
+									{item.ref ? (
+										<>
+											{" "}
+											<span style={{ whiteSpace: "nowrap" }}>
+												<Link text={item.ref} url={item.refUrl} />.
+											</span>
+										</>
+									) : null}
+									{item.names && item.names.length > 0 ? <NameRun names={item.names} more={item.more} moreUrl={item.moreUrl} /> : null}
+								</td>
+							</tr>
+						))}
+					</Fragment>
+				))}
+			</tbody>
+		</table>
+	);
+}
+
+export type NameRunProps = { names: { text: string; url?: string | null }[]; more?: string; moreUrl?: string | null };
+
+/**
+ * The people a count line counts, each on a line of their own, linked. Until
+ * 2026-10-07 a run like this named the waiting companies at the foot of a
+ * stage card; it came back under the counts the same day, after Forni read
+ * "7" and asked who the seven were, first as one sentence and then, on his
+ * next read, a line each, since a sentence of fourteen names does not scan.
+ * A line rather than a card each: cards are what ran a sixty name mail past
+ * the hundred kilobytes where Gmail clips.
+ */
+export function NameRun({ names, more, moreUrl }: NameRunProps) {
 	const { palette } = useEmailTheme();
 	return (
-		<div style={{ fontSize: "14px", lineHeight: "1.6", color: palette.dim }}>
+		<div style={{ fontSize: "13px", lineHeight: "1.55", color: palette.dim, marginTop: "3px" }}>
 			{names.map((name, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: a name's position is its identity
 				<Fragment key={i}>
-					{i === 0 ? null : ", "}
-					<Link text={name.text} url={name.url} />
+					{i === 0 ? null : <br />}
+					{name.url ? (
+						<a href={name.url} style={{ color: palette.dim, textDecoration: "underline", textDecorationColor: palette.line }}>
+							{name.text}
+						</a>
+					) : (
+						name.text
+					)}
 				</Fragment>
 			))}
+			{more ? (
+				<>
+					<br />
+					<span style={{ color: palette.faint }}>
+						{moreUrl ? (
+							<a href={moreUrl} style={{ color: palette.faint, textDecoration: "underline", textDecorationColor: palette.line }}>
+								{more}
+							</a>
+						) : (
+							more
+						)}
+					</span>
+				</>
+			) : null}
 		</div>
+	);
+}
+
+/** A number and its change on the week before; `tone` is the change's direction, absent when nothing moved. */
+export type WeekCell = { value: string; change?: string; tone?: "up" | "down" };
+export type WeekTableProps = { columns: string[]; rows: WeekCell[][] };
+
+/**
+ * The send weeks as a table of numbers, each with its change on the week
+ * before set quietly under it. Six columns of "33 (+18)" do not fit a phone
+ * on one line each, and letting each cell wrap on its own left some changes
+ * beside their number and some beneath, so a header of two words breaks onto
+ * two lines and every change sits under its number at every width. The text
+ * twin has the room and keeps them on one line. A change wears the stage
+ * strip's own tones, its `up` for an increase and its `down` for a decrease,
+ * and stays faint at zero (Forni, 2026-10-07).
+ */
+export function WeekTable({ columns, rows }: WeekTableProps) {
+	const { palette, fonts } = useEmailTheme();
+	return (
+		<table role="presentation" cellPadding="0" cellSpacing="0" border={0} width="100%" style={{ fontFamily: fonts.mono, fontSize: "12px", lineHeight: "1.4", color: palette.ink }}>
+			<tbody>
+				<tr>
+					{columns.map((label, i) => (
+						<td
+							// biome-ignore lint/suspicious/noArrayIndexKey: a header's position is its identity
+							key={i}
+							align={i === 0 ? "left" : "right"}
+							valign="bottom"
+							style={{
+								padding: i === 0 ? "0 0 6px" : "0 0 6px 8px",
+								fontSize: "10px",
+								letterSpacing: "0.06em",
+								textTransform: "uppercase",
+								color: palette.faint,
+								borderBottom: `1px solid ${palette.line}`,
+							}}
+						>
+							{label}
+						</td>
+					))}
+				</tr>
+				{rows.map((cells, r) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a row's position is its identity
+					<tr key={r}>
+						{cells.map((cell, i) => (
+							<td
+								// biome-ignore lint/suspicious/noArrayIndexKey: a cell's position is its identity
+								key={i}
+								align={i === 0 ? "left" : "right"}
+								valign="top"
+								style={{
+									padding: i === 0 ? "8px 0" : "8px 0 8px 8px",
+									borderBottom: `1px solid ${r === rows.length - 1 ? palette.line : palette.hair}`,
+									...(i === 0 ? { fontFamily: fonts.sans, fontSize: "13px", whiteSpace: "nowrap" } : {}),
+								}}
+							>
+								{cell.value}
+								{cell.change ? (
+									<div
+										style={{
+											whiteSpace: "nowrap",
+											fontSize: "11px",
+											color: (cell.tone === "up" ? palette.up : cell.tone === "down" ? palette.down : undefined) ?? palette.faint,
+										}}
+									>
+										{cell.change}
+									</div>
+								) : null}
+							</td>
+						))}
+					</tr>
+				))}
+			</tbody>
+		</table>
 	);
 }
 

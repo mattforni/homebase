@@ -44,6 +44,13 @@ jobs:
         with:
           node-version: "20"
 
+      # The folds the Pipeline mail's named lines and send weeks come from
+      # (runners/lib/pipeline.mjs) and the Linear read beside them: pure
+      # functions over small invented portals with no dependency to install,
+      # so they run ahead of the install and fail in seconds.
+      - name: Runner lib tests
+        run: node --test ../lib/tst/pipeline.test.mjs
+
       - name: Install
         run: npm ci
 
