@@ -70,7 +70,7 @@ judgment.
   as it stands, here and in the runner's image, and it takes the service key
   from `HUBSPOT_SERVICE_KEY` or the Keychain. Add `--json` whenever you parse
   the result. Never a throwaway script for anything it covers.
-- **The board**: per engagement folders under
+- **The board**: one folder per engagement, at
   `~/Eudaimonia/Craft/Vocation/Atelic/Pipeline/<Name>/` (or
   `~/Eudaimonia/Craft/Vocation/Atelic/Customers/<Name>/` once a deal has
   closed won)
