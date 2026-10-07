@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Print the review scorecard for a window: per reviewer, how many runs, how
+# many failed to run, how many findings, how many of those were fixed or
+# declined at landing; then the landings and the minutes held.
+#
+# Usage: review/scorecard [--since 7d|48h]
+#
+# Reads $HOME/.local/state/review/scorecard.tsv, written by review/run (one
+# row per reviewer per run) and review/landed (one row per reviewer per
+# landing).
+set -euo pipefail
+
+# shellcheck source=bin/review/lib.sh
+. "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+since="7d"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --since) since=$(value "$@") || exit 1; shift 2 ;;
+    -h|--help) usage ;;
+    *) die "unknown option $1" ;;
+  esac
+done
+
+[[ -s "$REVIEW_SCORECARD" ]] || { echo "no scorecard yet at $REVIEW_SCORECARD"; exit 0; }
+
+[[ "$since" =~ ^([0-9]+)([dh])$ ]] || die "--since wants Nd or Nh, got $since"
+n="${BASH_REMATCH[1]}"; unit="${BASH_REMATCH[2]}"
+if date -v -1d >/dev/null 2>&1; then
+  # BSD date spells hours as H; d is days on both.
+  [[ "$unit" == h ]] && bsd="H" || bsd="d"
+  cutoff=$(date -u -v "-${n}${bsd}" +%Y-%m-%dT%H:%M:%SZ)
+else
+  [[ "$unit" == d ]] && gnu="$n days" || gnu="$n hours"
+  cutoff=$(date -u -d "-$gnu" +%Y-%m-%dT%H:%M:%SZ)
+fi
+
+awk -F'\t' -v cutoff="$cutoff" '
+  NR == 1 { next }
+  $1 < cutoff { next }
+  # A reviewer that never started (no slot, not installed) is skipped, which
+  # is not a failure; one that started and did not reach a usable result is.
+  # Seconds average over the runs that actually ran.
+  $2 == "run" {
+    r = $6; runs[r]++; seen[r] = 1
+    if ($7 == "true") { ran[r]++; findings[r] += $9; secs[r] += $13 }
+    else if ($13 + 0 == 0) { skipped[r]++ }
+    else { failed[r]++ }
+  }
+  $2 == "landing" {
+    r = $6; fixed[r] += $10; declined[r] += $11; seen[r] = 1
+    key = $3 "#" $4; if (!(key in landed)) { landed[key] = 1; landings++ }
+    if ($12 != "") held += $12
+  }
+  END {
+    printf "%-12s %5s %8s %7s %9s %6s %9s %8s\n", "reviewer", "runs", "skipped", "failed", "findings", "fixed", "declined", "avg s"
+    for (r in seen) {
+      if (r == "none") continue
+      avg = (ran[r] > 0) ? secs[r] / ran[r] : 0
+      printf "%-12s %5d %8d %7d %9d %6d %9d %8.0f\n", r, runs[r], skipped[r], failed[r], findings[r], fixed[r], declined[r], avg
+    }
+    printf "\nlandings %d, held %d min total, window since %s\n", landings, held, cutoff
+  }' "$REVIEW_SCORECARD"

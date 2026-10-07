@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Record a landing on the review scorecard: what each reviewer's findings came
+# to once triaged, and how long the merge was held.
+#
+# Usage: review/landed <repo> <pr> <reviewed-sha> [--fixed <spec>] [--declined <spec>]
+#                      [--held-min <minutes>]
+#
+# A spec is "claude:2,coderabbit:1", or a bare integer, which is attributed to
+# claude (the gate). One row is appended per reviewer named in either spec;
+# a landing with nothing fixed or declined appends a single row with reviewer
+# "none" so the hold is still counted. Rows land in
+# $HOME/.local/state/review/scorecard.tsv; review/scorecard reads them back.
+set -euo pipefail
+
+# shellcheck source=bin/review/lib.sh
+. "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+repo=""; pr=""; sha=""; fixed=""; declined=""; held=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --fixed) fixed=$(value "$@") || exit 1; shift 2 ;;
+    --declined) declined=$(value "$@") || exit 1; shift 2 ;;
+    --held-min) held=$(value "$@") || exit 1; shift 2 ;;
+    -h|--help) usage ;;
+    -*) die "unknown option $1" ;;
+    *)
+      if [[ -z "$repo" ]]; then repo="$1"
+      elif [[ -z "$pr" ]]; then pr="$1"
+      elif [[ -z "$sha" ]]; then sha="$1"
+      else die "unexpected argument $1"; fi
+      shift ;;
+  esac
+done
+[[ -n "$repo" && -n "$pr" && -n "$sha" ]] || usage 1
+[[ -z "$held" || "$held" =~ ^[0-9]+$ ]] || die "--held-min wants whole minutes, got $held"
+
+# Turn a spec into "reviewer<TAB>count" lines.
+expand() {
+  local spec="$1" item
+  [[ -n "$spec" ]] || return 0
+  if [[ "$spec" =~ ^[0-9]+$ ]]; then printf 'claude\t%s\n' "$spec"; return 0; fi
+  IFS=, read -r -a items <<<"$spec"
+  for item in "${items[@]}"; do
+    [[ "$item" =~ ^([a-z]+):([0-9]+)$ ]] || die "bad spec entry: $item (want reviewer:count)"
+    printf '%s\t%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+  done
+}
+
+# Validate both specs up front: a die inside a command substitution would
+# only end the substitution, so the status is checked explicitly. Bash 3.2 has
+# no associative arrays, so counts are looked up in the expanded lines.
+fixed_lines=$(expand "$fixed") || exit 1
+declined_lines=$(expand "$declined") || exit 1
+count_for() { # <lines> <reviewer>
+  awk -F'\t' -v r="$2" '$1 == r { n = $2 } END { print n + 0 }' <<<"$1"
+}
+
+reviewers=$(printf '%s\n%s\n' "$fixed_lines" "$declined_lines" | cut -f1 | sed '/^$/d' | sort -u)
+if [[ -z "$reviewers" ]]; then
+  scorecard_append "landing" "$repo" "$pr" "$sha" "none" "" "" "" "0" "0" "$held" ""
+  echo "landing recorded: $repo #$pr ${sha:0:8} nothing to triage, held ${held:-0} min"
+  exit 0
+fi
+
+while IFS= read -r r; do
+  nf=$(count_for "$fixed_lines" "$r"); nd=$(count_for "$declined_lines" "$r")
+  scorecard_append "landing" "$repo" "$pr" "$sha" "$r" "" "" "" "$nf" "$nd" "$held" ""
+  echo "landing recorded: $repo #$pr ${sha:0:8} $r fixed $nf declined $nd held ${held:-0} min"
+  held=""   # the hold is per landing, so only the first row carries it
+done <<<"$reviewers"

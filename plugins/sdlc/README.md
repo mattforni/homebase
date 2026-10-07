@@ -24,7 +24,7 @@ claude plugin install sdlc@skillset
 /sdlc:plan <issue-id> → /sdlc:design <issue-id> → [implement] → /sdlc:land
 ```
 
-`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → CLI review → poll → (address findings)* → merge → clean up and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded).
+`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → `review/run` → poll → (address findings)* → merge → clean up and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded). The review rules live in [reference/code-review.md](reference/code-review.md).
 
 ## Full Documentation
 

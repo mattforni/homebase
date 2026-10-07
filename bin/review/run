@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# Review a checkout through every reviewer we have, at once, and print one
+# JSONL stream: finding lines (reviewer, severity, fileName, line, summary,
+# failure_scenario) and one complete line per reviewer (reviewer, ran, reason,
+# findings, sha, seconds, files). The claude reviewer is the gate; the exit
+# code is 0 only when its complete line says ran:true.
+#
+# Usage: review/run <worktree> [--base <ref>] [--reviewers claude,coderabbit,codex]
+#                   [--effort low|medium|high|max] [--max-findings N]
+#                   [--timeout <seconds>]
+#
+# It changes into the worktree itself (the one sanctioned cd, per GC) and
+# reports the directory and HEAD in a leading review_context line, so the
+# caller never needs a cd in its own command. The rules it enforces live in
+# plugins/sdlc/reference/code-review.md; the vendor mechanics in
+# ~/Eudaimonia/Admin/Tools/<vendor>.md.
+set -euo pipefail
+
+# shellcheck source=bin/review/lib.sh
+. "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+# The default budget leaves room inside a 600 second Bash call for the fetch
+# (30 s), the kill grace (15 s), and process startup.
+worktree=""; base=""; reviewers="claude,coderabbit,codex"; effort="high"; max=""; budget=480
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --base) base=$(value "$@") || exit 1; shift 2 ;;
+    --reviewers) reviewers=$(value "$@") || exit 1; shift 2 ;;
+    --effort) effort=$(value "$@") || exit 1; shift 2 ;;
+    --max-findings) max=$(value "$@") || exit 1; shift 2 ;;
+    --timeout) budget=$(value "$@") || exit 1; shift 2 ;;
+    -h|--help) usage ;;
+    -*) die "unknown option $1" ;;
+    *) [[ -z "$worktree" ]] || die "one worktree only"; worktree="$1"; shift ;;
+  esac
+done
+[[ -n "$worktree" ]] || usage 1
+[[ -d "$worktree" ]] || die "no such directory: $worktree"
+case "$effort" in low|medium|high|max) ;; *) die "--effort wants low, medium, high, or max, got $effort" ;; esac
+[[ "$budget" =~ ^[0-9]+$ && "$budget" -ge 60 ]] || die "--timeout wants whole seconds, at least 60, got $budget"
+[[ -z "$max" || "$max" =~ ^[0-9]+$ || "$max" == all ]] || die "--max-findings wants a number or all, got $max"
+need jq; need git; need timeout
+
+cd "$worktree" || die "cannot enter $worktree"
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "$worktree is not a git checkout"
+
+# A stale base is a review of the wrong diff, so fetch, and say so if it fails
+# rather than silently reviewing against yesterday's main.
+fetch_note=""
+timeout 30 git fetch -q origin 2>/dev/null || fetch_note="fetch failed; base may be stale"
+
+if [[ -z "$base" ]]; then
+  for candidate in "origin/$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')" origin/main origin/master; do
+    [[ "$candidate" != "origin/" ]] || continue
+    if git rev-parse -q --verify "$candidate^{commit}" >/dev/null 2>&1; then base="$candidate"; break; fi
+  done
+fi
+[[ -n "$base" ]] || die "no base ref found; pass --base"
+
+sha=$(git rev-parse HEAD)
+files=$(git diff --name-only "$base...HEAD" | wc -l | tr -d ' ')
+repo=$(git remote get-url origin 2>/dev/null | sed -E 's#\.git$##; s#.*[:/]([^/]+/[^/]+)$#\1#' || true)
+[[ -n "$repo" ]] || repo="$(basename "$(pwd -P)")"
+
+jq -cn --arg wd "$(pwd -P)" --arg sha "$sha" --arg base "$base" --argjson files "$files" \
+  --arg repo "$repo" --arg reviewers "$reviewers" --arg note "$fetch_note" \
+  '{type:"review_context", workingDirectory:$wd, repo:$repo, sha:$sha, base:$base,
+    files:$files, reviewers:($reviewers | split(",")), note:$note}'
+
+if [[ "$files" -eq 0 ]]; then
+  jq -cn --arg sha "$sha" '{type:"complete",reviewer:"claude",ran:false,reason:"no changes against base",findings:0,sha:$sha,seconds:0,files:0}'
+  exit 1
+fi
+
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/review.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
+state=$(review_state_dir)
+stamp="$(date -u +%Y%m%dT%H%M%SZ)-${sha:0:8}"
+
+# Each reviewer writes raw, rc and seconds under its own directory and nothing
+# inside the worktree. The claude reviewer is the built in /code-review skill,
+# run headless with read only git tools; the effort is passed inside the
+# command because a level typed in a -p run does not update the remembered
+# one. The findings shape is asked for through the system prompt rather than
+# --json-schema: the skill runs as a local command, and with a schema attached
+# the run returned "Command completed" and no structured output (2026-10-07).
+run_claude() {
+  local dir="$1" start target
+  mkdir -p "$dir"; start=$(date +%s)
+  target="$effort $base...HEAD"
+  [[ -z "$max" ]] || target+=" --max-findings $max"
+  local rc=0
+  timeout -k 15 "$budget" claude -p "/code-review $target" \
+    --output-format json --append-system-prompt "$REVIEW_SHAPE_PROMPT" \
+    --permission-mode dontAsk --no-session-persistence \
+    --allowedTools "Read,Grep,Glob,Bash(git diff *),Bash(git log *),Bash(git show *),Bash(git blame *)" \
+    >"$dir/raw" 2>"$dir/err" || rc=$?
+  echo "$rc" >"$dir/rc"
+  echo $(( $(date +%s) - start )) >"$dir/seconds"
+}
+
+# CodeRabbit runs only when a slot is free right now and the diff is under its
+# file cap. It never waits and never retries: a rejected attempt still spends a
+# slot, and the lander treats this reviewer as evidence, not the gate.
+run_coderabbit() {
+  local dir="$1" start usage remaining next_ms
+  mkdir -p "$dir"; start=$(date +%s)
+  if ! command -v coderabbit >/dev/null 2>&1; then
+    echo "coderabbit not installed" >"$dir/skip"; return 0
+  fi
+  if [[ "$files" -gt 150 ]]; then
+    echo "over 150 files, the CLI's cap" >"$dir/skip"; return 0
+  fi
+  usage=$(timeout 30 coderabbit usage --agent 2>/dev/null | tail -n1 || true)
+  remaining=$(jq -r '.includedReviews.remaining // empty' <<<"$usage" 2>/dev/null || true)
+  if [[ -z "$remaining" ]]; then
+    echo "usage check failed" >"$dir/skip"; return 0
+  fi
+  if [[ "$remaining" -le 0 ]]; then
+    next_ms=$(jq -r '.includedReviews.nextAvailableInMs // 0' <<<"$usage")
+    echo "no slot free; next at $(date -v +"$(( next_ms / 60000 + 1 ))M" "+%H:%M %Z" 2>/dev/null || date "+%H:%M %Z")" >"$dir/skip"
+    return 0
+  fi
+  timeout -k 15 "$(( budget > 90 ? budget - 90 : budget ))" coderabbit review --base "$base" --committed --agent >"$dir/raw" 2>"$dir/err" || true
+  echo $(( $(date +%s) - start )) >"$dir/seconds"
+}
+
+# Codex is the planned second model family. Until the binary and a plan exist
+# it reports itself absent; the call, when it comes, is codex exec with the
+# same shape prompt and --output-schema (codex review prints text only).
+run_codex() {
+  local dir="$1"
+  mkdir -p "$dir"
+  if ! command -v codex >/dev/null 2>&1; then
+    echo "codex not installed" >"$dir/skip"; return 0
+  fi
+  echo "codex reviewer not yet wired" >"$dir/skip"
+}
+
+pids=()
+IFS=, read -r -a wanted <<<"$reviewers"
+for r in "${wanted[@]}"; do
+  case "$r" in claude|coderabbit|codex) ;; *) die "unknown reviewer $r" ;; esac
+done
+for r in "${wanted[@]}"; do
+  "run_$r" "$tmp/$r" & pids+=($!)
+done
+wait "${pids[@]}" || true
+
+out="$tmp/out.jsonl"; : >"$out"
+claude_ok=1
+for r in "${wanted[@]}"; do
+  dir="$tmp/$r"; secs=$(cat "$dir/seconds" 2>/dev/null || echo 0)
+  if [[ -f "$dir/skip" ]]; then
+    jq -cn --arg r "$r" --arg reason "$(cat "$dir/skip")" --arg sha "$sha" --argjson files "$files" \
+      '{type:"complete",reviewer:$r,ran:false,reason:$reason,findings:0,sha:$sha,seconds:0,files:$files}' >>"$out"
+  else
+    [[ -f "$dir/raw" ]] || : >"$dir/raw"
+    cp "$dir/raw" "$state/runs/$stamp-$r.raw" 2>/dev/null || true
+    # A normaliser that dies (a jq error on a shape nobody foresaw) must not
+    # take the stream with it: the reviewer is reported as not run, and the
+    # raw copy under the state dir is there to look at.
+    case "$r" in
+      claude) normalise_claude "$dir/raw" "$(cat "$dir/rc" 2>/dev/null || echo 1)" "$sha" "$secs" "$files" >>"$out" || normaliser_failed=1 ;;
+      coderabbit) normalise_coderabbit "$dir/raw" "$sha" "$secs" "$files" >>"$out" || normaliser_failed=1 ;;
+    esac
+    if [[ "${normaliser_failed:-0}" == 1 ]]; then
+      normaliser_failed=0
+      jq -cn --arg r "$r" --arg sha "$sha" --argjson secs "$secs" --argjson files "$files" \
+        '{type:"complete",reviewer:$r,ran:false,reason:"normaliser failed; raw kept under the state dir",findings:0,sha:$sha,seconds:$secs,files:$files}' >>"$out"
+    fi
+  fi
+done
+
+# One scorecard row per reviewer, from its complete line.
+while IFS= read -r line; do
+  [[ "$(jq -r '.type' <<<"$line")" == "complete" ]] || continue
+  scorecard_append "run" "$repo" "" "$sha" \
+    "$(jq -r '.reviewer' <<<"$line")" "$(jq -r '.ran' <<<"$line")" "$(jq -r '.reason' <<<"$line")" \
+    "$(jq -r '.findings' <<<"$line")" "" "" "" "$(jq -r '.seconds' <<<"$line")"
+  if [[ "$(jq -r '.reviewer' <<<"$line")" == "claude" && "$(jq -r '.ran' <<<"$line")" == "true" ]]; then claude_ok=0; fi
+done <"$out"
+
+cat "$out"
+exit "$claude_ok"

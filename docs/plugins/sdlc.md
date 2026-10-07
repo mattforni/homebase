@@ -29,7 +29,7 @@ The typical flow is:
 /sdlc:land                # Open PR, iterate with bot, merge, clean up
 ```
 
-`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → CLI review → poll → (address findings)* → merge → clean up and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded).
+`sdlc:land` is the default next step after implementation. It wraps `sdlc:review` → `review/run` → poll → (address findings)* → merge → clean up and bails to the user on anything ambiguous (human review, hard CI failure, merge conflict, time budget exceeded).
 
 ## Installation
 
@@ -47,7 +47,7 @@ claude plugin install sdlc@skillset
 
 - **Git** for version control
 - **GitHub CLI** (`gh`) for PR operations
-- **CodeRabbit CLI** (`coderabbit`) for the review gate used by land. Install via `brew install coderabbit`, then `coderabbit auth login`. It reviews the current git repository and has no flag that selects one, so call it from a `cr-review.sh` wrapper that changes directory internally. Mechanics live in `~/Eudaimonia/Admin/Tools/coderabbit.md`.
+- **`~/bin/review/run`** (homebase) for the review gate used by land. It runs Claude Code's built in `/code-review` headless on the subscription, plus the CodeRabbit CLI when a slot is free and Codex when installed, and prints one findings stream. The rules live in the plugin's [reference/code-review.md](../../plugins/sdlc/reference/code-review.md); vendor mechanics in `~/Eudaimonia/Admin/Tools/<vendor>.md`.
 - **Linear CLI** (`linear`) for Linear integration (optional, used by plan and design). Install via `brew install schpet/tap/linear`.
 
 ## Skill Details
@@ -88,7 +88,7 @@ Creates a PR and requests review:
 1. Detects and removes dead code
 2. Creates commit with proper attribution
 3. Pushes and creates PR
-4. Requests a PR bot review with the configured trigger. This is the optional public repo fallback, not the gate: the gate is the CodeRabbit CLI run by land.
+4. Requests a PR bot review with the configured trigger. This is the optional public repo fallback, not the gate: the gate is `review/run`, run by land.
 
 **Usage:** `/sdlc:review`
 
@@ -97,18 +97,18 @@ Creates a PR and requests review:
 Drives the back half of SDLC autonomously, from "ready for review" through "merged and cleaned up":
 
 1. **Identifies PR or opens one** (calls `/sdlc:review` if no PR exists for the current branch)
-2. **Reviews the branch** with `coderabbit review --base origin/main --committed --agent`, run locally against the current HEAD. This is the gate.
+2. **Reviews the branch** with `~/bin/review/run <worktree> --effort high`, run locally against the current HEAD. This is the gate; the rules are the plugin's `reference/code-review.md`.
 3. **Polls** for state changes via Monitor: CI settled, CI failure, human review, or timeout
 4. **Decides** per event:
    - Review clean, or only advisory findings → merges
-   - Actionable findings → fixes them in place and pushes, then re-runs the CLI review on the new HEAD
+   - Actionable findings → fixes them in place and pushes, then re-runs `review/run` on the new HEAD
    - CI failure self-introduced → fixes in place and pushes
    - CI failure not self-introduced, human review, merge conflict, or timeout → bails to the user with state summary
 5. **Merges** (squash, with branch delete), then removes the local worktree and branch
 
 The agent (not GitHub) judges when feedback is addressed. `mergeStateStatus: CLEAN` only reflects branch protection and required checks, not whether anyone read the diff. Findings are not implemented blindly: when the agent disagrees it declines with reasoning and merges through.
 
-The loop never waits on the CodeRabbit PR bot (adopted 2026-08-29). On a private repo the free plan posts a walkthrough and no review object at all, so waiting on it gates on nothing; on a public repo the free Open Source plan reviews properly, making the bot a genuine second look but still a fallback rather than a blocker. Mechanics live in `~/Eudaimonia/Admin/Tools/coderabbit.md`.
+The loop never waits on any PR bot (adopted 2026-08-29). On a private repo the free CodeRabbit plan posts a walkthrough and no review object at all, so waiting on it gates on nothing; on a public repo the free Open Source plan reviews properly, making the bot a genuine second look but still a fallback rather than a blocker. The gate, the reviewers, and the triage rules live in the plugin's [reference/code-review.md](../../plugins/sdlc/reference/code-review.md).
 
 **Usage:** `/sdlc:land` or `/sdlc:land 248`
 
