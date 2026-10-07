@@ -26,8 +26,24 @@
 # 2026-10-06: the rule said the desk fires the routine, and in W41 nobody
 # did). A reply never fires; it is answered at the desk. The fires are read
 # from the agent's JSON summary, which carries each payload with its business
-# and its touch kind, and are recorded in the summary so the mail carries a
-# Drafting card. DRY_RUN prints what would fire and fires nothing.
+# and its touch kind, and are recorded in the summary so the mail carries its
+# Cloud Routines card. DRY_RUN prints what would fire and fires nothing.
+#
+# The order of the mail is not the model's (ATE-630, 2026-10-07). Forni opened
+# the W41 mail and could not tell what needed him, so the mail became a to do
+# list in his own order, and lib/pipeline.mjs fills it from the records: the
+# named lines (customers from the Linear cycle, open proposals and warm SQLs
+# from the sweep) as `needs`, the trailing send weeks as `health`, and the
+# model's owed names with anyone a named line already covers taken out. The
+# model still writes the read, the names owed a touch with a note each, the
+# flags and the payloads.
+#
+# What a run writes to the world, so nobody reads "prep only" as "read only":
+# the groom's derived stage and Lead Status moves in HubSpot (unless
+# SWEEP_GROOM=0), the roster commit pushed to the Atelic repo's main, one
+# Outreach routine fire per first touch and bump, and the report by mail.
+# DRY_RUN stops the fires and the mail; it does not stop the groom, which
+# SWEEP_GROOM=0 does, and a checkout this run did not clone is never pushed.
 #
 # Until 2026-09-15 (ATE-551) the agent did every read itself, one hs or gws
 # command per model turn, and a pass cost 7.54 USD; the fetching was most of
@@ -38,7 +54,8 @@
 # vault, or by bin/runner/run-local from this machine:
 #   CLAUDE_CODE_OAUTH_TOKEN         atelic-keys/claude-code-oauth
 #   RESEND_API_KEY                  atelic-keys/resend-api-key
-#   HUBSPOT_SERVICE_KEY             atelic-keys/hubspot-service-key-atelic (read only use here)
+#   HUBSPOT_SERVICE_KEY             atelic-keys/hubspot-service-key-atelic; reads the portal, and writes
+#                                   the groom's derived moves unless SWEEP_GROOM=0
 #   GWS_OAUTH_TOKEN_ATELIC_JSON     atelic-keys/gws-oauth-token-atelic (authorized_user JSON)
 #   GWS_OAUTH_TOKEN_PERSONAL_JSON   forni-keys/gws-oauth-token-personal
 #   EUDY_DEPLOY_KEY                 forni-keys/github-deploy-key-eudy; only when no checkout is at $EUDY
@@ -47,6 +64,9 @@
 #                                   roster commit goes out over. Only used on a checkout this run cloned
 #   OUTREACH_TRIGGER_TOKEN          atelic-keys/outreach-trigger-token; the Outreach routine's API trigger
 #                                   token. Without it the payloads are listed as not fired and the run goes on
+#   LINEAR_API_KEY                  atelic-keys/linear-api-key; a personal API key for the atelic workspace,
+#                                   read only use (one query, the active cycle's open issues). Without it
+#                                   the customer lines fall back to open HubSpot tasks and the mail says so
 # Plain configuration:
 #   REPORT_RECIPIENT          where the report goes; the Atelic mailbox, since
 #                             this is Atelic work
@@ -214,8 +234,8 @@ place_roster() {
 # is its own cloud session of three to five minutes, so the fires are spaced
 # rather than sent as a burst. Every payload is recorded with its business,
 # its touch, the outcome, the HTTP status and the session the API names, and
-# the record is folded into the draft as `drafting` for the mail's Drafting
-# card. Never fatal: a payload that did not fire is still on the roster, and
+# the record is folded into the draft as `drafting` for the mail's Cloud
+# Routines card. Never fatal: a payload that did not fire is still on the roster, and
 # the desk fires it by hand.
 FIRE_SPACING="${FIRE_SPACING:-30}"
 FIRES_JSONL=""
@@ -298,7 +318,7 @@ fire_payloads() {
     if ! jq -s '.' "$FIRES_JSONL" > "$WORK/fires.json" \
         || ! jq --arg note "$note" --slurpfile fires "$WORK/fires.json" \
             '. + {drafting: {note: $note, fires: $fires[0]}}' "$DRAFT_JSON" > "$WORK/draft-fired.json"; then
-        echo "routine: could not fold the fires into the draft; the mail goes without the Drafting card"
+        echo "routine: could not fold the fires into the draft; the mail goes without the Cloud Routines card"
         return 0
     fi
     mv "$WORK/draft-fired.json" "$DRAFT_JSON"
@@ -316,6 +336,31 @@ portal_pull() {
     if (( rc == 124 )); then fail_reason="HubSpot sweep timed out after 10m"; return 1; fi
     if (( rc != 0 )); then fail_reason="HubSpot sweep failed: $(head -c 300 "$WORK/hubspot-stderr.txt")"; return 1; fi
     echo "portal: $(jq -r '"\(.funnel_companies) funnel companies; Next Up \(.next_up) (\(.next_up_with_new) with a NEW contact), unscored \(.unscored); sections \(.sections | to_entries | map("\(.key) \(.value)") | join(", "))"' "$WORK/portal-counts.json")"
+}
+
+# The active cycle's open issues, which become the customer lines of the mail
+# (lib/pipeline.mjs joins them to a Customer company on its linear_project
+# property). Never fatal and never retried: with no key, or a tracker that did
+# not answer, the fold falls back to open HubSpot tasks and the mail carries
+# one line under Left for You saying the read did not run, with the reason
+# kept here.
+LINEAR_WHY=""
+linear_pull() {
+    rm -f "$WORK/linear.json"
+    if [[ -z "${LINEAR_API_KEY:-}" ]]; then
+        LINEAR_WHY="no LINEAR_API_KEY in the environment"
+    elif ! LINEAR_API_KEY="$LINEAR_API_KEY" timeout 2m node "$LIB_DIR/linear.mjs" issues \
+            > "$WORK/linear.json" 2>"$WORK/linear-stderr.txt"; then
+        LINEAR_WHY="$(head -c 160 "$WORK/linear-stderr.txt" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')"
+        [[ -n "$LINEAR_WHY" ]] || LINEAR_WHY="the read timed out"
+        rm -f "$WORK/linear.json"
+    fi
+    if [[ -n "$LINEAR_WHY" ]]; then
+        echo "linear: not read, $LINEAR_WHY"
+        echo "- Linear: NOT read ($LINEAR_WHY). The customer lines of the mail come from open HubSpot tasks this run." >> "$PULLS_MD"
+    else
+        echo "linear: $(jq '.issues | length' "$WORK/linear.json") open issues in the active cycle"
+    fi
 }
 
 # The two access tokens are minted once and kept for the One Pager pull.
@@ -451,6 +496,7 @@ pull_all() {
     portal_pull || return 1
     mailbox_pull || return 1
     onepager_pull
+    linear_pull
     sites_pull || return 1
 }
 
@@ -459,6 +505,8 @@ pulls_ready() {
     for f in portal.md portal-detail.md portal.json mailbox.md pulls.md; do
         [[ -s "$WORK/$f" ]] || { fail_reason="SKIP_PULLS is set but $WORK/$f is missing; run once without it"; return 1; }
     done
+    # The Linear read is optional on a fresh pull and on a reused one alike.
+    [[ -s "$WORK/linear.json" ]] || LINEAR_WHY="the pulls were skipped and $WORK holds no linear.json"
     echo "pulls: skipped, reusing $WORK"
 }
 
@@ -539,6 +587,34 @@ if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
     mv "$WORK/draft-merged.json" "$DRAFT_JSON"
     echo "funnel: $(jq -r '[.funnel.stages[] | "\(.label) \(.now)"] | join(", ")' "$DRAFT_JSON")"
     echo "groom: $(jq -r '"\(.groom.companies | length) stage moves, \(.groom.contacts | length) status moves, \(.groom.proposed | length) proposed"' "$DRAFT_JSON")"
+
+    # What needs Forni and how the funnel is doing, from the records rather
+    # than the model (ATE-630): the named tiers and the weekly target as
+    # `needs`, the trailing send weeks as `health`, and `owed` with anyone a
+    # named line already covers taken out, so nobody is listed twice. The
+    # result is held to the shape the renderer reads before it replaces the
+    # draft. Not fatal: a fold that fails leaves the draft as it was, the
+    # mail renders its counts alone, and a flag under Left for You says why,
+    # because the roster and the fires behind this point are worth more than
+    # the list.
+    linear_file=""
+    [[ ! -s "$WORK/linear.json" ]] || linear_file="$WORK/linear.json"
+    if node "$LIB_DIR/pipeline.mjs" fold "$DRAFT_JSON" "$WORK/portal.json" "$MONDAY" "$linear_file" "$LINEAR_WHY" \
+            > "$WORK/draft-folded.json" 2>"$WORK/pipeline-stderr.txt" \
+        && jq -e '(.needs.tiers | type == "array") and (.needs.first_touch_target | type == "number")
+            and (.health.weeks | type == "array") and (.owed | type == "object") and (.flags | type == "array")
+            and ([.needs.tiers[] | (.key | type == "string") and (.lines | type == "array")] | all)' \
+            "$WORK/draft-folded.json" >/dev/null 2>&1; then
+        mv "$WORK/draft-folded.json" "$DRAFT_JSON"
+        echo "needs: $(jq -r '[.needs.tiers[] | select((.lines | length) > 0) | "\(.key) \(.lines | length)"] | if length == 0 then "no named lines" else join(", ") end' "$DRAFT_JSON")"
+        echo "health: $(jq -r '[.health.weeks[] | "\(.week) \(.opened) of \(.tracked)"] | join(", ")' "$DRAFT_JSON")$(jq -r 'if .health.flag then "; flagged" else "" end' "$DRAFT_JSON")"
+    else
+        echo "needs: the fold failed ($(head -c 200 "$WORK/pipeline-stderr.txt" 2>/dev/null | tr '\n' ' ')); the mail goes with the counts alone"
+        if jq '.flags = [{lead: "The runner could not build the named lines this run, so the list below is the counts alone."}] + (.flags // [])' \
+                "$DRAFT_JSON" > "$WORK/draft-flagged.json"; then
+            mv "$WORK/draft-flagged.json" "$DRAFT_JSON"
+        fi
+    fi
 else
     echo "funnel: portal.json carries no funnel; the email renders without the strip"
 fi

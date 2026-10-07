@@ -58,6 +58,12 @@ jobs:
       - name: Test
         run: npm test
 
+      # The folds the Pipeline mail's named lines and send weeks come from
+      # (runners/lib/pipeline.mjs) and the Linear read beside them: pure
+      # functions over small invented portals, so no install of their own.
+      - name: Runner lib tests
+        run: node --test ../lib/tst/pipeline.test.mjs
+
   shell:
     name: Shell
     runs-on: ubuntu-latest
