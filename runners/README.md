@@ -154,7 +154,7 @@ service account, so there is nothing to store, rotate, or leak.
 | Piece | Value |
 |---|---|
 | Service account | `runner-deployer@atelic.iam.gserviceaccount.com` |
-| Roles on the project | `cloudbuild.builds.editor`, `run.developer`, `logging.viewer`, `serviceusage.serviceUsageConsumer` |
+| Roles on the project | `cloudbuild.builds.editor`, `run.developer`, `logging.viewer`, `serviceusage.serviceUsageConsumer`, `storage.bucketViewer` |
 | Role on `gs://atelic_cloudbuild` | `storage.admin` (where Cloud Build takes the uploaded context) |
 | Role on the `runners` repository | `artifactregistry.repoAdmin` (push the image, delete the earlier ones) |
 | Role on the three runtime accounts and the compute default account | `iam.serviceAccountUser` (point a job at an image while it runs as its own account; build as the default one) |
@@ -169,6 +169,38 @@ gain one: only a run on main of this repository can become the deploy
 identity, and a pull request runs code nobody has merged. To remove the whole
 thing, delete the provider (or the pool), then the service account, then the
 workflow. Created 2026-10-07.
+
+Two things the first real runs taught, both on 2026-10-07:
+
+**The bucket viewer role is needed at the project, not only on the bucket.**
+With `storage.admin` on `gs://atelic_cloudbuild` alone, `gcloud builds submit`
+was forbidden from the bucket before it uploaded anything ("The user is
+forbidden from accessing the bucket"). Before it writes, the command lists the
+project's buckets to confirm the default staging bucket is the project's own,
+and a grant on the bucket itself does not cover a listing of the project.
+`storage.bucketViewer` on the project does, and it reads bucket metadata only,
+never an object.
+
+**The identity cannot read a build's log, and that is left as it is.** Cloud
+Build writes the log to its default logs bucket, which only a project Viewer
+or Owner may read, and Viewer is too broad for a deploy identity. gcloud's own
+wait is tied to its log tail, so the second run built all three images and
+then failed each promote with:
+
+```text
+ERROR: (gcloud.builds.submit)
+The build is running, and logs are being written to the default logs bucket.
+This tool can only stream logs if you are Viewer/Owner of the project and, if applicable, allowed by your VPC-SC security policy.
+```
+
+The builds had succeeded; the job update and the prune never ran.
+`--suppress-logs` does not help, since it silences the output and the tail
+still reads the bucket. So `bin/runner/promote` submits the build without
+waiting, prints its id and console link, tries the live log for every caller
+(a person at a terminal sees it as before; the workflow gets one line saying
+it may not), and takes the verdict from the build's status, which needs only
+the right to see the build. A failed build fails the promote with the console
+link, which is where the workflow's log is read.
 
 ### The Commands
 
