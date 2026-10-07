@@ -278,12 +278,12 @@ test("a warm SQL is listed when something is owed this week, and a parked or wai
                 row("1", { next: "wait" }),
                 row("2", { next: "parked", task: { due: "2026-11-09", reading: "parked", subject: "Reach back out" } }),
                 row("3", { next: "reply" }),
-                row("4", { next: "wait", task: { due: "2026-10-08", reading: "due", subject: "Talk with Jonah in person" } }),
+                row("4", { next: "wait", task: { due: "2026-10-08", reading: "due", subject: "Talk with Marta in person" } }),
             ],
         },
     });
     assert.deepEqual(tier(needsOf(portal, []).needs, "warm_sql").map((l) => [l.who, l.owed, l.due]), [
-        ["Company 4", "Talk with Jonah in person", "2026-10-08"],
+        ["Company 4", "Talk with Marta in person", "2026-10-08"],
         ["Company 3", "reply owed; theirs is the last message on the record", ""],
     ]);
 });
@@ -353,16 +353,16 @@ test("without Linear the customer lines are the open HubSpot tasks, and the mail
 });
 
 test("a title loses its week tag and its customer's name, and nothing else", () => {
-    assert.equal(trimTitle("W41: SkySpec: audit GA4", ["SkySpec"]), "audit GA4");
-    assert.equal(trimTitle("SkySpec - [W41] follow ups", ["SkySpec"]), "follow ups");
-    assert.equal(trimTitle("Skylight photos for the writeup", ["SkySpec"]), "Skylight photos for the writeup");
-    assert.equal(trimTitle("SkySpec:", ["SkySpec"]), "SkySpec:", "a title that is only the prefix stays whole");
+    assert.equal(trimTitle("W41: Westbrook: audit GA4", ["Westbrook"]), "audit GA4");
+    assert.equal(trimTitle("Westbrook - [W41] follow ups", ["Westbrook"]), "follow ups");
+    assert.equal(trimTitle("Skylight photos for the writeup", ["Westbrook"]), "Skylight photos for the writeup");
+    assert.equal(trimTitle("Westbrook:", ["Westbrook"]), "Westbrook:", "a title that is only the prefix stays whole");
     assert.equal(trimTitle("2026-W41 audit GA4", []), "audit GA4");
 });
 
 test("a title that merely starts with a W and a digit is not a week tag", () => {
-    assert.equal(trimTitle("W3C validation fixes", ["SkySpec"]), "W3C validation fixes");
-    assert.equal(trimTitle("W9 for the bookkeeper", ["SkySpec"]), "W9 for the bookkeeper");
+    assert.equal(trimTitle("W3C validation fixes", ["Westbrook"]), "W3C validation fixes");
+    assert.equal(trimTitle("W9 for the bookkeeper", ["Westbrook"]), "W9 for the bookkeeper");
     assert.equal(trimTitle("w41 audit", []), "w41 audit", "the tag is a capital W");
     assert.equal(trimTitle("W41", []), "W41", "a tag with nothing after it is the title");
 });

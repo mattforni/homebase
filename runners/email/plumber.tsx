@@ -319,7 +319,7 @@ function sentence(text: string): string {
 }
 
 /**
- * A named line: "SkySpec: audit GA4 and Tag Manager, update the writeup. Due
+ * A named line: "Westbrook: audit GA4 and Tag Manager, update the writeup. Due
  * Thu 10-08. ATE-633." The money follows the name on a proposal. The name
  * links to the record and the key to its ticket.
  */
