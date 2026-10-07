@@ -263,8 +263,11 @@ runner_execute() {
     "$dir/entrypoint.sh"
 }
 
-# Usage: runner_build_context <runner-dir>
-# Stages what a runner's image is built from and prints the directory. A Docker
+# Usage: runner_build_context <runner-dir> [staging-dir]
+# Stages what a runner's image is built from and prints the directory. The
+# staging directory is the runner's own .build/ unless a second argument
+# names another, which is how a check stages a context without wiping the
+# one a promote or a run-local in another session is building from. A Docker
 # context cannot reach above its own root, and neither can the tarball gcloud
 # builds submit uploads, yet a runner shares runners/lib/runner.sh and may ship
 # an agent definition from .claude/agents/. So the context is assembled: the
@@ -275,7 +278,7 @@ runner_execute() {
 runner_build_context() {
     local dir="$1" root staged n
     root="$(runner_repo_root)"
-    staged="$dir/.build"
+    staged="${2:-$dir/.build}"
     rm -rf "$staged" && mkdir -p "$staged/lib" || return 1
     # The `agents` and `mounts` manifests drive this side and never ship; and
     # `agents` the file would collide with agents/ the directory below.
@@ -283,7 +286,11 @@ runner_build_context() {
         --exclude=./agents --exclude=./mounts -cf - .) \
         | (cd "$staged" && tar -xf -) || return 1
     # The whole shared library: runner.sh for the entrypoint, the pull
-    # scripts, and whatever joins them.
+    # scripts, and whatever joins them. Files only: this copy is flat, so a
+    # directory under runners/lib makes cp fail and every promote and every
+    # container run of every runner dies here, staging its context. That
+    # shipped once (ATE-630, the unit tests, 2026-10-07; they live in
+    # runners/tst now) and bin/lint/runners refuses it since.
     cp "$root/runners/lib/"* "$staged/lib/" || return 1
     # The node renderer's sources, as a sibling of lib/ rather than a child,
     # because the flat copy above carries files and not directories. Its

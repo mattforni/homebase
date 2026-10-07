@@ -1,7 +1,7 @@
 // What the Pipeline mail says needs Forni and how the funnel is doing, worked
 // out of the portal sweep and the Linear read in code (ATE-630, 2026-10-07).
 //
-//   node pipeline.mjs fold <draft.json> <portal.json> <monday YYYY-MM-DD> [linear.json] [why linear is missing]
+//   node pipeline.mjs fold <draft.json> <portal.json> <monday YYYY-MM-DD> [linear.json] [why linear is missing] [when a reused linear.json was written]
 //       Prints the draft with `needs` and `health` added, `owed` settled
 //       against the named lines, and a flag when the Linear read did not run. The entrypoint calls it after the funnel merge.
 //
@@ -39,6 +39,11 @@ export const HEALTH_HANDED = HEALTH_WEEKS + 1;
 export const FLAG_MIN_TRACKED = 10;
 export const FLAG_DROP = 15;
 export const FLAG_PRIOR_WEEKS = 3;
+
+// How long after a company's last inbound message a new send stops being part
+// of that conversation and is outreach again: a fresh first touch months
+// after a thread went quiet. A starting point, like the flag's numbers.
+export const NEW_RUN_DAYS = 30;
 
 const MS_DAY = 86400000;
 
@@ -96,18 +101,21 @@ function pastOutreach(company, sentMs) {
  * - The sweep's companies are the funnel alone, so lifecycle Other never
  *   reaches here, and its noise list has already dropped calendar traffic and
  *   autoresponders from both the sends and the replies.
- * - Outreach is the first touch and the bumps: a company's sends up to its
- *   first real inbound reply. Everything Forni sends after that reply is a
- *   conversation, and counting it made a week of answers look like a week of
- *   outreach with a fine open rate (review, 2026-10-07).
+ * - Outreach is the first touch and the bumps: a run of sends that ends at
+ *   the first real inbound reply to it. Everything Forni sends after that
+ *   reply is a conversation, and counting it made a week of answers look like
+ *   a week of outreach with a fine open rate (review, 2026-10-07). A send
+ *   more than NEW_RUN_DAYS after the company's last inbound message starts a
+ *   new run and counts again; cutting at the first reply anywhere in the
+ *   lookback meant a fresh first touch after a dead conversation never did.
  * - A send to a company already at Opportunity or Customer is out (above).
  * - A company's day is tracked when any copy that day carried tracking and
  *   opened when a tracked copy shows an open.
- * - That first reply is credited to exactly one send, the latest outreach
- *   send before it: the latest on the reply's own thread when a send shares
- *   it, and otherwise the latest of any, since a real reply that arrived on
- *   a thread id no send carries (a new message, a forwarded one) is still an
- *   answer to the outreach and was being credited to nothing. One reply marking every earlier send
+ * - The reply that ends a run is credited to exactly one send, the latest
+ *   send of that run: the latest on the reply's own thread when a send
+ *   shares it, and otherwise the latest of any, since a real reply that
+ *   arrived on a thread id no send carries (a new message, a forwarded one)
+ *   is still an answer to the outreach. One reply marking every earlier send
  *   on the thread credited a first touch and its bump alike, and changed a
  *   past week's numbers after the fact.
  */
@@ -116,32 +124,44 @@ export function outreachSends(portal) {
     const byCompany = new Map();
     for (const c of Object.values(portal.contacts || {})) {
         if (!companies[c.company_id]) continue;
-        if (!byCompany.has(c.company_id)) byCompany.set(c.company_id, { touches: [], replies: [] });
-        const held = byCompany.get(c.company_id);
+        if (!byCompany.has(c.company_id)) byCompany.set(c.company_id, []);
+        const events = byCompany.get(c.company_id);
         for (const t of c.touches || []) {
             const ts = typeof t.ts === "number" ? t.ts : Date.parse(`${t.date}T18:00:00Z`);
-            if (!Number.isNaN(ts)) held.touches.push({ ...t, ts, day: typeof t.ts === "number" ? denverDay(t.ts) : t.date });
+            if (!Number.isNaN(ts)) events.push({ send: { ...t, ts, day: typeof t.ts === "number" ? denverDay(t.ts) : t.date }, ts });
         }
-        for (const r of c.replies || []) if (typeof r.ts === "number") held.replies.push(r);
+        for (const r of c.replies || []) if (typeof r.ts === "number") events.push({ reply: r, ts: r.ts });
     }
     const sends = [];
-    for (const [id, held] of byCompany) {
-        const first = held.replies.sort((a, b) => a.ts - b.ts)[0] || null;
-        const outreach = held.touches
-            .sort((a, b) => a.ts - b.ts)
-            .filter((t) => (first === null || t.ts < first.ts) && !pastOutreach(companies[id], t.ts));
-        let credited = null;
-        if (first !== null) {
-            const threaded = first.thread ? outreach.filter((t) => t.thread === first.thread) : [];
-            const pool = threaded.length > 0 ? threaded : outreach;
-            credited = pool[pool.length - 1] || null;
+    for (const [id, events] of byCompany) {
+        const outreach = [];
+        const credited = new Set();
+        // The run in flight, and when they last wrote: a reply closes the run
+        // and opens a conversation, which lasts until NEW_RUN_DAYS of silence
+        // from them.
+        let run = [];
+        let lastInbound = null;
+        for (const event of events.sort((a, b) => a.ts - b.ts)) {
+            if (event.reply) {
+                const threaded = event.reply.thread ? run.filter((t) => t.thread === event.reply.thread) : [];
+                const pool = threaded.length > 0 ? threaded : run;
+                if (pool.length > 0) credited.add(pool[pool.length - 1]);
+                run = [];
+                lastInbound = event.ts;
+                continue;
+            }
+            if (lastInbound !== null && event.ts - lastInbound <= NEW_RUN_DAYS * MS_DAY) continue;
+            if (pastOutreach(companies[id], event.ts)) continue;
+            lastInbound = null;
+            run.push(event.send);
+            outreach.push(event.send);
         }
         const days = new Map();
         for (const t of outreach) {
             const day = days.get(t.day) || { company: id, day: t.day, week: isoWeek(t.day), tracked: false, opened: false, responded: false };
             day.tracked = day.tracked || t.tracked === true;
             day.opened = day.opened || (t.tracked === true && (t.opens || 0) > 0);
-            day.responded = day.responded || t === credited;
+            day.responded = day.responded || credited.has(t);
             days.set(t.day, day);
         }
         sends.push(...days.values());
@@ -207,12 +227,15 @@ const priorityRank = (p) => (p >= 1 && p <= 4 ? p : 5);
 // reply is worded as what it is, a direction logged on a record: whether a
 // reply is owed is decided by the mailbox thread, which is the model's
 // `owed.reply`, and only that can put "reply owed" on a line (settleOwed).
+//
+// A second touch and a first touch are not here on purpose. They are the
+// drafted kinds: the routine writes them and the mail counts them under Cold
+// Touches, so a SQL whose only next step is one of those gets no warm line,
+// or it would be listed twice, once as a line and once in a count.
 const NEXT_WORDS = {
     reply: "last message on the record is theirs, check the thread",
     decide: "close or keep, past the clock",
     visit: "visit or call due",
-    bump: "second touch due",
-    first: "first touch due",
 };
 
 /** A stage's company rows, as the sweep lists them, keyed by nothing: the caller filters. */
@@ -228,6 +251,12 @@ function dealsOf(portal) {
         .map((row) => ({ ...row.deal, closed: false, won: false, companies: [row.id] }));
 }
 
+// The lines whose `who` is a deal's name because no company row was there to
+// name them. Kept beside the lines rather than on them, so the draft carries
+// no field the renderer does not read; settleOwed asks it so that a company
+// which happens to share a deal's name is never matched to that line.
+const DEAL_NAMED = new WeakSet();
+
 /**
  * Open proposals: exactly one line per open deal, the larger first and then
  * the sooner due. A deal is named by its first company the sweep knows; a
@@ -237,7 +266,9 @@ function dealsOf(portal) {
  * whose company has been closed with a reason is left out. What is owed is
  * that company's nearest open task, parked or not, since a proposal's task
  * is the date Forni said he would reach back out; with no task the line says
- * where the deal stands. Two deals open at one company are each led by the
+ * where the deal stands. A Customer's open deal always says where it stands:
+ * a Customer's nearest task is client work, and it read as what an upsell
+ * proposal owed. Two deals open at one company are each led by the
  * deal's own name, which with the money is what tells them apart.
  */
 function proposalLines(portal, rows) {
@@ -248,22 +279,25 @@ function proposalLines(portal, rows) {
     const perCompany = new Map();
     for (const { id } of placed) if (id) perCompany.set(id, (perCompany.get(id) || 0) + 1);
     const lines = placed.map(({ deal, id, company }) => {
-        const task = (id && rows.get(id)?.task) || null;
+        const task = (id && company.lifecyclestage !== "customer" && rows.get(id)?.task) || null;
         const owed = task?.subject || deal.stage || "an open deal";
-        return {
+        const line = {
             who: company?.name || deal.name || "An open deal", amount: deal.amount ?? null,
             owed: company && perCompany.get(id) > 1 && deal.name ? `${deal.name}: ${owed}` : owed,
             due: task?.due || "", url: company?.url || null,
         };
+        if (!company) DEAL_NAMED.add(line);
+        return line;
     });
     return lines.sort((a, b) => ((b.amount || 0) - (a.amount || 0)) || dueOrder(a, b));
 }
 
 /**
- * Warm SQLs: a live SQL company with something owed this week, either a task
- * due or overdue or a touch the sweep reads as owed. A name parked past this
- * week stays out, as it did in the old mail, and so does one that is only
- * waiting on them.
+ * Warm SQLs: a live SQL company with something owed this week that is not a
+ * drafted touch: a task due or overdue, a visit, a close, or an inbound
+ * message the record shows as the last word. A name parked past this week
+ * stays out, as it did in the old mail, and so does one that is only waiting
+ * on them or only owed a second or a first touch, which the counts carry.
  */
 function warmLines(portal) {
     const lines = [];
@@ -295,18 +329,25 @@ export function trimTitle(title, names) {
     return out || String(title || "").trim();
 }
 
-/** The company's open HubSpot tasks, as lines with no ticket: the customer lines when Linear cannot supply them. A task parked past this week stays out. */
-function taskLines(portal, company) {
+/**
+ * The company's open HubSpot tasks, as lines with no ticket. `due` keeps only
+ * the ones due this week or overdue; without it every task not parked past
+ * this week is a line, the undated included.
+ */
+function taskLines(portal, company, { due = false } = {}) {
     const own = new Set(company.contacts || []);
     return (portal.tasks || [])
-        .filter((t) => t.subject && t.reading !== "parked")
+        .filter((t) => t.subject && (due ? ["due", "stale"].includes(t.reading) : t.reading !== "parked"))
         .filter((t) => (t.companies || []).includes(company.id) || (t.contacts || []).some((id) => own.has(id)))
         .map((t) => ({ who: company.name, owed: t.subject, due: t.due || "", url: company.url, priority: 0 }));
 }
 
 /**
  * The three customer tiers. A Customer company's lines are the open issues of
- * the active cycle in the Linear project its `linear_project` property names.
+ * the active cycle in the Linear project its `linear_project` property names,
+ * and with them its open HubSpot tasks due this week or overdue, since a hold
+ * Forni set on the record is owed whether or not a ticket exists; a task
+ * whose subject repeats an issue's title is the same work and is said once.
  * The won deal's `engagement_phase` says build or operate (build when unset),
  * and the company is paying when its won deals sum to more than nothing and a
  * trade otherwise. When Linear did not answer, or the company names no
@@ -328,11 +369,19 @@ function customerTiers(portal, linear) {
         const project = (company.linear_project || "").trim();
         let lines;
         if (linear && project) {
-            lines = linear.filter((issue) => (issue.project || "").trim().toLowerCase() === project.toLowerCase())
-                .map((issue) => ({
+            const issues = linear.filter((issue) => (issue.project || "").trim().toLowerCase() === project.toLowerCase());
+            // Both sides are trimmed the same way before they are compared: a
+            // task filed as "<Customer>: audit the tag container" and an issue
+            // titled "W41: audit the tag container" are one piece of work.
+            const trimmed = (text) => norm(trimTitle(text, [company.name, project]));
+            const titles = new Set(issues.map((issue) => trimmed(issue.title)));
+            lines = [
+                ...issues.map((issue) => ({
                     who: company.name, owed: trimTitle(issue.title, [company.name, project]), due: issue.dueDate || "",
                     url: company.url, ref: issue.identifier, ref_url: issue.url, priority: issue.priority,
-                }));
+                })),
+                ...taskLines(portal, company, { due: true }).filter((line) => !titles.has(trimmed(line.owed))),
+            ];
         } else {
             if (linear) unmapped.push(company.name);
             lines = taskLines(portal, company);
@@ -399,13 +448,28 @@ const FOLDED_WORDS = { visit: "visit owed", decide: "close or keep" };
  * title, the task's subject), several replies at one company each add
  * theirs, and the same words are never added twice. The line it lands on is
  * the company's first, in the tiers' own order, which is its most senior.
- * Matched on the record's url, and on the company's name for a row with no
- * url. Returns the settled `owed` and the tiers with what was folded in.
+ * Matched on the record's url when the name and the line both carry one,
+ * and two different records are never the same company whatever they are
+ * called; the name decides only when one side has no url, and never against
+ * a line that is named for a deal. Returns the settled `owed` and the tiers
+ * with what was folded in.
  */
 export function settleOwed(owed, tiers) {
-    const settled = tiers.map((t) => ({ ...t, lines: (t.lines || []).map((l) => ({ ...l })) }));
+    const settled = tiers.map((t) => ({
+        ...t,
+        lines: (t.lines || []).map((l) => {
+            const copy = { ...l };
+            if (DEAL_NAMED.has(l)) DEAL_NAMED.add(copy);
+            return copy;
+        }),
+    }));
     const lines = settled.flatMap((t) => t.lines);
-    const lineOf = (n) => lines.find((l) => (norm(n.company_url) && norm(l.url) === norm(n.company_url)) || (norm(n.company) && norm(l.who) === norm(n.company)));
+    const lineOf = (n) => lines.find((l) => {
+        const theirs = norm(n.company_url);
+        const ours = norm(l.url);
+        if (theirs && ours) return theirs === ours;
+        return !DEAL_NAMED.has(l) && norm(n.company) !== "" && norm(l.who) === norm(n.company);
+    });
     const add = (line, words) => {
         const held = String(line.owed || "").split("; ").filter(Boolean);
         if (!held.includes(words)) line.owed = [...held, words].join("; ");
@@ -438,13 +502,19 @@ export function settleOwed(owed, tiers) {
  * settled against the named lines, and a flag (which the mail prints under Left for You) when
  * the customer lines did not come from Linear.
  */
-export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null, linearError = "", linearTruncated = false } = {}) {
+export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null, linearError = "", linearTruncated = false, linearReused = "" } = {}) {
     const built = needsOf(portal, linear);
     const flags = [...(draft.flags || [])];
     if (linear === null && built.customers > 0) {
         flags.unshift({ lead: `The Linear read did not run${linearError ? ` (${linearError})` : ""}, so the customer lines are open HubSpot tasks.` });
     } else if (built.unmapped.length > 0) {
         flags.unshift({ lead: `No linear_project on ${built.unmapped.join(", ")}, so ${built.unmapped.length === 1 ? "its" : "their"} lines are open HubSpot tasks.` });
+    }
+    // A read saved by an earlier pull is the cycle as it stood then. The
+    // lines are still worth having, and the mail says how old they are, when
+    // there is a customer for it to matter to, as with the line above.
+    if (linear !== null && linearReused && built.customers > 0) {
+        flags.unshift({ lead: `The Linear read is from an earlier pull (${linearReused}), so the customer lines may be behind.` });
     }
     if (linear !== null && linearTruncated) {
         flags.unshift({ lead: `The Linear read stopped at ${linear.length} issues, so a customer line may be missing.` });
@@ -462,9 +532,9 @@ export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null,
 // ---------- dispatch ----------
 
 if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
-    const [command, draftPath, portalPath, monday, linearPath, linearError] = process.argv.slice(2);
+    const [command, draftPath, portalPath, monday, linearPath, linearError, linearReused] = process.argv.slice(2);
     if (command !== "fold" || !draftPath || !portalPath || !/^\d{4}-\d{2}-\d{2}$/.test(monday || "")) {
-        console.error("usage: node pipeline.mjs fold <draft.json> <portal.json> <monday YYYY-MM-DD> [linear.json] [why linear is missing]");
+        console.error("usage: node pipeline.mjs fold <draft.json> <portal.json> <monday YYYY-MM-DD> [linear.json] [why linear is missing] [when a reused linear.json was written]");
         process.exit(2);
     }
     const read = (path) => JSON.parse(readFileSync(path, "utf8"));
@@ -473,14 +543,14 @@ if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
     let why = linearError || "";
     if (linearPath) {
         try {
-            const issues = read(linearPath).issues;
-            if (!Array.isArray(issues)) throw new Error("no issues array");
-            linear = issues;
-            linearTruncated = read(linearPath).truncated === true;
+            const saved = read(linearPath);
+            if (!Array.isArray(saved.issues)) throw new Error("no issues array");
+            linear = saved.issues;
+            linearTruncated = saved.truncated === true;
         } catch (error) {
             why = why || "the saved Linear read could not be parsed";
         }
     }
-    const out = fold(read(draftPath), read(portalPath), { monday, linear, linearError: why, linearTruncated });
+    const out = fold(read(draftPath), read(portalPath), { monday, linear, linearError: why, linearTruncated, linearReused: linearReused || "" });
     process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);
 }

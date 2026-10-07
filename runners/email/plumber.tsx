@@ -543,11 +543,17 @@ function weekRows(weeks: SendWeek[]): WeekCell[][] {
 const WEEK_COLUMNS = ["Week", "Tracked", "Opened", "Open Rate", "Responded", "Respond Rate"];
 
 /**
- * The table draws four weeks. The runner hands over a fifth, older one, which
- * is never drawn: it is what the oldest row shown reads its change against,
- * since a row with no week beneath it has none to show.
+ * How many of the weeks handed over are drawn: all but the oldest, which is
+ * there only to give the last row drawn its change, since a row with no week
+ * beneath it has none to show. Read off what arrived rather than off a number
+ * of its own, so the runner's count of weeks and the table's cannot drift
+ * apart; a lone week is drawn as it is, and the cap is a guard on a runner
+ * that sends a year by mistake, not a setting.
  */
-const WEEKS_SHOWN = 4;
+const WEEKS_DRAWN_AT_MOST = 12;
+function weeksDrawn(weeks: SendWeek[]): number {
+	return Math.min(Math.max(weeks.length - 1, 1), WEEKS_DRAWN_AT_MOST);
+}
 
 /* ---------- cloud routines ---------- */
 
@@ -674,7 +680,7 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						<Card>
 							{flag === "" ? null : <Note eyebrowText="Flag" text={flag} accented={true} last={false} />}
 							<Row last={true}>
-								<WeekTable columns={WEEK_COLUMNS} rows={weekRows(weeks).slice(0, WEEKS_SHOWN)} />
+								<WeekTable columns={WEEK_COLUMNS} rows={weekRows(weeks).slice(0, weeksDrawn(weeks))} />
 							</Row>
 						</Card>
 					</>
@@ -776,7 +782,7 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 		out += "\nOpens and Responses by Week\n";
 		if (flag !== "") out += `${wrap(`Flag: ${flag}`)}\n\n`;
 		const rows = weekRows(weeks)
-			.slice(0, WEEKS_SHOWN)
+			.slice(0, weeksDrawn(weeks))
 			.map((cells) => cells.map((cell) => `${cell.value}${cell.change ? ` ${cell.change}` : ""}`));
 		out += `${textTable(WEEK_COLUMNS, rows, [1, 2, 3, 4, 5])}\n`;
 	}

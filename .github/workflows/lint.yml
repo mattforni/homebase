@@ -49,7 +49,7 @@ jobs:
       # functions over small invented portals with no dependency to install,
       # so they run ahead of the install and fail in seconds.
       - name: Runner lib tests
-        run: node --test ../lib/tst/pipeline.test.mjs
+        run: node --test ../tst/pipeline.test.mjs
 
       - name: Install
         run: npm ci

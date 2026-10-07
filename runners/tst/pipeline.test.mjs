@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { spawnSync } from "node:child_process";
-import { activeCycleIssues, LinearError } from "../linear.mjs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { activeCycleIssues, LinearError } from "../lib/linear.mjs";
 import {
     FIRST_TOUCH_TARGET,
     FLAG_DROP,
@@ -13,7 +16,8 @@ import {
     outreachSends,
     settleOwed,
     trimTitle,
-} from "../pipeline.mjs";
+    NEW_RUN_DAYS,
+} from "../lib/pipeline.mjs";
 
 /*
  * The gate on what the Pipeline mail says needs Forni and how the funnel is
@@ -22,7 +26,10 @@ import {
  * portal is not. Each test names the one rule it holds, since these are the
  * joins a wrong answer would otherwise deliver to Monday's inbox as fact.
  *
- *   node --test runners/lib/tst/
+ *   node --test runners/tst/pipeline.test.mjs
+ *
+ * These live beside runners/lib and not inside it: that directory is copied
+ * flat into every runner's image, and a directory in it breaks the copy.
  */
 
 const ms = (iso) => Date.parse(iso);
@@ -124,6 +131,29 @@ test("outreach is a company's sends up to its first real reply, and nothing afte
     assert.deepEqual(outreachSends(portal).map((s) => `${s.company}|${s.day}`), ["1|2026-09-29", "1|2026-10-06"]);
     const week = healthOf(portal, "2026-10-05", ms("2026-10-09T18:00:00Z")).weeks.at(-1);
     assert.deepEqual([week.tracked, week.opened, week.responded], [1, 1, 1], "the two answers and their eighteen opens are not in the week");
+});
+
+test("a send long after their last message starts a new run of outreach, and a reply ends only the run it answers", () => {
+    const day = (n) => new Date(ms("2026-06-01T15:00:00Z") + n * 86400000).toISOString();
+    const portal = portalOf({
+        companies: [company("1"), company("2")],
+        contacts: [
+            // A first touch, their reply, an answer the next day, then silence.
+            // A fresh first touch a day past the window, a bump, and a reply to that.
+            contact("a", "1",
+                [touch(day(0)), touch(day(3)), touch(day(2 + NEW_RUN_DAYS + 1), { opens: 1 }), touch(day(2 + NEW_RUN_DAYS + 8)), touch(day(2 + NEW_RUN_DAYS + 10))],
+                [reply(day(2)), reply(day(2 + NEW_RUN_DAYS + 9))]),
+            // The same fresh send, a day inside the window: still the conversation.
+            contact("b", "2", [touch(day(0)), touch(day(2 + NEW_RUN_DAYS - 1))], [reply(day(2))]),
+        ],
+    });
+    const sends = outreachSends(portal).filter((s) => s.company === "1").sort((a, b) => a.day.localeCompare(b.day));
+    assert.deepEqual(sends.map((s) => [s.day, s.opened, s.responded]), [
+        [day(0).slice(0, 10), false, true],
+        [day(2 + NEW_RUN_DAYS + 1).slice(0, 10), true, false],
+        [day(2 + NEW_RUN_DAYS + 8).slice(0, 10), false, true],
+    ], "the answer on day 3 and the one after the second reply are conversation; each reply credits its own run's last send");
+    assert.deepEqual(outreachSends(portal).filter((s) => s.company === "2").map((s) => s.day), [day(0).slice(0, 10)]);
 });
 
 test("one reply is credited to exactly one send, the latest outreach send before it", () => {
@@ -350,6 +380,63 @@ test("a warm line says a reply is owed only when the model's owed.reply names th
     assert.ok(!/reply owed/.test(tier(out.needs, "warm_sql")[1].owed));
 });
 
+test("a customer with a Linear project keeps its due HubSpot tasks, said once when a task repeats an issue", () => {
+    const portal = portalOf({
+        companies: [company("1", { lifecyclestage: "customer", linear_project: "Westbrook" })],
+        stages: { customer: [row("1")] },
+        deals: [{ id: "d1", amount: 7500, closed: true, won: true, close: "2026-08-20", engagement_phase: "", companies: ["1"] }],
+        tasks: [
+            { id: "t1", subject: "Call about the invoice", due: "2026-10-07", reading: "due", companies: ["1"], contacts: [] },
+            { id: "t2", subject: "Audit the tag container", due: "2026-10-08", reading: "due", companies: ["1"], contacts: [] },
+            { id: "t3", subject: "W41: audit the tag container", due: "2026-10-01", reading: "stale", companies: ["1"], contacts: [] },
+            { id: "t6", subject: "Company 1: audit the tag container", due: "2026-10-02", reading: "stale", companies: ["1"], contacts: [] },
+            { id: "t4", subject: "Someday, the renewal", due: "", reading: "undated", companies: ["1"], contacts: [] },
+            { id: "t5", subject: "Renewal check in", due: "2026-12-01", reading: "parked", companies: ["1"], contacts: [] },
+        ],
+    });
+    const linear = [issue("EXA-2", "Westbrook", "W41: audit the tag container", { dueDate: "2026-10-08" })];
+    assert.deepEqual(tier(needsOf(portal, linear).needs, "paying_build").map((l) => [l.ref, l.owed, l.due]), [
+        [undefined, "Call about the invoice", "2026-10-07"],
+        ["EXA-2", "audit the tag container", "2026-10-08"],
+    ], "the three tasks that repeat the issue's title, whole, bare, or under the customer's own prefix, are the issue; undated and parked tasks are not due");
+});
+
+test("a SQL whose only next step is a drafted touch gets no warm line, since the counts carry it", () => {
+    const portal = portalOf({
+        companies: ["1", "2", "3", "4", "5"].map((id) => company(id)),
+        stages: {
+            sql: [
+                row("1", { next: "bump" }),
+                row("2", { next: "first" }),
+                row("3", { next: "visit" }),
+                row("4", { next: "decide" }),
+                row("5", { next: "bump", task: { due: "2026-10-08", reading: "due", subject: "Send the references" } }),
+            ],
+        },
+    });
+    assert.deepEqual(tier(needsOf(portal, []).needs, "warm_sql").map((l) => [l.who, l.owed]), [
+        ["Company 5", "Send the references"],
+        ["Company 3", "visit or call due"],
+        ["Company 4", "close or keep, past the clock"],
+    ]);
+});
+
+test("a Customer's open deal says where it stands, never its client task", () => {
+    const task = { due: "2026-10-09", reading: "due", subject: "Send the monthly page" };
+    const portal = portalOf({
+        companies: [company("1", { lifecyclestage: "customer" }), company("2", { lifecyclestage: "opportunity" })],
+        stages: { customer: [row("1", { task })], opportunity: [row("2", { task })] },
+        deals: [
+            { id: "d1", name: "Care plan", stage: "Proposal", amount: 600, closed: false, won: false, companies: ["1"] },
+            { id: "d2", name: "Rebuild", stage: "Proposal", amount: 500, closed: false, won: false, companies: ["2"] },
+        ],
+    });
+    assert.deepEqual(tier(needsOf(portal, []).needs, "proposal").map((l) => [l.who, l.owed, l.due]), [
+        ["Company 1", "Proposal", ""],
+        ["Company 2", "Send the monthly page", "2026-10-09"],
+    ]);
+});
+
 test("a customer's lines are its Linear project's issues, sorted by due date and then priority, in the tier its deals put it", () => {
     const linear = [
         issue("EXA-3", "Westbrook", "Westbrook: no date, low", { priority: 4 }),
@@ -366,6 +453,8 @@ test("a customer's lines are its Linear project's issues, sorted by due date and
         ["EXA-3", "no date, low", ""],
         // Company 4 names no project, so its open HubSpot task stands in, with no ticket.
         [undefined, "Confirm the launch date", "2026-10-06"],
+        // Company 1 has a project and a task due this week: both are its lines. Its parked task is not.
+        [undefined, "Send the access list", "2026-10-09"],
     ].sort((a, b) => (a[2] || "9999").localeCompare(b[2] || "9999")));
     assert.deepEqual(tier(needs, "trade_build").map((l) => l.ref), ["EXA-4"]);
     assert.deepEqual(tier(needs, "operate").map((l) => l.ref), ["EXA-5"]);
@@ -439,6 +528,33 @@ test("a reply owed on a company with a named line is added to that line, which k
     assert.equal(tiers[0].lines[0].owed, "audit the tag container", "the tiers handed in are not changed");
 });
 
+test("two different records are never the same company, and a deal's name is never a company's", () => {
+    const tiers = [
+        { key: "warm_sql", lines: [{ who: "Marigold Dental", owed: "visit or call due", due: "", url: url("1") }] },
+        { key: "paying_build", lines: [{ who: "Cedar Roofing", owed: "a task", due: "", url: null }] },
+    ];
+    const owed = {
+        reply: [
+            // The same name on another record: a second office, a duplicate, a namesake.
+            { person: "Ida", company: "Marigold Dental", contact_url: null, company_url: url("9"), note: "wrong office" },
+            // No url on the line, so the name decides.
+            { person: "Odo", company: "cedar roofing", contact_url: null, company_url: url("2"), note: "asked for dates" },
+        ],
+    };
+    const out = settleOwed(owed, tiers);
+    assert.deepEqual(out.owed.reply.map((n) => n.person), ["Ida"]);
+    assert.equal(out.tiers[0].lines[0].owed, "visit or call due");
+    assert.equal(out.tiers[1].lines[0].owed, "a task; reply owed to Odo: asked for dates");
+
+    // A proposal named for its deal, because its company is outside the funnel rows.
+    const portal = portalOf({ deals: [{ id: "d1", name: "Harbor Lane", stage: "Scoping", amount: 4000, closed: false, won: false, companies: ["77"] }] });
+    const draft = { flags: [], owed: { reply: [{ person: "Una", company: "Harbor Lane", contact_url: null, company_url: null, note: "a different Harbor Lane" }] } };
+    const folded = fold(draft, portal, { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [] });
+    assert.deepEqual(folded.owed.reply.map((n) => n.person), ["Una"]);
+    assert.equal(tier(folded.needs, "proposal")[0].owed, "Scoping");
+    assert.deepEqual(Object.keys(tier(folded.needs, "proposal")[0]).sort(), ["amount", "due", "owed", "url", "who"], "and the line carries no field the renderer does not read");
+});
+
 test("a visit or a close at a company with a named line is added to the line, never dropped", () => {
     const owed = {
         reply: [person("Bo", "2", "b")],
@@ -466,7 +582,7 @@ test("second touches and first touches are never removed, since their drafts fir
     assert.deepEqual(out.tiers.map((t) => t.lines[0].owed), ["Walk the proposal", "second touch due"], "and they add nothing to a line");
 });
 
-/* ---------- the Linear read ---------- *//* ---------- the Linear read ---------- */
+/* ---------- the Linear read ---------- */
 
 const answer = (body, status = 200) => ({ ok: status === 200, status, text: async () => JSON.stringify(body) });
 
@@ -511,10 +627,39 @@ test("no word of what Linear sends back can reach the mail, on any failure", asy
         await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => failure }), (error) => error instanceof LinearError && !/LEAK|SECRET/.test(error.message));
     }
     // The command line says a failure that is not this file's own as one fixed phrase.
-    const run = spawnSync(process.execPath, [new URL("../linear.mjs", import.meta.url).pathname, "issues"], { encoding: "utf8", env: { ...process.env, LINEAR_API_KEY: "" } });
+    const run = spawnSync(process.execPath, [new URL("../lib/linear.mjs", import.meta.url).pathname, "issues"], { encoding: "utf8", env: { ...process.env, LINEAR_API_KEY: "" } });
     assert.equal(run.status, 1);
     assert.equal(run.stderr.trim(), "no LINEAR_API_KEY in the environment");
     assert.equal(run.stdout, "");
+});
+
+const oneCustomer = () => portalOf({
+    companies: [company("1", { lifecyclestage: "customer", linear_project: "Westbrook" })],
+    stages: { customer: [row("1")] },
+});
+
+test("a Linear read reused from an earlier pull is said under Left for You, and the saved file is read once", () => {
+    const out = fold({ flags: [{ lead: "An older flag." }], owed: {} }, oneCustomer(), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [], linearReused: "written 2026-10-05" });
+    assert.deepEqual(out.flags.map((f) => f.lead), ["The Linear read is from an earlier pull (written 2026-10-05), so the customer lines may be behind.", "An older flag."]);
+    const nobody = fold({ flags: [], owed: {} }, portalOf({}), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [], linearReused: "written 2026-10-05" });
+    assert.deepEqual(nobody.flags, [], "with no customer there is no line for the read's age to matter to");
+    const fresh = fold({ flags: [], owed: {} }, portalOf({}), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [] });
+    assert.deepEqual(fresh.flags, [], "a fresh read says nothing");
+
+    // The command line, as the entrypoint calls it on a skip pulls run.
+    const dir = mkdtempSync(join(tmpdir(), "pipeline-test-"));
+    const write = (file, value) => { writeFileSync(join(dir, file), JSON.stringify(value)); return join(dir, file); };
+    const run = spawnSync(process.execPath, [
+        new URL("../lib/pipeline.mjs", import.meta.url).pathname, "fold",
+        write("draft.json", { flags: [], owed: {} }), write("portal.json", oneCustomer()), "2026-10-05",
+        write("linear.json", { issues: [], truncated: true }), "", "written 2026-10-05",
+    ], { encoding: "utf8" });
+    rmSync(dir, { recursive: true, force: true });
+    assert.equal(run.status, 0, run.stderr);
+    assert.deepEqual(JSON.parse(run.stdout).flags.map((f) => f.lead), [
+        "The Linear read stopped at 0 issues, so a customer line may be missing.",
+        "The Linear read is from an earlier pull (written 2026-10-05), so the customer lines may be behind.",
+    ]);
 });
 
 test("a Linear read that stops at the page cap says so, and the mail is told", async () => {

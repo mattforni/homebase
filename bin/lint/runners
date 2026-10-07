@@ -81,6 +81,34 @@ for entry in "$ROOT"/runners/*/entrypoint.sh; do
     [[ -x "$entry" ]] || fail "${entry#"$ROOT"/} is not executable; fix with git update-index --chmod=+x"
 done
 
+# 4. runners/lib holds files and nothing else. runner_build_context copies it
+#    flat into every runner's build context, and a flat cp fails on a
+#    directory, so one directory here breaks the staging of all three runners
+#    at once: no promote, no container run. The unit tests landed as
+#    runners/lib/tst on 2026-10-07 (ATE-630) and did exactly that, unseen,
+#    because nothing between a commit and a promote stages a context. Tests
+#    for the library live in runners/tst.
+for entry in "$ROOT"/runners/lib/*/; do
+    fail "${entry#"$ROOT"/} is a directory under runners/lib, which breaks the flat copy in runner_build_context; move it out (tests live in runners/tst)"
+done
+
+# 5. And the thing itself: stage every runner that ships a Dockerfile, the
+#    way promote would. It is the one check that fails on whatever breaks
+#    staging next. Staged into a scratch directory and never the runner's
+#    own .build/: the function wipes its destination first, sessions run
+#    side by side here, and a pre-commit in one must not delete the context
+#    a promote or a run-local in another is building from. What the staging
+#    printed is shown only when it fails, since the reason is the point.
+stage_root="$(mktemp -d)"
+trap 'rm -rf "$stage_root"' EXIT
+for dockerfile in "$ROOT"/runners/*/Dockerfile; do
+    runner="$(dirname "$dockerfile")"
+    if ! stage_output="$( ( runner_build_context "$runner" "$stage_root/$(basename "$runner")" ) 2>&1 )"; then
+        fail "${runner#"$ROOT"/} does not stage: runner_build_context failed, so promote and run-local would too"
+        printf '%s\n' "$stage_output" | sed 's/^/      /' >&2
+    fi
+done
+
 if [[ $failed -eq 0 ]]; then
     printf "${GREEN}[+]${NC} Runner checks clean\n"
 fi
