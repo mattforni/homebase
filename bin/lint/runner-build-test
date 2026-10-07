@@ -45,7 +45,7 @@ case "$1 $2" in
       *)     echo "$line" ;;
     esac ;;
   "builds cancel")
-    [[ -z "${FAKE_NOCANCEL:-}" ]] || exit 1 ;;
+    [[ -z "${FAKE_NOCANCEL:-}" ]] || { echo "ERROR: cancel refused by the fake" >&2; exit 1; } ;;
 esac
 FAKE
 chmod +x "$WORK/bin/gcloud"
@@ -109,9 +109,17 @@ run "SUCCESS" RUNNER_BUILD_DEADLINE=0
 expect "a success read past the deadline is still a success" 0 0
 run "FAILURE" RUNNER_BUILD_DEADLINE=0
 expect "a failure read past the deadline sends no cancel" 1 0
+
+echo "A cancel that fails"
+# The wait must never report a build as cancelled when the cancel did not go
+# through: exit 4 is how a caller knows the build may still be running.
 run "WORKING" RUNNER_BUILD_POLL=1 RUNNER_BUILD_DEADLINE=1 FAKE_NOCANCEL=1
-expect "a cancel that fails still ends the wait" 2 1
-if grep -q "cancel it by hand" "$WORK/out"; then ok "and says the build needs cancelling by hand"; else bad "and says the build needs cancelling by hand"; fi
+expect "at the deadline, a failed cancel is its own exit code" 4 1
+if grep -q "may still be running" "$WORK/out"; then ok "and says the build may still be running"; else bad "and says the build may still be running"; fi
+if grep -q "cancel refused by the fake" "$WORK/out"; then ok "and shows why the cancel failed"; else bad "and shows why the cancel failed"; fi
+run "WORKING MISS" RUNNER_BUILD_POLL=1 RUNNER_BUILD_MISS_LIMIT=1 FAKE_NOCANCEL=1
+expect "past the miss limit, a failed cancel is the same exit code" 4 1
+if grep -q "may still be running" "$WORK/out"; then ok "and says so there too"; else bad "and says so there too"; fi
 
 echo "The heartbeat"
 run "WORKING WORKING WORKING SUCCESS" RUNNER_BUILD_POLL=1 RUNNER_BUILD_HEARTBEAT=1

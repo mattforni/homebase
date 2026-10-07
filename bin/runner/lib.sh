@@ -42,8 +42,10 @@ RUNNER_BUILD_MISS_LIMIT="${RUNNER_BUILD_MISS_LIMIT:-120}"
 RUNNER_BUILD_HEARTBEAT="${RUNNER_BUILD_HEARTBEAT:-30}"
 
 # Usage: runner_build_cancel <build-id>
+# Only what gcloud prints on success is dropped. Its errors come through, so
+# a cancel that fails shows why.
 runner_build_cancel() {
-    gcloud builds cancel "$1" --project="$RUNNER_PROJECT" >/dev/null 2>&1
+    gcloud builds cancel "$1" --project="$RUNNER_PROJECT" >/dev/null
 }
 
 # Usage: runner_build_wait <build-id> [started]
@@ -51,9 +53,11 @@ runner_build_cancel() {
 #   1  the build ended some other way (failed, cancelled, timed out, expired)
 #   2  the deadline passed; the build was cancelled
 #   3  its status could not be read for too long; the build was cancelled
-# So when this returns the build is over or has been told to stop, and a
-# caller has nothing left running to clean up. `started` is $SECONDS at the
-# submit, so the deadline covers the whole build and not only this wait.
+#   4  either of those two, and the cancel itself failed: the build may still
+#      be running, and the caller must say so and never call it cancelled
+# So when this returns below 4 the build is over or has been told to stop,
+# and a caller has nothing left running to clean up. `started` is $SECONDS at
+# the submit, so the deadline covers the whole build and not only this wait.
 #
 # The heartbeat prints whether or not a log is streaming beside this. A
 # refused log read leaves gcloud waiting in silence until the build ends, so
@@ -89,14 +93,18 @@ runner_build_wait() {
                 echo "the status of build $id could not be read for $(( SECONDS - miss_since )) seconds; the last error was:" >&2
                 sed 's/^/    /' "$errfile" >&2
                 echo "cancelling build $id so it is not left running" >&2
-                runner_build_cancel "$id" || echo "WARNING: could not cancel build $id; cancel it by hand" >&2
-                rm -f "$errfile"; return 3
+                rm -f "$errfile"
+                runner_build_cancel "$id" && return 3
+                echo "the cancel of build $id failed, so it may still be running" >&2
+                return 4
             fi
         fi
         if (( SECONDS - started >= RUNNER_BUILD_DEADLINE )); then
             echo "build $id is still $build_status after $(( SECONDS - started )) seconds, past the $RUNNER_BUILD_DEADLINE allowed; cancelling it" >&2
-            runner_build_cancel "$id" || echo "WARNING: could not cancel build $id; cancel it by hand" >&2
-            rm -f "$errfile"; return 2
+            rm -f "$errfile"
+            runner_build_cancel "$id" && return 2
+            echo "the cancel of build $id failed, so it may still be running" >&2
+            return 4
         fi
         if (( SECONDS - last_beat >= RUNNER_BUILD_HEARTBEAT )); then
             last_beat="$SECONDS"

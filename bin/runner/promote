@@ -162,6 +162,7 @@ trap - EXIT INT TERM
 case "$wait_rc" in
     0) echo "build $build_id succeeded" ;;
     1) die "build $build_id did not succeed, so $name is not promoted and its job still points at the image it had. Read the log at $build_url or with: gcloud builds log $build_id --project=$RUNNER_PROJECT" ;;
+    4) die "build $build_id was given up on and the attempt to cancel it failed, so it MAY STILL BE RUNNING and could yet move the $tag tag. $name is not promoted by this run. Check it at $build_url and cancel it by hand: gcloud builds cancel $build_id --project=$RUNNER_PROJECT" ;;
     *) die "build $build_id was cancelled before it finished, so $name is not promoted and its job still points at the image it had. See $build_url" ;;
 esac
 
