@@ -64,7 +64,7 @@
 #                                   roster commit goes out over. Only used on a checkout this run cloned
 #   OUTREACH_TRIGGER_TOKEN          atelic-keys/outreach-trigger-token; the Outreach routine's API trigger
 #                                   token. Without it the payloads are listed as not fired and the run goes on
-#   LINEAR_API_KEY                  atelic-keys/linear-api-key; a personal API key for the atelic workspace,
+#   LINEAR_API_KEY                  atelic-keys/linear-cli-atelic; the atelic workspace key the CLI uses,
 #                                   read only use (one query, the active cycle's open issues). Without it
 #                                   the customer lines fall back to open HubSpot tasks and the mail says so
 # Plain configuration:
