@@ -166,11 +166,16 @@ jobs:
       # fails the job and turns the run red, and GitHub's own notice of a
       # failed workflow is the mail. Until a promote succeeds the job keeps
       # firing the image it already had.
+      #
+      # Through exec, so the script replaces the step's own shell and is the
+      # process a cancelled or timed out workflow signals. As a child of that
+      # shell it might never hear the signal, its traps would not run, and the
+      # build it started would be left running with nobody to cancel it.
       - name: Promote
         id: promote
         env:
           RUNNER: ${{ matrix.runner }}
-        run: ./bin/runner/promote "$RUNNER"
+        run: exec ./bin/runner/promote "$RUNNER"
 
       # Always, so a failed promote leaves a line saying which image is still
       # live. The digest read is the same read only call the script's prune

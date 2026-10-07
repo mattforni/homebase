@@ -13,6 +13,107 @@ RUNNER_REGISTRY="${RUNNER_REGISTRY:-us-central1-docker.pkg.dev/$RUNNER_PROJECT/r
 
 die() { echo "${0##*/}: $*" >&2; exit 1; }
 
+# ---------- waiting on a Cloud Build ----------
+# promote submits a build without waiting and follows it here, because
+# gcloud's own wait is tied to a log read the deploy identity may be refused
+# (bin/runner/promote says how that was learned). Every number is overridable
+# from the environment, which is also how bin/lint/runner-build-test drives
+# the wait in seconds against a fake gcloud.
+
+# Where a build writes its log: a directory in the project's own Cloud Build
+# bucket, named the way gcloud names that bucket. The default logs bucket is
+# readable only by a project Viewer or Owner; this one is readable by anyone
+# granted on the bucket, which the deploy identity is. Set it empty to fall
+# back to the default logs bucket.
+RUNNER_BUILD_LOG_DIR="${RUNNER_BUILD_LOG_DIR-gs://${RUNNER_PROJECT}_cloudbuild/logs}"
+
+# How long a build may take, submit to verdict, before it is cancelled and the
+# promote fails. Twenty minutes: the twelve builds before this was written all
+# finished in under two, so this is ten times the worst of them, and it is
+# under the thirty the promote workflow gives a job, so the cancel here runs
+# before GitHub kills the job and leaves the build behind. Cloud Build's own
+# default is sixty minutes, which nothing here could wait out.
+RUNNER_BUILD_DEADLINE="${RUNNER_BUILD_DEADLINE:-1200}"
+
+# Seconds between status reads, how long reads may fail in a row before the
+# wait gives up, and how often a quiet wait says it is alive.
+RUNNER_BUILD_POLL="${RUNNER_BUILD_POLL:-5}"
+RUNNER_BUILD_MISS_LIMIT="${RUNNER_BUILD_MISS_LIMIT:-120}"
+RUNNER_BUILD_HEARTBEAT="${RUNNER_BUILD_HEARTBEAT:-30}"
+
+# Usage: runner_build_cancel <build-id>
+# Only what gcloud prints on success is dropped. Its errors come through, so
+# a cancel that fails shows why.
+runner_build_cancel() {
+    gcloud builds cancel "$1" --project="$RUNNER_PROJECT" >/dev/null
+}
+
+# Usage: runner_build_wait <build-id> [started]
+# Follows a build to its end by its status and returns 0 only for SUCCESS.
+#   1  the build ended some other way (failed, cancelled, timed out, expired)
+#   2  the deadline passed; the build was cancelled
+#   3  its status could not be read for too long; the build was cancelled
+#   4  either of those two, and the cancel itself failed: the build may still
+#      be running, and the caller must say so and never call it cancelled
+# So when this returns below 4 the build is over or has been told to stop,
+# and a caller has nothing left running to clean up. `started` is $SECONDS at
+# the submit, so the deadline covers the whole build and not only this wait.
+#
+# The heartbeat prints whether or not a log is streaming beside this. A
+# refused log read leaves gcloud waiting in silence until the build ends, so
+# "is the stream alive" says nothing about whether anything is being printed,
+# and one status line every half minute is a small price in a live log.
+#
+# The status is read before the deadline is checked, on purpose: a build that
+# succeeds on the last read is a success, and cancelling it there would leave
+# a pushed image no job was pointed at.
+runner_build_wait() {
+    local id="$1" started="${2:-$SECONDS}"
+    local build_status miss_since="" last_beat="$SECONDS" errfile
+    errfile="$(mktemp)" || return 3
+    while :; do
+        if build_status="$(gcloud builds describe "$id" --project="$RUNNER_PROJECT" \
+            --format='value(status)' 2>"$errfile")" && [[ -n "$build_status" ]]; then
+            miss_since=""
+            case "$build_status" in
+                SUCCESS)
+                    rm -f "$errfile"; return 0 ;;
+                QUEUED|PENDING|WORKING|STATUS_UNKNOWN) ;;
+                *)
+                    echo "build $id ended as $build_status" >&2
+                    rm -f "$errfile"; return 1 ;;
+            esac
+        else
+            # One dropped read must not fail a promote whose build is fine, so
+            # a run of them is forgiven for a while. When it is not, the last
+            # error is shown, since it is the only clue there is.
+            build_status="unread"
+            [[ -n "$miss_since" ]] || miss_since="$SECONDS"
+            if (( SECONDS - miss_since >= RUNNER_BUILD_MISS_LIMIT )); then
+                echo "the status of build $id could not be read for $(( SECONDS - miss_since )) seconds; the last error was:" >&2
+                sed 's/^/    /' "$errfile" >&2
+                echo "cancelling build $id so it is not left running" >&2
+                rm -f "$errfile"
+                runner_build_cancel "$id" && return 3
+                echo "the cancel of build $id failed, so it may still be running" >&2
+                return 4
+            fi
+        fi
+        if (( SECONDS - started >= RUNNER_BUILD_DEADLINE )); then
+            echo "build $id is still $build_status after $(( SECONDS - started )) seconds, past the $RUNNER_BUILD_DEADLINE allowed; cancelling it" >&2
+            rm -f "$errfile"
+            runner_build_cancel "$id" && return 2
+            echo "the cancel of build $id failed, so it may still be running" >&2
+            return 4
+        fi
+        if (( SECONDS - last_beat >= RUNNER_BUILD_HEARTBEAT )); then
+            last_beat="$SECONDS"
+            echo "build $id: $build_status, $(( SECONDS - started )) seconds in"
+        fi
+        sleep "$RUNNER_BUILD_POLL"
+    done
+}
+
 # The repository root, found from this library rather than from $PWD, so every
 # command works from anywhere.
 #

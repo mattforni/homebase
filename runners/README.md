@@ -154,7 +154,7 @@ service account, so there is nothing to store, rotate, or leak.
 | Piece | Value |
 |---|---|
 | Service account | `runner-deployer@atelic.iam.gserviceaccount.com` |
-| Roles on the project | `cloudbuild.builds.editor`, `run.developer`, `logging.viewer`, `serviceusage.serviceUsageConsumer` |
+| Roles on the project | `cloudbuild.builds.editor`, `run.developer`, `logging.viewer`, `serviceusage.serviceUsageConsumer`, `storage.bucketViewer` |
 | Role on `gs://atelic_cloudbuild` | `storage.admin` (where Cloud Build takes the uploaded context) |
 | Role on the `runners` repository | `artifactregistry.repoAdmin` (push the image, delete the earlier ones) |
 | Role on the three runtime accounts and the compute default account | `iam.serviceAccountUser` (point a job at an image while it runs as its own account; build as the default one) |
@@ -169,6 +169,61 @@ gain one: only a run on main of this repository can become the deploy
 identity, and a pull request runs code nobody has merged. To remove the whole
 thing, delete the provider (or the pool), then the service account, then the
 workflow. Created 2026-10-07.
+
+Two things the first real runs taught, both on 2026-10-07:
+
+**The bucket viewer role is needed at the project, not only on the bucket.**
+With `storage.admin` on `gs://atelic_cloudbuild` alone, `gcloud builds submit`
+was forbidden from the bucket before it uploaded anything ("The user is
+forbidden from accessing the bucket"). Before it writes, the command lists the
+project's buckets to confirm the default staging bucket is the project's own,
+and a grant on the bucket itself does not cover a listing of the project.
+`storage.bucketViewer` on the project does, and it reads bucket metadata only,
+never an object.
+
+**The identity cannot read a build's log, and that is left as it is.** Cloud
+Build writes the log to its default logs bucket, which only a project Viewer
+or Owner may read, and Viewer is too broad for a deploy identity. gcloud's own
+wait is tied to its log tail, so the second run built all three images and
+then failed each promote with:
+
+```text
+ERROR: (gcloud.builds.submit)
+The build is running, and logs are being written to the default logs bucket.
+This tool can only stream logs if you are Viewer/Owner of the project and, if applicable, allowed by your VPC-SC security policy.
+```
+
+The builds had succeeded; the job update and the prune never ran.
+`--suppress-logs` does not help, since it silences the output and the tail
+still reads the bucket. So `bin/runner/promote` no longer lets gcloud wait:
+
+- It submits the build without waiting, prints its id and console link, and
+  takes the verdict from the build's status (`runner_build_wait` in
+  `bin/runner/lib.sh`), which needs only the right to see the build. Only
+  `SUCCESS` points a job at the image.
+- The build writes its log to `gs://atelic_cloudbuild/logs`
+  (`RUNNER_BUILD_LOG_DIR`), a bucket the deploy identity holds a role on, so
+  the live log can be read by the workflow as well as by a person. Google's
+  documentation names a logs bucket of your own as the route for a reader who
+  is not a project Viewer (Storage Object Viewer on it is enough to read). For
+  the account that writes, it asks for Storage Admin on the bucket unless the
+  build runs as the legacy Cloud Build account. Builds here run as the compute
+  default account, which holds `cloudbuild.builds.builder` on the project and
+  through it `storage.objects.create`, and no role on the bucket itself. That
+  should be enough to write a log and was not proven before this shipped, so
+  if Cloud Build refuses the build with that log directory the script submits
+  it once more with the default logs bucket and says so. Setting
+  `RUNNER_BUILD_LOG_DIR` empty turns it off.
+- The log is a courtesy beside the wait and never the verdict. The wait
+  prints the build's status every thirty seconds either way, and when the log
+  cannot be read the promote says so in one line.
+- A build submitted this way outlives the script, so the script cancels it
+  whenever it stops short of a verdict: Ctrl C, a cancelled workflow, an
+  error, twenty minutes without an ending (`RUNNER_BUILD_DEADLINE`; builds
+  take under two), or two minutes of status reads that all fail. A build left
+  running would later move the tag behind the next promote.
+
+`bin/lint/runner-build-test` holds the wait against a fake gcloud.
 
 ### The Commands
 

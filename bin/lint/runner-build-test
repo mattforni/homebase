@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# Table test for runner_build_wait in bin/runner/lib.sh, the wait that decides
+# whether a promote points a job at the image it just built.
+#
+# It is the one piece of a promote that can be wrong in a way nobody sees: a
+# wait that returns success for a build that did not succeed points a
+# scheduled job at an image that was never pushed, and one that walks away
+# from a build without cancelling it leaves that build to move the tag behind
+# the next promote. Neither can be tried against Cloud Build from a lint, so
+# a fake gcloud on PATH replays a scripted run of statuses and records every
+# call, and each row holds the exit code and whether a cancel was sent.
+#
+# Checks: success after working, every other ending, a run of unreadable
+# statuses that recovers, one that does not, the deadline, a success on the
+# very read the deadline falls on, and the heartbeat.
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+
+pass=0; fail=0
+ok()   { printf '  \033[0;32mok\033[0m   %s\n' "$1"; pass=$((pass+1)); }
+bad()  { printf '  \033[0;31mFAIL\033[0m %s\n' "$1"; fail=$((fail+1)); }
+
+# The fake. `builds describe` answers with the next line of $FAKE/script and
+# repeats the last one for ever; a line reading MISS fails the call the way a
+# dropped request would, and EMPTY succeeds with nothing. `builds cancel` is
+# written to $FAKE/calls like every other call, and fails when FAKE_NOCANCEL
+# is set.
+mkdir -p "$WORK/bin"
+cat > "$WORK/bin/gcloud" <<'FAKE'
+#!/usr/bin/env bash
+echo "$*" >> "$FAKE/calls"
+case "$1 $2" in
+  "builds describe")
+    n=$(( $(cat "$FAKE/n" 2>/dev/null || echo 0) + 1 ))
+    echo "$n" > "$FAKE/n"
+    total=$(wc -l < "$FAKE/script" | tr -d ' ')
+    (( n <= total )) || n=$total
+    line="$(sed -n "${n}p" "$FAKE/script")"
+    case "$line" in
+      MISS)  echo "ERROR: (gcloud.builds.describe) the service is unavailable" >&2; exit 1 ;;
+      EMPTY) exit 0 ;;
+      *)     echo "$line" ;;
+    esac ;;
+  "builds cancel")
+    [[ -z "${FAKE_NOCANCEL:-}" ]] || { echo "ERROR: cancel refused by the fake" >&2; exit 1; } ;;
+esac
+FAKE
+chmod +x "$WORK/bin/gcloud"
+
+# Usage: run <statuses, space separated> [NAME=value ...]
+# Runs the wait against that script in a clean shell and leaves its exit code
+# in $rc, its output in $WORK/out and the fake's calls in $FAKE/calls.
+run() {
+  local script="$1"; shift
+  export FAKE="$WORK/fake"
+  rm -rf "$FAKE"; mkdir -p "$FAKE"; : > "$FAKE/calls"
+  printf '%s\n' $script > "$FAKE/script"
+  env PATH="$WORK/bin:$PATH" RUNNER_BUILD_POLL=0 RUNNER_BUILD_DEADLINE=600 \
+      RUNNER_BUILD_MISS_LIMIT=600 RUNNER_BUILD_HEARTBEAT=600 "$@" \
+      bash -c '. "$1/bin/runner/lib.sh" && runner_build_wait test-build' _ "$ROOT" \
+      > "$WORK/out" 2>&1
+  rc=$?
+}
+cancels() { grep -c '^builds cancel test-build' "$FAKE/calls"; }
+
+# Usage: expect <label> <exit code> <cancels>
+expect() {
+  local got_cancels
+  got_cancels="$(cancels)"
+  if [[ "$rc" == "$2" && "$got_cancels" == "$3" ]]; then
+    ok "$1"
+  else
+    bad "$1 (wanted exit $2 with $3 cancel(s), got exit $rc with $got_cancels: $(tr '\n' ' ' < "$WORK/out"))"
+  fi
+}
+
+echo "A build that ends"
+run "QUEUED WORKING WORKING SUCCESS";  expect "success after queued and working" 0 0
+run "SUCCESS";                         expect "success on the first read" 0 0
+run "WORKING FAILURE";                 expect "a failed build is not a success" 1 0
+run "WORKING CANCELLED";               expect "a cancelled build is not a success" 1 0
+run "WORKING TIMEOUT";                 expect "a timed out build is not a success" 1 0
+run "INTERNAL_ERROR";                  expect "an internal error is not a success" 1 0
+run "EXPIRED";                         expect "an expired build is not a success" 1 0
+run "WORKING SOMETHING_NEW";           expect "a status nobody has heard of is not a success" 1 0
+run "PENDING STATUS_UNKNOWN SUCCESS";  expect "pending and unknown are waited through" 0 0
+
+echo "Status reads that fail"
+run "WORKING MISS MISS MISS SUCCESS";  expect "a run of misses, then success" 0 0
+run "MISS EMPTY MISS WORKING SUCCESS"; expect "an empty answer counts as a miss and recovers" 0 0
+run "MISS MISS MISS FAILURE";          expect "a run of misses, then failure" 1 0
+run "WORKING MISS" RUNNER_BUILD_POLL=1 RUNNER_BUILD_MISS_LIMIT=1
+expect "misses past the limit cancel the build" 3 1
+if grep -q "the service is unavailable" "$WORK/out"; then ok "giving up shows the last error"; else bad "giving up shows the last error"; fi
+run "MISS WORKING MISS WORKING MISS SUCCESS" RUNNER_BUILD_POLL=1 RUNNER_BUILD_MISS_LIMIT=2
+expect "misses that are not in a row never add up" 0 0
+
+echo "The deadline"
+run "WORKING" RUNNER_BUILD_POLL=1 RUNNER_BUILD_DEADLINE=1
+expect "a build still working at the deadline is cancelled" 2 1
+run "QUEUED" RUNNER_BUILD_POLL=1 RUNNER_BUILD_DEADLINE=1
+expect "a build stuck in the queue is cancelled" 2 1
+run "STATUS_UNKNOWN" RUNNER_BUILD_POLL=1 RUNNER_BUILD_DEADLINE=1
+expect "a status that stays unknown is cancelled" 2 1
+run "SUCCESS" RUNNER_BUILD_DEADLINE=0
+expect "a success read past the deadline is still a success" 0 0
+run "FAILURE" RUNNER_BUILD_DEADLINE=0
+expect "a failure read past the deadline sends no cancel" 1 0
+
+echo "A cancel that fails"
+# The wait must never report a build as cancelled when the cancel did not go
+# through: exit 4 is how a caller knows the build may still be running.
+run "WORKING" RUNNER_BUILD_POLL=1 RUNNER_BUILD_DEADLINE=1 FAKE_NOCANCEL=1
+expect "at the deadline, a failed cancel is its own exit code" 4 1
+if grep -q "may still be running" "$WORK/out"; then ok "and says the build may still be running"; else bad "and says the build may still be running"; fi
+if grep -q "cancel refused by the fake" "$WORK/out"; then ok "and shows why the cancel failed"; else bad "and shows why the cancel failed"; fi
+run "WORKING MISS" RUNNER_BUILD_POLL=1 RUNNER_BUILD_MISS_LIMIT=1 FAKE_NOCANCEL=1
+expect "past the miss limit, a failed cancel is the same exit code" 4 1
+if grep -q "may still be running" "$WORK/out"; then ok "and says so there too"; else bad "and says so there too"; fi
+
+echo "The heartbeat"
+run "WORKING WORKING WORKING SUCCESS" RUNNER_BUILD_POLL=1 RUNNER_BUILD_HEARTBEAT=1
+if grep -q "build test-build: WORKING" "$WORK/out"; then ok "a quiet wait says it is alive"; else bad "a quiet wait says it is alive"; fi
+run "WORKING SUCCESS"
+if grep -q "build test-build:" "$WORK/out"; then bad "a short wait prints no heartbeat"; else ok "a short wait prints no heartbeat"; fi
+
+echo "The calls"
+run "WORKING SUCCESS"
+if grep -q '^builds describe test-build --project=atelic --format=value(status)$' "$FAKE/calls"; then
+  ok "the status is read for the right build in the right project"
+else
+  bad "the status is read for the right build in the right project ($(tr '\n' ' ' < "$FAKE/calls"))"
+fi
+
+echo
+printf 'pass %d, fail %d\n' "$pass" "$fail"
+[[ $fail -eq 0 ]]

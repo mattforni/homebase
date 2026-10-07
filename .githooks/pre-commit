@@ -86,6 +86,23 @@ if [[ ${#changed[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runner-changed-test" ]]; 
   fi
 fi
 
+# The build wait a promote's verdict comes from, only when its library or its
+# test is staged. It runs against a fake gcloud and takes about fifteen
+# seconds, most of it the rows that have to let a second pass.
+build=()
+for f in "${staged[@]}"; do
+  case "$f" in
+    bin/runner/lib.sh|bin/lint/runner-build-test) build+=("$f") ;;
+  esac
+done
+
+if [[ ${#build[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runner-build-test" ]]; then
+  if ! "$ROOT/bin/lint/runner-build-test" >/dev/null; then
+    printf "${RED}[x]${NC} build wait test failed. Run bin/lint/runner-build-test to see which row, or run again with --no-verify.\n" >&2
+    status=1
+  fi
+fi
+
 # Context size ratchet, only when an always loaded file is staged
 ctx=()
 for f in "${staged[@]}"; do
