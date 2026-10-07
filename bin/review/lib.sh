@@ -27,7 +27,7 @@ scorecard_append() {
   [[ -s "$REVIEW_SCORECARD" ]] || printf '%s\n' "$REVIEW_HEADER" >"$REVIEW_SCORECARD"
   local row field
   row=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  for field in "$@"; do row+=$'\t'"${field//$'\t'/ }"; done
+  for field in "$@"; do field="${field//$'\t'/ }"; field="${field//$'\n'/ }"; row+=$'\t'"${field//$'\r'/ }"; done
   printf '%s\n' "$row" >>"$REVIEW_SCORECARD"
 }
 
@@ -57,23 +57,27 @@ normalise_claude() {
       {type:"complete", reviewer:"claude", ran:ran, reason:reason, findings:n, sha:$sha, seconds:$secs, files:$files};
     def finding(sev):
       {type:"finding", reviewer:"claude",
-       severity:(.severity // sev),
+       severity:((.severity // sev) as $s | if (["critical","major","minor","info"] | index($s)) != null then $s else "major" end),
        fileName:(.file // .fileName // ""),
        line:(.line // null),
        summary:(.summary // ""),
        failure_scenario:(.failure_scenario // "")};
     def fallback_sev: if ((.failure_scenario // "") | length) > 0 then "major" else "minor" end;
     def unfence: tostring | gsub("^\\s*```(json)?\\s*"; "") | gsub("\\s*```\\s*$"; "");
+    # Prose around the array is tolerated: fall back to the outermost [ ... ].
+    def arr: (unfence | try fromjson catch null) as $a
+      | if ($a | type) == "array" then $a
+        else ((tostring | capture("(?<a>\\[[\\s\\S]*\\])").a? // "") | try fromjson catch null) end;
     if (.is_error // false) or $rc != 0 then
-      complete(false; ((.result // "error") | tostring | .[0:200]); 0)
+      complete(false; ((.result // "error") | tostring | gsub("\\s+"; " ") | .[0:200]); 0)
     elif ((.structured_output.findings? // null) | type) == "array" then
-      (.structured_output.findings | map(finding("major"))) as $f
+      (.structured_output.findings | map(select(type == "object") | finding("major"))) as $f
       | ($f[]), complete(true; ""; ($f | length))
-    elif (((.result // "") | unfence | try fromjson catch null) | type) == "array" then
-      ((.result | unfence | fromjson) | map(finding(fallback_sev))) as $f
+    elif (((.result // "") | arr) | type) == "array" then
+      (((.result // "") | arr) | map(select(type == "object") | finding(fallback_sev))) as $f
       | ($f[]), complete(true; ""; ($f | length))
     else
-      complete(false; ("unparseable output: " + ((.result // "") | tostring | .[0:200])); 0)
+      complete(false; ("unparseable output: " + ((.result // "") | tostring | gsub("\\s+"; " ") | .[0:200])); 0)
     end' "$raw"
 }
 

@@ -47,7 +47,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "$worktree is not a g
 # A stale base is a review of the wrong diff, so fetch, and say so if it fails
 # rather than silently reviewing against yesterday's main.
 fetch_note=""
-git fetch -q origin 2>/dev/null || fetch_note="fetch failed; base may be stale"
+timeout 30 git fetch -q origin 2>/dev/null || fetch_note="fetch failed; base may be stale"
 
 if [[ -z "$base" ]]; then
   for candidate in "origin/$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')" origin/main origin/master; do
@@ -111,7 +111,7 @@ run_coderabbit() {
   if [[ "$files" -gt 150 ]]; then
     echo "over 150 files, the CLI's cap" >"$dir/skip"; return 0
   fi
-  usage=$(timeout 60 coderabbit usage --agent 2>/dev/null | tail -n1 || true)
+  usage=$(timeout 30 coderabbit usage --agent 2>/dev/null | tail -n1 || true)
   remaining=$(jq -r '.includedReviews.remaining // empty' <<<"$usage" 2>/dev/null || true)
   if [[ -z "$remaining" ]]; then
     echo "usage check failed" >"$dir/skip"; return 0
@@ -121,7 +121,7 @@ run_coderabbit() {
     echo "no slot free; next at $(date -v +"$(( next_ms / 60000 + 1 ))M" "+%H:%M %Z" 2>/dev/null || date "+%H:%M %Z")" >"$dir/skip"
     return 0
   fi
-  timeout "$budget" coderabbit review --base "$base" --committed --agent >"$dir/raw" 2>"$dir/err" || true
+  timeout "$(( budget > 90 ? budget - 90 : budget ))" coderabbit review --base "$base" --committed --agent >"$dir/raw" 2>"$dir/err" || true
   echo $(( $(date +%s) - start )) >"$dir/seconds"
 }
 
@@ -140,10 +140,10 @@ run_codex() {
 pids=()
 IFS=, read -r -a wanted <<<"$reviewers"
 for r in "${wanted[@]}"; do
-  case "$r" in
-    claude|coderabbit|codex) "run_$r" "$tmp/$r" & pids+=($!) ;;
-    *) die "unknown reviewer $r" ;;
-  esac
+  case "$r" in claude|coderabbit|codex) ;; *) die "unknown reviewer $r" ;; esac
+done
+for r in "${wanted[@]}"; do
+  "run_$r" "$tmp/$r" & pids+=($!)
 done
 wait "${pids[@]}" || true
 

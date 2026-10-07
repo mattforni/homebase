@@ -37,7 +37,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ -n "$repo" && -n "$pr" && -n "$sha" ]] || usage 1
-need jq
 
 # Turn a spec into "reviewer<TAB>count" lines.
 expand() {
@@ -51,11 +50,16 @@ expand() {
   done
 }
 
-declare -A nfixed ndeclined
-while IFS=$'\t' read -r r n; do [[ -n "$r" ]] && nfixed[$r]=$n; done < <(expand "$fixed")
-while IFS=$'\t' read -r r n; do [[ -n "$r" ]] && ndeclined[$r]=$n; done < <(expand "$declined")
+# Validate both specs up front: a die inside a command substitution would
+# only end the substitution, so the status is checked explicitly. Bash 3.2 has
+# no associative arrays, so counts are looked up in the expanded lines.
+fixed_lines=$(expand "$fixed") || exit 1
+declined_lines=$(expand "$declined") || exit 1
+count_for() { # <lines> <reviewer>
+  awk -F'\t' -v r="$2" '$1 == r { n = $2 } END { print n + 0 }' <<<"$1"
+}
 
-reviewers=$(printf '%s\n' "${!nfixed[@]}" "${!ndeclined[@]}" 2>/dev/null | sed '/^$/d' | sort -u)
+reviewers=$(printf '%s\n%s\n' "$fixed_lines" "$declined_lines" | cut -f1 | sed '/^$/d' | sort -u)
 if [[ -z "$reviewers" ]]; then
   scorecard_append "landing" "$repo" "$pr" "$sha" "none" "" "" "" "0" "0" "$held" ""
   echo "landing recorded: $repo #$pr ${sha:0:8} nothing to triage, held ${held:-0} min"
@@ -63,7 +67,8 @@ if [[ -z "$reviewers" ]]; then
 fi
 
 while IFS= read -r r; do
-  scorecard_append "landing" "$repo" "$pr" "$sha" "$r" "" "" "" "${nfixed[$r]:-0}" "${ndeclined[$r]:-0}" "$held" ""
-  echo "landing recorded: $repo #$pr ${sha:0:8} $r fixed ${nfixed[$r]:-0} declined ${ndeclined[$r]:-0} held ${held:-0} min"
+  nf=$(count_for "$fixed_lines" "$r"); nd=$(count_for "$declined_lines" "$r")
+  scorecard_append "landing" "$repo" "$pr" "$sha" "$r" "" "" "" "$nf" "$nd" "$held" ""
+  echo "landing recorded: $repo #$pr ${sha:0:8} $r fixed $nf declined $nd held ${held:-0} min"
   held=""   # the hold is per landing, so only the first row carries it
 done <<<"$reviewers"

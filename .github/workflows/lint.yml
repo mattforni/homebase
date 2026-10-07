@@ -106,3 +106,9 @@ jobs:
       # and in the pre-commit hook, so a reduction stays reduced.
       - name: Check context size caps
         run: ./bin/lint/context-size
+
+      # The review wrapper's normaliser turns each reviewer's raw output into
+      # the stream the lander gates on. A shape that came out ran:true when
+      # nothing was reviewed would fail open, so its table runs here.
+      - name: Test the review normaliser
+        run: ./bin/lint/review-normalise-test

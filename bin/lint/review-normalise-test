@@ -30,7 +30,6 @@ expect() {
     printf '  FAIL %s\n       want %s\n       got  %s\n' "$label" "$want" "$got"
   fi
 }
-completes() { 'map(select(.type=="complete")) | length'; }
 
 # 1. The schema applied: findings under structured_output with model severities.
 cat >"$tmp/raw" <<'EOF'
