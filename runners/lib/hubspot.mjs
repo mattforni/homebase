@@ -754,7 +754,7 @@ async function sweep(argv) {
     const notesByCompany = byCompany(notes);
 
     // ----- the groom: make the portal say what is true -----
-    // The Weekly Groom in Pipeline/README.md, steps 1 through 3, which write
+    // The Weekly Groom in Outreach/README.md, steps 1 through 3, which write
     // on their own because every move is derived from a signal already on the
     // record; step 4 (duplicates and orphans) only proposes. Lifecycle walks
     // every stage between so each entry date stamps, and never moves
@@ -930,7 +930,7 @@ async function sweep(argv) {
     };
 
     // ----- the funnel: seven buckets now and seven days ago -----
-    // The groom's own table (Pipeline/README.md, The Weekly Groom): New is in
+    // The groom's own table (Outreach/README.md, The Weekly Groom): New is in
     // the funnel and never sent to, Lead is sent to, MQL through Customer are
     // the lifecycle as HubSpot stands, Closed is a Disqualification Reason.
     // A company's stage at any moment is the highest stage it had entered by
