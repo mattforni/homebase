@@ -51,7 +51,7 @@ NEEDS YOU NOW · 7
    8. Second touch to people who opened: 1 draft ready
       Renata Oyelaran, Sable Creek Landscaping
    9. First touches: 2 of 15 a week, not every draft fired
-      Ines Ferreira, Harbor Lane Bakery and Provisions of Old Town;
+      Ines Ferreira, Harbor Lane Bakery and Provisions of Old Town
       Tobias Wren, Ridgeback Fencing
   10. Visits: 1, Thursday walkabout
       Marguerite Bell, Thistle Lane Florist
@@ -86,9 +86,10 @@ Opens and Responses by Week
 CLOUD ROUTINES
 ================================================================
 
-  Outreach: 2 of 3 fired
-  Writeup: 2 of 2 fired
-  Sighting: 0 of 1 fired
+  Routine   Fired  Total
+  Outreach      2      3
+  Writeup       2      2
+  Sighting      0      1
 
   2 of 3 payload(s) went to the routine; each draft lands in the
   matt@atelic.me Drafts a few minutes after its fire.

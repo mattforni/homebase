@@ -201,12 +201,13 @@ export function NeedsList({ groups }: NeedsListProps) {
 export type NameRunProps = { names: { text: string; url?: string | null }[] };
 
 /**
- * The people a count line counts, in one sentence, each linked, a semicolon
- * between them since a company's own name can carry a comma. Until
- * 2026-10-07 this run named the waiting companies at the foot of a stage
- * card; it came back under the counts the same day, after Forni read "7" and
- * asked who the seven were. A sentence rather than a card each, which is what
- * ran a sixty name mail past the hundred kilobytes where Gmail clips.
+ * The people a count line counts, each on a line of their own, linked. Until
+ * 2026-10-07 a run like this named the waiting companies at the foot of a
+ * stage card; it came back under the counts the same day, after Forni read
+ * "7" and asked who the seven were, first as one sentence and then, on his
+ * next read, a line each, since a sentence of fourteen names does not scan.
+ * A line rather than a card each: cards are what ran a sixty name mail past
+ * the hundred kilobytes where Gmail clips.
  */
 export function NameRun({ names }: NameRunProps) {
 	const { palette } = useEmailTheme();
@@ -215,7 +216,7 @@ export function NameRun({ names }: NameRunProps) {
 			{names.map((name, i) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: a name's position is its identity
 				<Fragment key={i}>
-					{i === 0 ? null : "; "}
+					{i === 0 ? null : <br />}
 					{name.url ? (
 						<a href={name.url} style={{ color: palette.dim, textDecoration: "underline", textDecorationColor: palette.line }}>
 							{name.text}
@@ -229,7 +230,8 @@ export function NameRun({ names }: NameRunProps) {
 	);
 }
 
-export type WeekCell = { value: string; change?: string };
+/** A number and its change on the week before; `tone` is the change's direction, absent when nothing moved. */
+export type WeekCell = { value: string; change?: string; tone?: "up" | "down" };
 export type WeekTableProps = { columns: string[]; rows: WeekCell[][] };
 
 /**
@@ -238,7 +240,9 @@ export type WeekTableProps = { columns: string[]; rows: WeekCell[][] };
  * on one line each, and letting each cell wrap on its own left some changes
  * beside their number and some beneath, so a header of two words breaks onto
  * two lines and every change sits under its number at every width. The text
- * twin has the room and keeps them on one line.
+ * twin has the room and keeps them on one line. A change wears the stage
+ * strip's own tones, its `up` for an increase and its `down` for a decrease,
+ * and stays faint at zero (Forni, 2026-10-07).
  */
 export function WeekTable({ columns, rows }: WeekTableProps) {
 	const { palette, fonts } = useEmailTheme();
@@ -281,33 +285,23 @@ export function WeekTable({ columns, rows }: WeekTableProps) {
 								}}
 							>
 								{cell.value}
-								{cell.change ? <div style={{ whiteSpace: "nowrap", fontSize: "11px", color: palette.faint }}>{cell.change}</div> : null}
+								{cell.change ? (
+									<div
+										style={{
+											whiteSpace: "nowrap",
+											fontSize: "11px",
+											color: (cell.tone === "up" ? palette.up : cell.tone === "down" ? palette.down : undefined) ?? palette.faint,
+										}}
+									>
+										{cell.change}
+									</div>
+								) : null}
 							</td>
 						))}
 					</tr>
 				))}
 			</tbody>
 		</table>
-	);
-}
-
-export type RoutineLinesProps = { routines: { name: string; url?: string | null; text: string }[] };
-
-/** One line per cloud routine: its name, linked when the runner knows where it lives, and how many of its fires went. */
-export function RoutineLines({ routines }: RoutineLinesProps) {
-	const { palette } = useEmailTheme();
-	return (
-		<>
-			{routines.map((routine, i) => (
-				// biome-ignore lint/suspicious/noArrayIndexKey: a routine's position is its identity
-				<div key={i} style={{ fontSize: "14px", lineHeight: "1.7", color: palette.dim }}>
-					<b style={{ fontWeight: "600", color: palette.ink }}>
-						<Link text={routine.name} url={routine.url} />
-					</b>
-					{`: ${routine.text}`}
-				</div>
-			))}
-		</>
 	);
 }
 

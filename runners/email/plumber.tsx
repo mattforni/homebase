@@ -27,7 +27,7 @@ import {
 } from "@atelic-action/ui/email";
 import { renderEmail } from "@atelic-action/ui/email/render";
 import { alt, fromDate, jqToString, numberString, shortDate, unindent, weekdayName, weekNumber } from "./jq";
-import { DimLine, type NeedsGroup, type NeedsItem, NeedsList, RosterLine, RoutineLines, type WeekCell, WeekTable } from "./local";
+import { DimLine, Link, type NeedsGroup, type NeedsItem, NeedsList, RosterLine, type WeekCell, WeekTable } from "./local";
 import { money } from "./records";
 import { hang } from "./text";
 import type { RenderContext } from "./types";
@@ -382,7 +382,7 @@ function needsHeading(named: NeedsGroup[]): string {
  * The list's plain text twin: each group under its label in upper case, each
  * line under its number with a hanging indent, each link on a line of its
  * own beneath (the record, then the ticket), since a url is the one token the
- * wrap cannot break, and a count's people as one wrapped sentence, unlinked.
+ * wrap cannot break, and a count's people a line each, unlinked.
  */
 function needsText(groups: NeedsGroup[]): string {
 	const width = numberString(lineCount(groups)).length + 2;
@@ -393,11 +393,10 @@ function needsText(groups: NeedsGroup[]): string {
 				n += 1;
 				const text = `${item.lead}${item.rest}${item.due ? ` ${item.due}` : ""}${item.ref ? ` ${item.ref}.` : ""}`;
 				const urls = [item.url, item.refUrl].map((url) => jqToString(alt(url, ""))).filter((url) => url !== "");
-				const names = alt(item.names, []).map((name) => name.text).join("; ");
 				return [
 					hang(lpad(`${numberString(n)}.`, width - 1), text, width),
 					...urls.map((url) => `${spaces(2 + width)}${url}\n`),
-					names === "" ? "" : hang("", names, width),
+					...alt(item.names, []).map((name) => hang("", name.text, width)),
 				].join("");
 			});
 			return `${wrap(asciiUpcase(group.label))}\n${lines.join("")}`;
@@ -498,6 +497,7 @@ function weekRows(weeks: SendWeek[]): WeekCell[][] {
 			return {
 				value: `${numberString(now)}${unit}`,
 				change: before === null || before === undefined ? undefined : `(${signed(now - before)}${unit})`,
+				tone: before === null || before === undefined || now === before ? undefined : now > before ? ("up" as const) : ("down" as const),
 			};
 		}),
 	]);
@@ -508,22 +508,27 @@ const WEEK_COLUMNS = ["Week", "Tracked", "Opened", "Open Rate", "Responded", "Re
 /* ---------- cloud routines ---------- */
 
 /**
- * One line per cloud routine and how many of its fires went (Forni,
- * 2026-10-07: the card was Drafting, and Outreach is not the only routine
- * the week runs on). Outreach is counted off the fires the runner recorded;
- * the rest arrive counted.
+ * One row per cloud routine: how many of its payloads fired, and how many
+ * there were (Forni, 2026-10-07: the card was Drafting, and Outreach is not
+ * the only routine the week runs on; a small table on his next read, where
+ * it had been a sentence per routine). Outreach is counted off the fires the
+ * runner recorded; the rest arrive counted.
  */
-function routineLines(draft: PipelineDraft): { name: string; url?: string | null; text: string }[] {
-	const said = (fired: number, total: number) => `${numberString(fired)} of ${numberString(total)} fired`;
+function routineRows(draft: PipelineDraft): { name: string; url?: string | null; fired: number; total: number }[] {
 	const fires = alt(draft.drafting?.fires, []);
-	const outreach = draft.drafting ? [{ name: "Outreach", text: said(fires.length - misfireRecords(draft.drafting).length, fires.length) }] : [];
+	const outreach = draft.drafting
+		? [{ name: "Outreach", fired: fires.length - misfireRecords(draft.drafting).length, total: fires.length }]
+		: [];
 	const others = alt(draft.routines, []).map((routine) => ({
 		name: jqToString(routine.name),
 		url: routine.url,
-		text: said(alt(routine.fired, 0), alt(routine.total, 0)),
+		fired: alt(routine.fired, 0),
+		total: alt(routine.total, 0),
 	}));
 	return [...outreach, ...others];
 }
+
+const ROUTINE_COLUMNS = ["Routine", "Fired", "Total"];
 
 /** The runner's own sentence about Outreach, kept only when a fire did not go, which is when it explains something. */
 function draftingNote(drafting: Drafting): string {
@@ -564,7 +569,7 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 	const flag = jqToString(alt(draft.health?.flag, ""));
 	const left = leftForYou(draft);
 	const rosterUrl = jqToString(alt(draft.roster_url, ""));
-	const routines = routineLines(draft);
+	const routines = routineRows(draft);
 	const note = draftingNote(draft.drafting ?? null);
 	const misfires = misfireRecords(draft.drafting ?? null);
 
@@ -636,7 +641,14 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						<Eyebrow text="Cloud Routines" strong={true} />
 						<Card>
 							<Row last={note === "" && misfires.length === 0}>
-								<RoutineLines routines={routines} />
+								<Records
+									columns={ROUTINE_COLUMNS.map((label, i) => ({ label, right: i > 0, keep: true }))}
+									rows={routines.map((routine) => [
+										{ value: routine.name, html: <Link text={routine.name} url={routine.url} /> },
+										countCell(routine.fired),
+										{ value: numberString(routine.total), mono: true },
+									])}
+								/>
 							</Row>
 							{note === "" ? null : (
 								<Row last={misfires.length === 0}>
@@ -723,12 +735,13 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 		out += `${textTable(WEEK_COLUMNS, rows, [1, 2, 3, 4, 5])}\n`;
 	}
 
-	const routines = routineLines(draft);
+	const routines = routineRows(draft);
 	if (routines.length > 0) {
 		const note = draftingNote(draft.drafting ?? null);
 		const misfires = misfireRecords(draft.drafting ?? null);
 		out += textSection("Cloud Routines");
-		out += `${routines.map((routine) => wrap(`${routine.name}: ${routine.text}`)).join("\n")}\n`;
+		const rows = routines.map((routine) => [routine.name, numberString(routine.fired), numberString(routine.total)]);
+		out += `${textTable(ROUTINE_COLUMNS, rows, [1, 2])}\n`;
 		if (note !== "") out += `\n${wrap(note)}\n`;
 		if (misfires.length > 0) out += `\nDid Not Fire · ${numberString(misfires.length)}\n${recordStackText(misfires)}\n`;
 	}
