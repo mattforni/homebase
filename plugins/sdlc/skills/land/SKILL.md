@@ -1,13 +1,13 @@
 ---
 name: land
-description: Drive the back half of SDLC autonomously. Run the CodeRabbit CLI review as the gate, watch CI, triage findings, squash merge, then clean up, bailing to the user on human review, hard CI failure, merge conflict, or time budget exceeded. Use when the user says "land it", "ship this", or "merge when ready".
+description: Drive the back half of SDLC autonomously. Run `review/run` as the gate, watch CI, triage findings, squash merge, then clean up, bailing to the user on human review, hard CI failure, merge conflict, or time budget exceeded. Use when the user says "land it", "ship this", or "merge when ready".
 disable-model-invocation: true
 argument-hint: "[PR number - auto-detected if on feature branch]"
 allowed-tools:
   - Bash(git *)
   - Bash(gh *)
-  - Bash(coderabbit *)
-  - Bash(*cr-review.sh*)
+  - Bash(*review/run*)
+  - Bash(*review/landed*)
   - Bash(*get-base-branch.sh*)
   - Read
   - Edit
@@ -17,19 +17,21 @@ allowed-tools:
 
 # Land a PR
 
-Take an implementation from "ready for review" through "merged and cleaned up". Wraps `sdlc:review` → CLI review → watch CI → (address findings)* → merge → clean up. The agent owns the feedback-completeness judgment because GitHub's `mergeStateStatus: CLEAN` only reflects branch protection and required checks, not whether the review's findings have been addressed.
+Take an implementation from "ready for review" through "merged and cleaned up". Wraps `sdlc:review` → `review/run` → watch CI → (address findings)* → merge → clean up. The agent owns the feedback-completeness judgment because GitHub's `mergeStateStatus: CLEAN` only reflects branch protection and required checks, not whether the review's findings have been addressed.
+
+**The review rules live in one place, this plugin's [reference/code-review.md](../../reference/code-review.md): when a review runs, which reviewer is the gate, how the stream reads, how findings are triaged, and how a landing is recorded.** Read it before Step 2. This skill restates none of it.
 
 In all bash steps below, substitute placeholder names (like PR_NUMBER, HEAD_SHA) with the actual values you stored earlier.
 
 ## Workflow
 
 1. **Identify PR or open one** (call `sdlc:review` if no PR exists for the branch)
-2. **Review the branch yourself with the CodeRabbit CLI.** This is the gate.
+2. **Review the branch yourself with `review/run`.** This is the gate.
 3. **Watch CI** on a bounded poll, exiting on settled checks, CI failure, human review, or timeout
 4. **Decide and act**: merge / address findings / bail
-5. **Merge and clean up** when ready
+5. **Merge, record the landing, and clean up** when ready
 
-Never wait on the CodeRabbit PR bot. On a private repo the free plan posts a walkthrough comment and never a review object, so a loop that polls for one polls forever while gating on nothing. On a public repo the free Open Source plan does review properly, so read its findings if they have already arrived, but merge on your own CLI review plus CI regardless. Adopted 2026-08-29; the full reasoning and mechanics live in `~/Eudaimonia/Admin/Tools/coderabbit.md`.
+Never wait on any PR bot. On a private repo the free CodeRabbit plan posts a walkthrough comment and never a review object, so a loop that polls for one polls forever while gating on nothing. On a public repo the free Open Source plan does review properly, so read its findings if they have already arrived, but merge on your own `review/run` plus CI regardless.
 
 ## Step 1: Identify PR or Open One
 
@@ -55,19 +57,17 @@ gh repo view --json nameWithOwner --jq '.nameWithOwner'
 
 Store as REPO (format: `owner/repo`).
 
-## Step 2: Run the CodeRabbit CLI Review
+## Step 2: Run `review/run`
 
-This is the review gate, and it runs against the branch's current HEAD in the PR's worktree or checkout:
+This is the review gate, and it runs against the branch's current HEAD in the PR's worktree or checkout, with the Bash call's timeout set to 600000:
 
 ```bash
-coderabbit review --base origin/main --committed --agent
+~/bin/review/run <worktree> --effort high
 ```
 
-Substitute the repo's real base branch (`scripts/get-base-branch.sh`) when it is not `main`, and fetch first so `origin/main` is current. The command needs a working directory and offers no flag that selects one, so drive it through a small wrapper script that changes directory internally and echoes `pwd` back for confirmation. Name that wrapper `cr-review.sh`, which is the name this skill's `allowed-tools` permits.
+It fetches, resolves the base itself (pass `--base` when the repo's base branch is not the remote default), changes directory internally, and echoes the directory and HEAD in its leading `review_context` line, so the call carries no `cd`. It runs every reviewer at once and prints one JSONL stream; the shape and the triage rules are in [reference/code-review.md](../../reference/code-review.md).
 
-It returns in a couple of minutes, needs no trigger comment, and has no PR queue. Parse the JSONL it emits: `finding` lines carry `severity` and `fileName`, and the closing `complete` line carries the count. Do not gate on the exit code, which is undocumented. Free tier allows three CLI reviews per hour, so spend them on real HEADs rather than on speculative re-runs.
-
-Store the findings for Step 4, and record the SHA you reviewed as REVIEWED_SHA, which Step 5 compares against HEAD before merging. **A run counts as clean only when the closing `complete` line arrives carrying zero findings.** A stream that stops before it, on a rate limit, a network drop, or any other error, did not finish, and an unfinished review gates nothing.
+Store the findings for Step 4, and record the `sha` from the claude `complete` line as REVIEWED_SHA, which Step 5 compares against HEAD before merging. **A run counts as clean only when the claude `complete` line arrives with `ran: true` and no finding at major or above remains unaddressed.** A claude line with `ran: false` reviewed nothing: retry once after sixty seconds, then bail with its `reason`. The other reviewers' lines are evidence, never something to wait for.
 
 ## Step 3: Watch CI
 
@@ -127,22 +127,22 @@ Run this under Monitor when landing in the background, and stay resident until i
 
 ## Step 4: Decide and Act on the Event
 
-- **`READY`**: triage the CLI findings from Step 2, plus any PR bot comments that happen to be sitting on HEAD if the repo is public.
-  - Read the actual code before treating any finding as authoritative. Reviewers can be wrong, the CLI included, and a finding that misreads control flow gets declined rather than obeyed.
-  - Sort by severity and by whether the item is actionable or advisory.
+- **`READY`**: triage every `finding` line from Step 2, by reviewer and severity, plus any PR bot comments that happen to be sitting on HEAD if the repo is public.
+  - Read the actual code before treating any finding as authoritative. Reviewers can be wrong, the gate included, and a finding that misreads control flow gets declined rather than obeyed.
+  - Sort by severity and by whether the item is actionable or advisory. The blocking threshold is major and above.
   - Decide:
-    - A run that reached its closing `complete` line carrying zero findings, or whose only findings are advisory items you would decline → **merge** (Step 5). A run that did not reach `complete` is not a clean run, whatever it printed before it stopped.
+    - A claude `complete` line with `ran: true` and no finding at major or above left unaddressed, or whose only such findings are ones you decline with a reason → **merge** (Step 5). A claude line with `ran: false` is not a clean run, whatever the other reviewers printed.
     - Actionable items → **iterate** (next bullet)
     - Mixed → address the actionable ones, decline the advisory ones with reasoning, push, then loop back
   - When a declined item came from the PR bot and is therefore visible to others, reply on that comment with the reasoning so the audit trail shows it was considered rather than ignored.
-- **Iterate**: address the actionable findings yourself, fixing each in place, then commit and push to the PR branch. **After any push, re-run the CLI review from Step 2 against the new HEAD.** A review of a stale SHA gates nothing, which is the whole reason the gate is a local run rather than a status colour. Then check `mergeStateStatus` and rebase if the PR went `DIRTY` while you were iterating, since main can move under you in an active repo:
+- **Iterate**: address the actionable findings yourself, batching the round's fixes into one commit, then push to the PR branch. **After any push, re-run `review/run` from Step 2 against the new HEAD.** A review of a stale SHA gates nothing, which is the whole reason the gate is a local run rather than a status colour. Then check `mergeStateStatus` and rebase if the PR went `DIRTY` while you were iterating, since main can move under you in an active repo:
 
   ```bash
   gh pr view PR_NUMBER --json mergeStateStatus --jq '.mergeStateStatus'
   ```
 
-  If `DIRTY`, fetch main, rebase, resolve conflicts, force-push with `--force-with-lease`, then re-run the CLI review. Loop back to Step 3.
-- **`CHECKS_FAILED`**: fetch failing job logs. If the failure is something you introduced and can fix in place, fix and push; re-run the CLI review and loop back to Step 3. Otherwise bail to the user with the failing job link.
+  If `DIRTY`, fetch main, rebase, resolve conflicts, force-push with `--force-with-lease`, then re-run `review/run`. Loop back to Step 3.
+- **`CHECKS_FAILED`**: fetch failing job logs. If the failure is something you introduced and can fix in place, fix and push; re-run `review/run` and loop back to Step 3. Otherwise bail to the user with the failing job link.
 - **`HUMAN_REVIEW`**: bail to the user with the review body. Humans get the final word, so never auto-merge over a human comment even if it looks like a nit.
 - **`TIMEOUT`**: bail to the user with the current state summary.
 
@@ -156,7 +156,7 @@ gh api repos/REPO/pulls/PR_NUMBER --jq '.head.sha'   # compare against REVIEWED_
 
 If they differ, go back to Step 2 and review the new HEAD before going further. Merging here would ship a commit no review ever saw, which is the same hollow gate this skill exists to remove, just arrived at from the other end.
 
-The gate is met when the CLI review ran clean against a SHA equal to the current HEAD, CI is green, and:
+The gate is met when the claude reviewer ran clean against a SHA equal to the current HEAD, CI is green, and:
 
 ```bash
 gh pr view PR_NUMBER --json mergeStateStatus --jq '.mergeStateStatus'
@@ -166,7 +166,10 @@ If `CLEAN`:
 
 ```bash
 gh pr merge PR_NUMBER --squash --delete-branch
+~/bin/review/landed REPO PR_NUMBER REVIEWED_SHA --fixed claude:N --declined claude:M --held-min X
 ```
+
+The second line records the landing on the scorecard (name every reviewer whose findings you triaged; a landing with nothing to triage still gets the call so the hold is counted).
 
 If `BEHIND` or `DIRTY` (merge conflict against base): bail to user. Rebasing into a conflicting state is judgment-call territory and shouldn't happen silently.
 
@@ -179,8 +182,9 @@ After a successful merge, remove the PR's worktree (`git worktree remove`, never
 ```text
 PR #<number> landed
 Cycles: <N> iterate, <M> decline
-Review: <N> CLI runs, <M> findings on <reviewed SHA>
+Review: <N> review/run runs; claude <F> findings, coderabbit <ran|skipped: reason>, on <reviewed SHA>
 Merged: <SHA>
+Recorded: review/landed <repo> <pr> <reviewed SHA> --fixed ... --declined ... --held-min <X>
 Status: clean
 ```
 

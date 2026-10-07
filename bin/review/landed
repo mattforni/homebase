@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Record a landing on the review scorecard: what each reviewer's findings came
+# to once triaged, and how long the merge was held.
+#
+# Usage: review/landed <repo> <pr> <reviewed-sha> [--fixed <spec>] [--declined <spec>]
+#                      [--held-min <minutes>]
+#
+# A spec is "claude:2,coderabbit:1", or a bare integer, which is attributed to
+# claude (the gate). One row is appended per reviewer named in either spec;
+# a landing with nothing fixed or declined appends a single row with reviewer
+# "none" so the hold is still counted. Rows land in
+# $HOME/.local/state/review/scorecard.tsv; review/scorecard reads them back.
+set -euo pipefail
+
+# shellcheck source=bin/review/lib.sh
+. "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+usage() {
+  sed -n '2,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  exit "${1:-0}"
+}
+
+repo=""; pr=""; sha=""; fixed=""; declined=""; held=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --fixed) fixed="${2:-}"; shift 2 ;;
+    --declined) declined="${2:-}"; shift 2 ;;
+    --held-min) held="${2:-}"; shift 2 ;;
+    -h|--help) usage ;;
+    -*) die "unknown option $1" ;;
+    *)
+      if [[ -z "$repo" ]]; then repo="$1"
+      elif [[ -z "$pr" ]]; then pr="$1"
+      elif [[ -z "$sha" ]]; then sha="$1"
+      else die "unexpected argument $1"; fi
+      shift ;;
+  esac
+done
+[[ -n "$repo" && -n "$pr" && -n "$sha" ]] || usage 1
+need jq
+
+# Turn a spec into "reviewer<TAB>count" lines.
+expand() {
+  local spec="$1" item
+  [[ -n "$spec" ]] || return 0
+  if [[ "$spec" =~ ^[0-9]+$ ]]; then printf 'claude\t%s\n' "$spec"; return 0; fi
+  IFS=, read -r -a items <<<"$spec"
+  for item in "${items[@]}"; do
+    [[ "$item" =~ ^([a-z]+):([0-9]+)$ ]] || die "bad spec entry: $item (want reviewer:count)"
+    printf '%s\t%s\n' "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+  done
+}
+
+declare -A nfixed ndeclined
+while IFS=$'\t' read -r r n; do [[ -n "$r" ]] && nfixed[$r]=$n; done < <(expand "$fixed")
+while IFS=$'\t' read -r r n; do [[ -n "$r" ]] && ndeclined[$r]=$n; done < <(expand "$declined")
+
+reviewers=$(printf '%s\n' "${!nfixed[@]}" "${!ndeclined[@]}" 2>/dev/null | sed '/^$/d' | sort -u)
+if [[ -z "$reviewers" ]]; then
+  scorecard_append "landing" "$repo" "$pr" "$sha" "none" "" "" "" "0" "0" "$held" ""
+  echo "landing recorded: $repo #$pr ${sha:0:8} nothing to triage, held ${held:-0} min"
+  exit 0
+fi
+
+while IFS= read -r r; do
+  scorecard_append "landing" "$repo" "$pr" "$sha" "$r" "" "" "" "${nfixed[$r]:-0}" "${ndeclined[$r]:-0}" "$held" ""
+  echo "landing recorded: $repo #$pr ${sha:0:8} $r fixed ${nfixed[$r]:-0} declined ${ndeclined[$r]:-0} held ${held:-0} min"
+  held=""   # the hold is per landing, so only the first row carries it
+done <<<"$reviewers"
