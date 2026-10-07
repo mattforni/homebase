@@ -106,9 +106,19 @@ export function RosterLine({ url }: RosterLineProps) {
  * One line of the list: a bold lead (linked when it carries the record), the
  * sentence after it, the due date, and a linked key at the end. The due date
  * and the key each hold to one line, since a browser breaks "10-15" and
- * "ATE-633" at the hyphen and leaves half a date at the end of a row.
+ * "ATE-633" at the hyphen and leaves half a date at the end of a row. A count
+ * line carries `names`, the people it counts, which read as one linked
+ * sentence beneath it.
  */
-export type NeedsItem = { lead: string; url?: string | null; rest: string; due?: string; ref?: string; refUrl?: string | null };
+export type NeedsItem = {
+	lead: string;
+	url?: string | null;
+	rest: string;
+	due?: string;
+	ref?: string;
+	refUrl?: string | null;
+	names?: { text: string; url?: string | null }[];
+};
 export type NeedsGroup = { label: string; items: NeedsItem[] };
 export type NeedsListProps = { groups: NeedsGroup[] };
 
@@ -159,7 +169,10 @@ export function NeedsList({ groups }: NeedsListProps) {
 									<b style={{ fontWeight: "600" }}>
 										<Link text={item.lead} url={item.url} />
 									</b>
-									{item.rest}
+									{item.rest.split(/(\S*\d-\d\S*)/).map((part, k) =>
+										// biome-ignore lint/suspicious/noArrayIndexKey: a part's position is its identity
+										k % 2 === 1 ? <span key={k} style={{ whiteSpace: "nowrap" }}>{part}</span> : part,
+									)}
 									{item.due ? (
 										<>
 											{" "}
@@ -174,6 +187,7 @@ export function NeedsList({ groups }: NeedsListProps) {
 											</span>
 										</>
 									) : null}
+									{item.names && item.names.length > 0 ? <NameRun names={item.names} /> : null}
 								</td>
 							</tr>
 						))}
@@ -181,6 +195,119 @@ export function NeedsList({ groups }: NeedsListProps) {
 				))}
 			</tbody>
 		</table>
+	);
+}
+
+export type NameRunProps = { names: { text: string; url?: string | null }[] };
+
+/**
+ * The people a count line counts, in one sentence, each linked, a semicolon
+ * between them since a company's own name can carry a comma. Until
+ * 2026-10-07 this run named the waiting companies at the foot of a stage
+ * card; it came back under the counts the same day, after Forni read "7" and
+ * asked who the seven were. A sentence rather than a card each, which is what
+ * ran a sixty name mail past the hundred kilobytes where Gmail clips.
+ */
+export function NameRun({ names }: NameRunProps) {
+	const { palette } = useEmailTheme();
+	return (
+		<div style={{ fontSize: "13px", lineHeight: "1.55", color: palette.dim, marginTop: "3px" }}>
+			{names.map((name, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: a name's position is its identity
+				<Fragment key={i}>
+					{i === 0 ? null : "; "}
+					{name.url ? (
+						<a href={name.url} style={{ color: palette.dim, textDecoration: "underline", textDecorationColor: palette.line }}>
+							{name.text}
+						</a>
+					) : (
+						name.text
+					)}
+				</Fragment>
+			))}
+		</div>
+	);
+}
+
+export type WeekCell = { value: string; change?: string };
+export type WeekTableProps = { columns: string[]; rows: WeekCell[][] };
+
+/**
+ * The send weeks as a table of numbers, each with its change on the week
+ * before set quietly under it. Six columns of "33 (+18)" do not fit a phone
+ * on one line each, and letting each cell wrap on its own left some changes
+ * beside their number and some beneath, so a header of two words breaks onto
+ * two lines and every change sits under its number at every width. The text
+ * twin has the room and keeps them on one line.
+ */
+export function WeekTable({ columns, rows }: WeekTableProps) {
+	const { palette, fonts } = useEmailTheme();
+	return (
+		<table role="presentation" cellPadding="0" cellSpacing="0" border={0} width="100%" style={{ fontFamily: fonts.mono, fontSize: "12px", lineHeight: "1.4", color: palette.ink }}>
+			<tbody>
+				<tr>
+					{columns.map((label, i) => (
+						<td
+							// biome-ignore lint/suspicious/noArrayIndexKey: a header's position is its identity
+							key={i}
+							align={i === 0 ? "left" : "right"}
+							valign="bottom"
+							style={{
+								padding: i === 0 ? "0 0 6px" : "0 0 6px 8px",
+								fontSize: "10px",
+								letterSpacing: "0.06em",
+								textTransform: "uppercase",
+								color: palette.faint,
+								borderBottom: `1px solid ${palette.line}`,
+							}}
+						>
+							{label}
+						</td>
+					))}
+				</tr>
+				{rows.map((cells, r) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a row's position is its identity
+					<tr key={r}>
+						{cells.map((cell, i) => (
+							<td
+								// biome-ignore lint/suspicious/noArrayIndexKey: a cell's position is its identity
+								key={i}
+								align={i === 0 ? "left" : "right"}
+								valign="top"
+								style={{
+									padding: i === 0 ? "8px 0" : "8px 0 8px 8px",
+									borderBottom: `1px solid ${r === rows.length - 1 ? palette.line : palette.hair}`,
+									...(i === 0 ? { fontFamily: fonts.sans, fontSize: "13px", whiteSpace: "nowrap" } : {}),
+								}}
+							>
+								{cell.value}
+								{cell.change ? <div style={{ whiteSpace: "nowrap", fontSize: "11px", color: palette.faint }}>{cell.change}</div> : null}
+							</td>
+						))}
+					</tr>
+				))}
+			</tbody>
+		</table>
+	);
+}
+
+export type RoutineLinesProps = { routines: { name: string; url?: string | null; text: string }[] };
+
+/** One line per cloud routine: its name, linked when the runner knows where it lives, and how many of its fires went. */
+export function RoutineLines({ routines }: RoutineLinesProps) {
+	const { palette } = useEmailTheme();
+	return (
+		<>
+			{routines.map((routine, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: a routine's position is its identity
+				<div key={i} style={{ fontSize: "14px", lineHeight: "1.7", color: palette.dim }}>
+					<b style={{ fontWeight: "600", color: palette.ink }}>
+						<Link text={routine.name} url={routine.url} />
+					</b>
+					{`: ${routine.text}`}
+				</div>
+			))}
+		</>
 	);
 }
 

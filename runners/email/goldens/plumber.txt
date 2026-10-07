@@ -14,12 +14,13 @@ The full read is in the roster: https://github.com/atelic-action/practice/blob/m
 
 
 ================================================================
-NEEDS YOU NOW · 10
+NEEDS YOU NOW · 7
 ================================================================
 
   PAYING CUSTOMERS IN BUILD
    1. Westbrook Skylights: audit the analytics and the tag
       container, then update the writeup. Due Thu 01-29. EXA-101.
+      https://app.example.test/contacts/1/record/0-2/9
       https://tracker.example.test/issue/EXA-101
    2. Westbrook Skylights: this week's follow ups. EXA-102.
       https://tracker.example.test/issue/EXA-102
@@ -38,12 +39,24 @@ NEEDS YOU NOW · 10
   WARM SQLS IN A LIVE CONVERSATION
    5. Granite Peak Tile: Priya is scoping; reply when she answers.
 
-  TOUCHES OWED
-   6. Replies owed: 2
-   7. Bumps to people who opened: 1 draft ready
-   8. First touches: 2, not every draft fired
-   9. Bumps to people who have not opened: 1 draft ready
+  REPLIES OWED
+   6. Salley Wilson, Pinewood Cabinetry: Owed a number since
+      Tuesday, sending as Atelic, graded A, and she asked twice
+      whether the audit could be walked through in person at the
+      shop rather than over a call.
+      https://app.example.test/contacts/1/record/0-1/101
+   7. Dov Marchetti, Harbor Line Plumbing
+
+  COLD TOUCHES
+   8. Second touch to people who opened: 1 draft ready
+      Renata Oyelaran, Sable Creek Landscaping
+   9. First touches: 2 of 15 a week, not every draft fired
+      Ines Ferreira, Harbor Lane Bakery and Provisions of Old Town;
+      Tobias Wren, Ridgeback Fencing
   10. Visits: 1, Thursday walkabout
+      Marguerite Bell, Thistle Lane Florist
+  11. Second touch to people who have not opened: 1 draft ready
+      Callum Rhys, Juniper Street Framing
 
 
 ================================================================
@@ -58,20 +71,24 @@ FUNNEL HEALTH
   Customer    2  0             0    0
   Closed      9  +1 (13%)      1    0
 
-Tracked Sends and Open Rate by Week
-  Flag: The open rate fell twenty two points on eight tracked sends,
-  which is too few to call a trend and enough to watch.
+Opens and Responses by Week
+  Flag: The open rate fell twenty two percent on eight tracked
+  sends, which is too few to call a trend and enough to watch.
 
-  Week       Sends  Tracked  Opened  Rate   Change
-  W2            14       12       9   75%
-  W3            20       20      12   60%  -15 pts
-  W4            31       30      18   60%    0 pts
-  W5 so far      9        8       3   38%  -22 pts
+  Week   Tracked   Opened   Open Rate  Responded  Respond Rate
+  W5     8 (-22)  3 (-15)  38% (-22%)
+  W4    30 (+10)  18 (+6)    60% (0%)     5 (+3)     17% (+7%)
+  W3     20 (+8)  12 (+3)  60% (-15%)      2 (0)     10% (-7%)
+  W2          12        9         75%          2           17%
 
 
 ================================================================
-DRAFTING · 3
+CLOUD ROUTINES
 ================================================================
+
+  Outreach: 2 of 3 fired
+  Writeup: 2 of 2 fired
+  Sighting: 0 of 1 fired
 
   2 of 3 payload(s) went to the routine; each draft lands in the
   matt@atelic.me Drafts a few minutes after its fire.

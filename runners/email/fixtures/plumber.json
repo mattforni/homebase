@@ -712,13 +712,15 @@
             "owed": "audit the analytics and the tag container, then update the writeup",
             "due": "2026-01-29",
             "ref": "EXA-101",
-            "url": "https://tracker.example.test/issue/EXA-101"
+            "url": "https://app.example.test/contacts/1/record/0-2/9",
+            "ref_url": "https://tracker.example.test/issue/EXA-101"
           },
           {
             "who": "Westbrook Skylights",
             "owed": "this week's follow ups",
             "ref": "EXA-102",
-            "url": "https://tracker.example.test/issue/EXA-102"
+            "url": null,
+            "ref_url": "https://tracker.example.test/issue/EXA-102"
           }
         ]
       },
@@ -746,44 +748,57 @@
           }
         ]
       }
-    ]
+    ],
+    "first_touch_target": 15
   },
   "health": {
     "weeks": [
       {
         "week": "2026-W02",
-        "sends": 14,
         "tracked": 12,
         "opened": 9,
         "rate": 75,
-        "delta": null
+        "responded": 2,
+        "respond_rate": 17
       },
       {
         "week": "2026-W03",
-        "sends": 20,
         "tracked": 20,
         "opened": 12,
         "rate": 60,
-        "delta": -15
+        "responded": 2,
+        "respond_rate": 10
       },
       {
         "week": "2026-W04",
-        "sends": 31,
         "tracked": 30,
         "opened": 18,
-        "rate": 60,
-        "delta": 0
+        "rate": null,
+        "responded": 5,
+        "respond_rate": null
       },
       {
         "week": "2026-W05",
-        "sends": 9,
         "tracked": 8,
         "opened": 3,
         "rate": 38,
-        "delta": -22,
-        "partial": true
+        "responded": null,
+        "respond_rate": null
       }
     ],
-    "flag": "The open rate fell twenty two points on eight tracked sends, which is too few to call a trend and enough to watch."
-  }
+    "flag": "The open rate fell twenty two percent on eight tracked sends, which is too few to call a trend and enough to watch."
+  },
+  "routines": [
+    {
+      "name": "Writeup",
+      "fired": 2,
+      "total": 2,
+      "url": "https://claude.example.test/code/routines/writeup"
+    },
+    {
+      "name": "Sighting",
+      "fired": 0,
+      "total": 1
+    }
+  ]
 }
