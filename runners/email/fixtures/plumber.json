@@ -820,8 +820,8 @@
     "note": "2 of 3 payload(s) went to the routine; each draft lands in the matt@atelic.me Drafts a few minutes after its fire.",
     "fires": [
       {
-        "business": "Granite Peak Tile and Stone Restoration of the Front Range",
-        "company_url": "https://app.example.test/contacts/1/record/0-2/501",
+        "business": "Sable Creek Landscaping",
+        "company_url": "",
         "touch": "bump",
         "outcome": "fired",
         "http_status": 200,
@@ -829,8 +829,8 @@
         "session_id": "session_01"
       },
       {
-        "business": "Native Roofing",
-        "company_url": "https://app.example.test/contacts/1/record/0-2/503",
+        "business": "Ridgeback Fencing",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/402",
         "touch": "first_touch",
         "outcome": "fired",
         "http_status": 200,
@@ -838,8 +838,8 @@
         "session_id": ""
       },
       {
-        "business": "Cherry Creek Appliance Repair",
-        "company_url": "",
+        "business": "Harbor Lane Bakery and Provisions of Old Town",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/401",
         "touch": "first_touch",
         "outcome": "failed",
         "http_status": 429,
@@ -913,6 +913,14 @@
   },
   "health": {
     "weeks": [
+      {
+        "week": "2026-W01",
+        "tracked": 10,
+        "opened": 6,
+        "rate": 60,
+        "responded": 1,
+        "respond_rate": 10
+      },
       {
         "week": "2026-W02",
         "tracked": 12,

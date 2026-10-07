@@ -2,9 +2,8 @@
 // out of the portal sweep and the Linear read in code (ATE-630, 2026-10-07).
 //
 //   node pipeline.mjs fold <draft.json> <portal.json> <monday YYYY-MM-DD> [linear.json] [why linear is missing]
-//       Prints the draft with `needs` and `health` added, the names a named
-//       line already covers taken out of `owed`, and a flag when the Linear
-//       read did not run. The entrypoint calls it after the funnel merge.
+//       Prints the draft with `needs` and `health` added, `owed` settled
+//       against the named lines, and a flag when the Linear read did not run. The entrypoint calls it after the funnel merge.
 //
 // The order of the mail was the model's until this file. It sorted the week
 // into five kinds of touch and the mail drew whatever it sent, so the order
@@ -27,8 +26,11 @@ import { pathToFileURL } from "node:url";
 // where the number is decided; this is its copy, and it moves when that does.
 export const FIRST_TOUCH_TARGET = 15;
 
-// The table shows this many send weeks, the current one included.
+// The table shows this many send weeks, the current one included, and the
+// runner hands the renderer one more behind them, which is never drawn: it
+// is what the oldest row shown reads its change against.
 export const HEALTH_WEEKS = 4;
+export const HEALTH_HANDED = HEALTH_WEEKS + 1;
 
 // When the open rate earns a sentence. A starting point (ATE-630), not a
 // finding: fewer than ten tracked sends is too few to read a rate off, and
@@ -94,47 +96,55 @@ function pastOutreach(company, sentMs) {
  * - The sweep's companies are the funnel alone, so lifecycle Other never
  *   reaches here, and its noise list has already dropped calendar traffic and
  *   autoresponders from both the sends and the replies.
+ * - Outreach is the first touch and the bumps: a company's sends up to its
+ *   first real inbound reply. Everything Forni sends after that reply is a
+ *   conversation, and counting it made a week of answers look like a week of
+ *   outreach with a fine open rate (review, 2026-10-07).
  * - A send to a company already at Opportunity or Customer is out (above).
- * - A company's day is tracked when any copy that day carried tracking,
- *   opened when a tracked copy shows an open, and responded when a real
- *   inbound message landed on the send's own thread after it. A send whose
- *   thread id HubSpot did not record falls back to the same contact writing
- *   back before that contact's next send, which is the closest the record
- *   allows.
+ * - A company's day is tracked when any copy that day carried tracking and
+ *   opened when a tracked copy shows an open.
+ * - That first reply is credited to exactly one send, the latest outreach
+ *   send before it, on its own thread when the record carries thread ids and
+ *   the latest of any when it does not. One reply marking every earlier send
+ *   on the thread credited a first touch and its bump alike, and changed a
+ *   past week's numbers after the fact.
  */
 export function outreachSends(portal) {
     const companies = portal.companies || {};
-    const contacts = Object.values(portal.contacts || {});
-    const repliesByCompany = new Map();
-    for (const c of contacts) {
-        for (const r of c.replies || []) {
-            repliesByCompany.set(c.company_id, [...(repliesByCompany.get(c.company_id) || []), { ...r, contact: c.contact_id }]);
+    const byCompany = new Map();
+    for (const c of Object.values(portal.contacts || {})) {
+        if (!companies[c.company_id]) continue;
+        if (!byCompany.has(c.company_id)) byCompany.set(c.company_id, { touches: [], replies: [] });
+        const held = byCompany.get(c.company_id);
+        for (const t of c.touches || []) {
+            const ts = typeof t.ts === "number" ? t.ts : Date.parse(`${t.date}T18:00:00Z`);
+            if (!Number.isNaN(ts)) held.touches.push({ ...t, ts, day: typeof t.ts === "number" ? denverDay(t.ts) : t.date });
         }
+        for (const r of c.replies || []) if (typeof r.ts === "number") held.replies.push(r);
     }
-    const sends = new Map();
-    for (const c of contacts) {
-        const company = companies[c.company_id];
-        if (!company) continue;
-        const touches = c.touches || [];
-        touches.forEach((t, i) => {
-            const sentMs = typeof t.ts === "number" ? t.ts : Date.parse(`${t.date}T18:00:00Z`);
-            if (Number.isNaN(sentMs) || pastOutreach(company, sentMs)) return;
-            const day = typeof t.ts === "number" ? denverDay(t.ts) : t.date;
-            const nextMs = touches[i + 1]?.ts ?? Number.POSITIVE_INFINITY;
-            const responded = (repliesByCompany.get(c.company_id) || []).some((r) => {
-                if (!(r.ts > sentMs)) return false;
-                if (t.thread && r.thread) return r.thread === t.thread;
-                return r.contact === c.contact_id && r.ts < nextMs;
-            });
-            const key = `${c.company_id}|${day}`;
-            const held = sends.get(key) || { company: c.company_id, day, week: isoWeek(day), tracked: false, opened: false, responded: false };
-            held.tracked = held.tracked || t.tracked === true;
-            held.opened = held.opened || (t.tracked === true && (t.opens || 0) > 0);
-            held.responded = held.responded || responded;
-            sends.set(key, held);
-        });
+    const sends = [];
+    for (const [id, held] of byCompany) {
+        const first = held.replies.sort((a, b) => a.ts - b.ts)[0] || null;
+        const outreach = held.touches
+            .sort((a, b) => a.ts - b.ts)
+            .filter((t) => (first === null || t.ts < first.ts) && !pastOutreach(companies[id], t.ts));
+        let credited = null;
+        if (first !== null) {
+            const threaded = first.thread ? outreach.filter((t) => t.thread === first.thread) : [];
+            const pool = threaded.length > 0 ? threaded : outreach.filter((t) => !t.thread || !first.thread);
+            credited = pool[pool.length - 1] || null;
+        }
+        const days = new Map();
+        for (const t of outreach) {
+            const day = days.get(t.day) || { company: id, day: t.day, week: isoWeek(t.day), tracked: false, opened: false, responded: false };
+            day.tracked = day.tracked || t.tracked === true;
+            day.opened = day.opened || (t.tracked === true && (t.opens || 0) > 0);
+            day.responded = day.responded || t === credited;
+            days.set(t.day, day);
+        }
+        sends.push(...days.values());
     }
-    return [...sends.values()];
+    return sends;
 }
 
 const rate = (part, whole) => (whole > 0 ? Math.round((part * 100) / whole) : null);
@@ -149,10 +159,12 @@ function weekRow(week, sends) {
 
 /**
  * The sentence the table earns when the open rate has turned: the latest
- * complete week against the mean of the three before it. The current week is
- * complete only on a replay after its Sunday, so on a Monday run the week
- * judged is the one that just ended. Null when the week is too thin to read
- * or fewer than two of the earlier weeks carry a tracked send to compare with.
+ * complete week against the three before it, pooled (their opens over their
+ * tracked sends), so a week of two sends cannot swing the comparison the way
+ * it would in a mean of three rates. The current week is complete only on a
+ * replay after its Sunday, so on a Monday run the week judged is the one that
+ * just ended. Null when the judged week or the pool behind it is too thin to
+ * read: each has to clear the same floor of tracked sends.
  */
 export function healthFlag(rows, monday, nowMs) {
     const complete = denverDay(nowMs) >= addDays(monday, 7) ? isoWeek(monday) : isoWeek(addDays(monday, -7));
@@ -160,22 +172,27 @@ export function healthFlag(rows, monday, nowMs) {
     if (at < 0) return null;
     const judged = rows[at];
     if (judged.tracked < FLAG_MIN_TRACKED || judged.rate === null) return null;
-    const prior = rows.slice(Math.max(0, at - FLAG_PRIOR_WEEKS), at).filter((r) => r.rate !== null);
-    if (prior.length < 2) return null;
-    const mean = Math.round(prior.reduce((sum, r) => sum + r.rate, 0) / prior.length);
-    if (mean - judged.rate < FLAG_DROP) return null;
+    const prior = rows.slice(Math.max(0, at - FLAG_PRIOR_WEEKS), at);
+    const tracked = prior.reduce((sum, r) => sum + r.tracked, 0);
+    if (prior.length < FLAG_PRIOR_WEEKS || tracked < FLAG_MIN_TRACKED) return null;
+    const before = rate(prior.reduce((sum, r) => sum + r.opened, 0), tracked);
+    if (before - judged.rate < FLAG_DROP) return null;
     const label = `W${Number(judged.week.split("-W")[1])}`;
-    return `${label} opened at ${judged.rate}% on ${judged.tracked} tracked sends, ${mean - judged.rate} below the ${mean}% average of the ${prior.length === FLAG_PRIOR_WEEKS ? "three" : "two"} weeks before it.`;
+    return `${label} opened at ${judged.rate}% on ${judged.tracked} tracked sends, ${before - judged.rate} below the ${before}% of the three weeks before it.`;
 }
 
-/** The trailing send weeks, oldest first, the week of `monday` last, and the flag. */
+/**
+ * The send weeks, oldest first, the week of `monday` last, and the flag. One
+ * more week is handed over than the table draws (HEALTH_HANDED), so the
+ * oldest row drawn has a week beneath it to read its change against.
+ */
 export function healthOf(portal, monday, nowMs) {
     const sends = outreachSends(portal);
-    // One more week than the flag's reach, so the judged week always has its
-    // three behind it whichever week that turns out to be.
-    const span = HEALTH_WEEKS + FLAG_PRIOR_WEEKS;
+    // Enough weeks that the judged week has its three behind it whichever
+    // week that turns out to be, and never fewer than are handed over.
+    const span = Math.max(HEALTH_HANDED, 2 + FLAG_PRIOR_WEEKS);
     const rows = Array.from({ length: span }, (_, i) => weekRow(isoWeek(addDays(monday, -7 * (span - 1 - i))), sends));
-    return { weeks: rows.slice(-HEALTH_WEEKS), flag: healthFlag(rows, monday, nowMs) };
+    return { weeks: rows.slice(-HEALTH_HANDED), flag: healthFlag(rows, monday, nowMs) };
 }
 
 // ---------- needs: the named lines ----------
@@ -210,17 +227,24 @@ function dealsOf(portal) {
  * larger first and then the sooner due. What is owed is the company's nearest
  * open task, parked or not, since a proposal's task is the date Forni said
  * he would reach back out; with no task the line says where the deal stands.
+ * A company with two deals open gets two lines, each led by its deal's own
+ * name, since the company and the task are the same on both and the name and
+ * the money are what tell them apart.
  */
 function proposalLines(portal, rows) {
+    const open = dealsOf(portal).filter((d) => !d.closed);
+    const perCompany = new Map();
+    for (const deal of open) for (const id of deal.companies || []) perCompany.set(id, (perCompany.get(id) || 0) + 1);
     const lines = [];
-    for (const deal of dealsOf(portal).filter((d) => !d.closed)) {
+    for (const deal of open) {
         for (const id of deal.companies || []) {
             const company = portal.companies?.[id];
             if (!company || company.disqualification_reason) continue;
             const task = rows.get(id)?.task || null;
+            const owed = task?.subject || deal.stage || "an open deal";
             lines.push({
                 who: company.name, amount: deal.amount ?? null,
-                owed: task?.subject || deal.stage || "an open deal",
+                owed: perCompany.get(id) > 1 && deal.name ? `${deal.name}: ${owed}` : owed,
                 due: task?.due || "", url: company.url,
             });
         }
@@ -246,12 +270,15 @@ function warmLines(portal) {
 }
 
 /**
- * An issue's title as what is owed: a leading week tag ("W41:", "[2026-W41]")
- * and a leading "<Customer>:" go, since the line already opens on the
- * customer and sits in a mail that names its week.
+ * An issue's title as what is owed: a leading week tag ("W41: ...",
+ * "[2026-W41] ...") and a leading "<Customer>:" go, since the line already
+ * opens on the customer and sits in a mail that names its week. A week tag is
+ * the ISO form or a capital W and two digits, standing alone before more
+ * words; anything looser ate real titles, "W3C validation fixes" down to "C
+ * validation fixes" and a W9 with it (review, 2026-10-07).
  */
 export function trimTitle(title, names) {
-    const week = /^\s*[[(]?(\d{4}-)?W\d{1,2}[\])]?\s*[:.·,\u2013\u2014-]?\s*/i;
+    const week = /^\s*[[(]?(?:\d{4}-W\d{2}|W\d{2})[\])]?(?:\s*[:.·,\u2013\u2014-]\s*|\s+)(?=\S)/;
     let out = String(title || "").replace(week, "");
     for (const name of names.filter(Boolean)) {
         const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -283,10 +310,11 @@ function customerTiers(portal, linear) {
     const tiers = { paying_build: [], trade_build: [], operate: [] };
     const unmapped = [];
     const rows = stageRows(portal, "customer");
+    const deals = dealsOf(portal);
     for (const row of rows) {
         const company = portal.companies?.[row.id];
         if (!company || company.disqualification_reason) continue;
-        const won = dealsOf(portal).filter((d) => d.won && (d.companies || []).includes(row.id))
+        const won = deals.filter((d) => d.won && (d.companies || []).includes(row.id))
             .sort((a, b) => (b.close || "").localeCompare(a.close || ""));
         const phase = won.find((d) => d.engagement_phase)?.engagement_phase === "operate" ? "operate" : "build";
         const paying = won.reduce((sum, d) => sum + (Number(d.amount) || 0), 0) > 0;
@@ -340,32 +368,54 @@ export function needsOf(portal, linear) {
 
 const norm = (v) => String(v || "").trim().toLowerCase();
 
+// The kinds whose every name carries a payload the runner fires. A name is
+// never taken out of these: the draft lands in Drafts either way, so removing
+// the name made "3 drafts ready" disagree with four drafts and undercounted
+// first touches against the week's target (review, 2026-10-07).
+const DRAFTED_KINDS = new Set(["bump", "first_touch"]);
+
 /**
- * The model's owed names with everyone a named line already covers taken
- * out: a company on a tier leaves every kind, replies included, and a person
- * owed a reply (a named line of their own) leaves the counted kinds. Matched
- * on the record's url, and on the company's name for a row with no url.
+ * The model's owed names settled against the named lines, so the mail says
+ * each thing once and loses nothing:
+ *
+ * - A reply owed on a company that already has a named line is folded into
+ *   that line as what is owed, the model's note and the person it is owed to,
+ *   since a reply outranks a task's subject or a deal's stage; then it leaves
+ *   `owed.reply`, which would otherwise print it a second time.
+ * - A visit or a close on such a company, or on a person still owed a reply,
+ *   leaves its count: the named line is where that name is worked.
+ * - Second touches and first touches are left exactly as the model sent them.
+ *
+ * Matched on the record's url, and on the company's name for a row with no
+ * url. Returns the settled `owed` and the tiers with any folded reply.
  */
-export function dedupeOwed(owed, tiers) {
-    const lines = tiers.flatMap((t) => t.lines || []);
-    const urls = new Set(lines.map((l) => norm(l.url)).filter(Boolean));
-    const names = new Set(lines.map((l) => norm(l.who)).filter(Boolean));
-    const onTier = (n) => (norm(n.company_url) && urls.has(norm(n.company_url))) || (norm(n.company) && names.has(norm(n.company)));
+export function settleOwed(owed, tiers) {
+    const settled = tiers.map((t) => ({ ...t, lines: (t.lines || []).map((l) => ({ ...l })) }));
+    const lines = settled.flatMap((t) => t.lines);
+    const lineOf = (n) => lines.find((l) => (norm(n.company_url) && norm(l.url) === norm(n.company_url)) || (norm(n.company) && norm(l.who) === norm(n.company)));
     const out = {};
-    for (const [kind, list] of Object.entries(owed || {})) out[kind] = (list || []).filter((n) => !onTier(n));
-    const replied = new Set((out.reply || []).flatMap((n) => [norm(n.contact_url), norm(n.company_url)]).filter(Boolean));
+    for (const [kind, list] of Object.entries(owed || {})) out[kind] = [...(list || [])];
+    out.reply = (out.reply || []).filter((n) => {
+        const line = lineOf(n);
+        if (!line) return true;
+        const to = String(n.person || "").trim();
+        const note = String(n.note || "").trim();
+        line.owed = `reply owed${to ? ` to ${to}` : ""}${note ? `: ${note}` : ""}`;
+        return false;
+    });
+    const replied = new Set(out.reply.flatMap((n) => [norm(n.contact_url), norm(n.company_url)]).filter(Boolean));
     for (const kind of Object.keys(out)) {
-        if (kind === "reply") continue;
-        out[kind] = out[kind].filter((n) => !replied.has(norm(n.contact_url)) && !(norm(n.company_url) && replied.has(norm(n.company_url))));
+        if (kind === "reply" || DRAFTED_KINDS.has(kind)) continue;
+        out[kind] = out[kind].filter((n) => !lineOf(n) && !replied.has(norm(n.contact_url)) && !(norm(n.company_url) && replied.has(norm(n.company_url))));
     }
-    return out;
+    return { owed: out, tiers: settled };
 }
 
 // ---------- the fold ----------
 
 /**
  * The draft as the renderer reads it: `needs` and `health` added, `owed`
- * deduplicated, and a flag (which the mail prints under Left for You) when
+ * settled against the named lines, and a flag (which the mail prints under Left for You) when
  * the customer lines did not come from Linear.
  */
 export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null, linearError = "" } = {}) {
@@ -376,11 +426,12 @@ export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null,
     } else if (built.unmapped.length > 0) {
         flags.unshift({ lead: `No linear_project on ${built.unmapped.join(", ")}, so ${built.unmapped.length === 1 ? "its" : "their"} lines are open HubSpot tasks.` });
     }
+    const settled = settleOwed(draft.owed, built.needs.tiers);
     return {
         ...draft,
-        needs: built.needs,
+        needs: { ...built.needs, tiers: settled.tiers },
         health: healthOf(portal, monday, nowMs),
-        owed: dedupeOwed(draft.owed, built.needs.tiers),
+        owed: settled.owed,
         flags,
     };
 }

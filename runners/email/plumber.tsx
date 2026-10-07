@@ -173,6 +173,8 @@ export type PipelineDraft = {
 
 type Fire = {
 	business?: unknown;
+	/** The company the payload was for, which is how a fire is matched to the name it drafted. */
+	company_url?: string | null;
 	touch?: unknown;
 	/** fired, failed, dry run, or not fired. */
 	outcome?: unknown;
@@ -272,14 +274,24 @@ function bumps(owed: Owed, opened: boolean): Name[] {
 }
 
 /**
- * What the fires of a kind of touch say about its drafts: "ready" when every
- * one fired, "partial" when one did not, and "none" when the runner fired
- * nothing of the kind, so a line never promises a draft nobody asked for.
+ * How many of a line's own names have a draft, read off the fires: a fire of
+ * the line's kind of touch that went, for a business one of its names is at,
+ * matched on the company's record and on its name when the fire carries no
+ * record. Counted per line and never per kind, because the two second touch
+ * lines share a kind and each has to speak for its own people, and counted
+ * from what fired rather than from what is owed, so a dry run or a missing
+ * token says nothing about drafts at all (review, 2026-10-07; the first cut
+ * keyed on the kind alone and read every one of those cases wrong).
  */
-function draftState(drafting: Drafting, touch: string): "none" | "ready" | "partial" {
-	const fires = alt(drafting?.fires, []).filter((fire) => jqToString(alt(fire.touch, "")) === touch);
-	if (fires.length === 0) return "none";
-	return fires.every((fire) => jqToString(alt(fire.outcome, "")) === "fired") ? "ready" : "partial";
+function draftsReady(drafting: Drafting, touch: string, names: Name[]): number {
+	const same = (a: unknown, b: unknown) => {
+		const x = jqToString(alt(a, "")).trim().toLowerCase();
+		return x !== "" && x === jqToString(alt(b, "")).trim().toLowerCase();
+	};
+	const fired = alt(drafting?.fires, []).filter(
+		(fire) => jqToString(alt(fire.touch, "")) === touch && jqToString(alt(fire.outcome, "")) === "fired",
+	);
+	return names.filter((name) => fired.some((fire) => same(fire.company_url, name.company_url) || same(fire.business, name.company))).length;
 }
 
 /** "Person, Company", or whichever of the two the record has. */
@@ -356,7 +368,9 @@ function namedGroups(draft: PipelineDraft): NeedsGroup[] {
 /**
  * The count lines, one per kind of cold touch with anyone owed it; a zero
  * says nothing. "First touches: 5 drafts ready of 15 a week" reads the count,
- * what the routine did about it, and the week's target, in that order.
+ * what the routine did about it, and the week's target, in that order; when
+ * only some of a line's drafts went it reads "5 of 15 a week, 3 of 5 drafts
+ * ready", and when none did it makes no claim about drafts.
  */
 function countGroup(draft: PipelineDraft): NeedsGroup[] {
 	const owed = alt(draft.owed, {});
@@ -365,10 +379,10 @@ function countGroup(draft: PipelineDraft): NeedsGroup[] {
 		.filter(({ names }) => names.length > 0)
 		.map(({ line, names }) => {
 			const count = names.length;
-			const state = line.drafted === undefined ? "none" : draftState(draft.drafting ?? null, line.drafted);
-			const ready = state === "ready" ? (count === 1 ? " draft ready" : " drafts ready") : "";
+			const drafts = line.drafted === undefined ? 0 : draftsReady(draft.drafting ?? null, line.drafted, names);
+			const ready = drafts === count ? (count === 1 ? " draft ready" : " drafts ready") : "";
 			const against = line.target && target !== null && target !== undefined ? ` of ${numberString(target)} a week` : "";
-			const partial = state === "partial" ? ", not every draft fired" : "";
+			const partial = drafts > 0 && drafts < count ? `, ${numberString(drafts)} of ${numberString(count)} drafts ready` : "";
 			return {
 				lead: line.label,
 				rest: `: ${numberString(count)}${ready}${against}${partial}${line.tail === undefined ? "" : line.tail(count)}`,
@@ -495,8 +509,8 @@ function weekNumbers(week: SendWeek): (number | null)[] {
  * The table's rows. Each number carries its change on the week before in
  * brackets, "33 (+18)" for a count and "58% (+3%)" for a rate, which is the
  * plain difference of the two percentages (Forni, 2026-10-07: no change
- * column and never the word points). The oldest row has no week beneath it
- * and shows no change.
+ * column and never the word points). A row with no week beneath it shows no
+ * change, which is why the caller draws one row fewer than it is handed.
  */
 function weekRows(weeks: SendWeek[]): WeekCell[][] {
 	const numbers = weeks.map(weekNumbers);
@@ -516,6 +530,13 @@ function weekRows(weeks: SendWeek[]): WeekCell[][] {
 }
 
 const WEEK_COLUMNS = ["Week", "Tracked", "Opened", "Open Rate", "Responded", "Respond Rate"];
+
+/**
+ * The table draws four weeks. The runner hands over a fifth, older one, which
+ * is never drawn: it is what the oldest row shown reads its change against,
+ * since a row with no week beneath it has none to show.
+ */
+const WEEKS_SHOWN = 4;
 
 /* ---------- cloud routines ---------- */
 
@@ -642,7 +663,7 @@ export function pipelineHTML(input: unknown, context: RenderContext): string {
 						<Card>
 							{flag === "" ? null : <Note eyebrowText="Flag" text={flag} accented={true} last={false} />}
 							<Row last={true}>
-								<WeekTable columns={WEEK_COLUMNS} rows={weekRows(weeks)} />
+								<WeekTable columns={WEEK_COLUMNS} rows={weekRows(weeks).slice(0, WEEKS_SHOWN)} />
 							</Row>
 						</Card>
 					</>
@@ -743,7 +764,9 @@ export function pipelineText(input: unknown, context: RenderContext): string {
 	if (weeks.length > 0) {
 		out += "\nOpens and Responses by Week\n";
 		if (flag !== "") out += `${wrap(`Flag: ${flag}`)}\n\n`;
-		const rows = weekRows(weeks).map((cells) => cells.map((cell) => `${cell.value}${cell.change ? ` ${cell.change}` : ""}`));
+		const rows = weekRows(weeks)
+			.slice(0, WEEKS_SHOWN)
+			.map((cells) => cells.map((cell) => `${cell.value}${cell.change ? ` ${cell.change}` : ""}`));
 		out += `${textTable(WEEK_COLUMNS, rows, [1, 2, 3, 4, 5])}\n`;
 	}
 

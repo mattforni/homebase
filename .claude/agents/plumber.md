@@ -208,10 +208,10 @@ one file.
    roster name, search the domain and the person: a reply that HubSpot
    missed, with nothing from Forni after it, moves them to Follow Up; a bounce on a send marks the address
    dead.
-5. **Sort the roster into the order of the week**, which is written once, in
-   Outreach/README.md (The Order of the Week); read it there each run and
-   never apply an order from this file. As of 2026-10-07 (Forni, ATE-630) it
-   puts replies above everything, then the cold end: second touches to people
+5. **Sort the touches by the order written in Outreach/README.md (The Order
+   of the Week)**; read it there each run and never apply an order from this
+   file. As of 2026-10-07 (Forni, ATE-630) it puts replies above everything,
+   then the cold end: second touches to people
    who opened, first touches, visits, second touches to people who have not
    opened, and last the names to close or keep. A bump is the second touch,
    the email at about seven days. From 2026-09-29 first touches led and
@@ -293,8 +293,10 @@ one file.
    note that it is a snapshot and HubSpot is canonical. **Then the weekly scoreboard**,
    before the counts: one table of summary statistics, columns Type, Complete,
    Target, %, Done, Details, **one row per type and never one row per name**,
-   plus a bold total row. The types are, in this order: Outbound, Follow Up,
-   Close, Meetings (the week's order, Forni 2026-09-29). Follow Up lines are
+   plus a bold total row. The rows are, in this order: Outbound, Follow Up,
+   Close, Meetings. That is the scoreboard's own row order, kept as it is on
+   purpose while the roster's shape is left alone (ATE-630); it is not the
+   order the touches are worked in, which is step 5's. Follow Up lines are
    tagged "Reply:" or "Bump:", replies first and then the bumps to people
    who opened, Outbound is
    every first touch, and Meetings lines are tagged "In person:" or

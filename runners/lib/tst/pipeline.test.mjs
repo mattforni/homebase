@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { activeCycleIssues } from "../linear.mjs";
 import {
-    dedupeOwed,
     FIRST_TOUCH_TARGET,
     FLAG_DROP,
     FLAG_MIN_TRACKED,
@@ -11,6 +10,7 @@ import {
     isoWeek,
     needsOf,
     outreachSends,
+    settleOwed,
     trimTitle,
 } from "../pipeline.mjs";
 
@@ -67,15 +67,17 @@ test("a send is bucketed by its Denver day, so Sunday evening stays in its own w
     assert.deepEqual(weeks, { 1: "2026-W40", 2: "2026-W41" });
 });
 
-test("the table is the four weeks ending on the run's own, oldest first, across a year boundary", () => {
+test("the weeks end on the run's own, oldest first, across a year boundary, with one extra behind the four drawn", () => {
     const portal = portalOf({
         companies: [company("1")],
         contacts: [contact("a", "1", [touch("2026-12-30T18:00:00Z", { opens: 2 })])],
     });
     const health = healthOf(portal, "2027-01-04", ms("2027-01-05T05:00:00Z"));
-    assert.deepEqual(health.weeks.map((w) => w.week), ["2026-W51", "2026-W52", "2026-W53", "2027-W01"]);
-    assert.deepEqual(health.weeks[2], { week: "2026-W53", tracked: 1, opened: 1, rate: 100, responded: 0, respond_rate: 0 });
-    assert.equal(health.weeks[3].rate, null, "a week with no tracked send has no rate");
+    // Five are handed over: the four the table draws and the one behind them
+    // that the oldest drawn row reads its change against.
+    assert.deepEqual(health.weeks.map((w) => w.week), ["2026-W50", "2026-W51", "2026-W52", "2026-W53", "2027-W01"]);
+    assert.deepEqual(health.weeks[3], { week: "2026-W53", tracked: 1, opened: 1, rate: 100, responded: 0, respond_rate: 0 });
+    assert.equal(health.weeks[4].rate, null, "a week with no tracked send has no rate");
 });
 
 /* ---------- what a send is ---------- */
@@ -106,19 +108,52 @@ test("two addresses at one company on one day are one send, tracked and opened i
     assert.deepEqual([sends[1].tracked, sends[1].opened], [true, false]);
 });
 
-test("a send is responded when a reply lands on its own thread after it", () => {
+test("outreach is a company's sends up to its first real reply, and nothing after it", () => {
+    const portal = portalOf({
+        companies: [company("1"), company("2")],
+        contacts: [
+            // A first touch, a bump, their reply, then two answers inside the conversation.
+            contact("a", "1",
+                [touch("2026-09-29T15:00:00Z"), touch("2026-10-06T15:00:00Z", { opens: 2 }), touch("2026-10-07T15:00:00Z", { opens: 9 }), touch("2026-10-08T15:00:00Z", { opens: 9 })],
+                [reply("2026-10-06T20:00:00Z")]),
+            // They wrote first: nothing Forni sent this company was outreach.
+            contact("b", "2", [touch("2026-10-06T15:00:00Z", { opens: 4 })], [reply("2026-10-01T20:00:00Z")]),
+        ],
+    });
+    assert.deepEqual(outreachSends(portal).map((s) => `${s.company}|${s.day}`), ["1|2026-09-29", "1|2026-10-06"]);
+    const week = healthOf(portal, "2026-10-05", ms("2026-10-09T18:00:00Z")).weeks.at(-1);
+    assert.deepEqual([week.tracked, week.opened, week.responded], [1, 1, 1], "the two answers and their eighteen opens are not in the week");
+});
+
+test("one reply is credited to exactly one send, the latest outreach send before it", () => {
     const portal = portalOf({
         companies: [company("1"), company("2"), company("3")],
         contacts: [
-            contact("a", "1", [touch("2026-10-06T15:00:00Z", { thread: "t1" })], [reply("2026-10-06T20:00:00Z", { thread: "t1" })]),
-            // A reply on another thread, and one from before the send, are not this send's.
-            contact("b", "2", [touch("2026-10-06T15:00:00Z", { thread: "t2" })], [reply("2026-10-06T20:00:00Z", { thread: "t9" }), reply("2026-10-01T20:00:00Z", { thread: "t2" })]),
-            // No thread id on the record: the same contact writing back before the next send counts.
-            contact("c", "3", [touch("2026-10-06T15:00:00Z"), touch("2026-10-08T15:00:00Z")], [reply("2026-10-07T15:00:00Z")]),
+            // A first touch and its bump on one thread, then the reply: the bump drew it.
+            contact("a", "1", [touch("2026-09-29T15:00:00Z", { thread: "t1" }), touch("2026-10-06T15:00:00Z", { thread: "t1" })], [reply("2026-10-06T20:00:00Z", { thread: "t1" })]),
+            // The bump went out on a fresh thread and they answered the first touch's.
+            contact("b", "2", [touch("2026-09-29T15:00:00Z", { thread: "t2" }), touch("2026-10-06T15:00:00Z", { thread: "t3" })], [reply("2026-10-07T20:00:00Z", { thread: "t2" })]),
+            // No thread ids on the record at all: the latest send before the reply.
+            contact("c", "3", [touch("2026-09-29T15:00:00Z"), touch("2026-10-06T15:00:00Z")], [reply("2026-10-07T15:00:00Z")]),
         ],
     });
     const responded = Object.fromEntries(outreachSends(portal).map((s) => [`${s.company}|${s.day}`, s.responded]));
-    assert.deepEqual(responded, { "1|2026-10-06": true, "2|2026-10-06": false, "3|2026-10-06": true, "3|2026-10-08": false });
+    assert.deepEqual(responded, {
+        "1|2026-09-29": false, "1|2026-10-06": true,
+        "2|2026-09-29": true, "2|2026-10-06": false,
+        "3|2026-09-29": false, "3|2026-10-06": true,
+    });
+    // A past week does not change after the fact: W40 holds no response for company 1.
+    const weeks = healthOf(portal, "2026-10-05", ms("2026-10-09T18:00:00Z")).weeks;
+    assert.deepEqual(weeks.slice(-2).map((w) => w.responded), [1, 2]);
+});
+
+test("a reply on a thread no outreach send is on credits nothing", () => {
+    const portal = portalOf({
+        companies: [company("1")],
+        contacts: [contact("a", "1", [touch("2026-10-06T15:00:00Z", { thread: "t1" })], [reply("2026-10-06T20:00:00Z", { thread: "t9" })])],
+    });
+    assert.deepEqual(outreachSends(portal).map((s) => s.responded), [false]);
 });
 
 test("a send to a company already at Opportunity or Customer is not outreach", () => {
@@ -158,7 +193,7 @@ test("the flag speaks at the threshold and stays quiet a point short of it", () 
     const prior = [[10, 6], [10, 6], [10, 6]];
     const at = 60 - FLAG_DROP;
     const dropped = healthOf(weeksPortal([...prior, [20, (20 * at) / 100]]), "2026-10-05", now);
-    assert.match(dropped.flag, /^W40 opened at 45% on 20 tracked sends, 15 below the 60% average of the three weeks before it\.$/);
+    assert.match(dropped.flag, /^W40 opened at 45% on 20 tracked sends, 15 below the 60% of the three weeks before it\.$/);
     const held = healthOf(weeksPortal([...prior, [50, 23]]), "2026-10-05", now);
     assert.equal(held.weeks.at(-2).rate, 46);
     assert.equal(held.flag, null, "fourteen below is not a flag");
@@ -170,6 +205,17 @@ test("the flag needs enough tracked sends to mean anything", () => {
     assert.equal(thin.flag, null);
     const enough = healthOf(weeksPortal([[10, 6], [10, 6], [10, 6], [FLAG_MIN_TRACKED, 0]]), "2026-10-05", now);
     assert.ok(enough.flag);
+});
+
+test("the weeks before are pooled, so a week of one or two sends cannot swing the flag", () => {
+    const now = ms("2026-10-06T04:00:00Z");
+    // Two thin weeks at 100% and a real one at 50%: a mean of the three rates
+    // would say 83% and flag a week at 70%; pooled they opened 12 of 22, 55%.
+    const thin = [[1, 1], [1, 1], [20, 10]];
+    assert.equal(healthOf(weeksPortal([...thin, [20, 14]]), "2026-10-05", now).flag, null);
+    assert.match(healthOf(weeksPortal([...thin, [20, 8]]), "2026-10-05", now).flag, /15 below the 55% of the three weeks before it/);
+    // And three weeks that together hold too few sends are nothing to compare with.
+    assert.equal(healthOf(weeksPortal([[3, 3], [3, 3], [3, 3], [20, 0]]), "2026-10-05", now).flag, null);
 });
 
 test("on a Monday run the week judged is the one that just ended, never the one still running", () => {
@@ -206,6 +252,21 @@ test("proposals are every open deal, the larger first and then the sooner due", 
         { who: "Company 3", amount: 10000, owed: "Scoping", due: "", url: url("3") },
         { who: "Company 2", amount: 1750, owed: "Swing by", due: "2026-10-12", url: url("2") },
         { who: "Company 1", amount: 1750, owed: "Reach back out to Odette", due: "2026-10-20", url: url("1") },
+    ]);
+});
+
+test("a company with two deals open gets a line for each, told apart by the deal's name", () => {
+    const portal = portalOf({
+        companies: [company("1")],
+        stages: { opportunity: [row("1", { task: { due: "2026-10-12", reading: "due", subject: "Walk the proposal" } })] },
+        deals: [
+            { id: "d1", name: "Site rebuild", stage: "Proposal", amount: 8000, closed: false, won: false, companies: ["1"] },
+            { id: "d2", name: "Monthly care", stage: "Proposal", amount: 600, closed: false, won: false, companies: ["1"] },
+        ],
+    });
+    assert.deepEqual(tier(needsOf(portal, []).needs, "proposal").map((l) => [l.amount, l.owed]), [
+        [8000, "Site rebuild: Walk the proposal"],
+        [600, "Monthly care: Walk the proposal"],
     ]);
 });
 
@@ -296,25 +357,45 @@ test("a title loses its week tag and its customer's name, and nothing else", () 
     assert.equal(trimTitle("SkySpec - [W41] follow ups", ["SkySpec"]), "follow ups");
     assert.equal(trimTitle("Skylight photos for the writeup", ["SkySpec"]), "Skylight photos for the writeup");
     assert.equal(trimTitle("SkySpec:", ["SkySpec"]), "SkySpec:", "a title that is only the prefix stays whole");
+    assert.equal(trimTitle("2026-W41 audit GA4", []), "audit GA4");
+});
+
+test("a title that merely starts with a W and a digit is not a week tag", () => {
+    assert.equal(trimTitle("W3C validation fixes", ["SkySpec"]), "W3C validation fixes");
+    assert.equal(trimTitle("W9 for the bookkeeper", ["SkySpec"]), "W9 for the bookkeeper");
+    assert.equal(trimTitle("w41 audit", []), "w41 audit", "the tag is a capital W");
+    assert.equal(trimTitle("W41", []), "W41", "a tag with nothing after it is the title");
 });
 
 /* ---------- nobody twice ---------- */
 
-test("a company on a named line leaves every count, and a person owed a reply leaves the rest", () => {
-    const name = (person, id, contactId) => ({ person, company: `Company ${id}`, contact_url: `https://app.example.test/record/0-1/${contactId}`, company_url: url(id) });
+const person = (who, id, contactId, extra = {}) => ({ person: who, company: `Company ${id}`, contact_url: `https://app.example.test/record/0-1/${contactId}`, company_url: url(id), ...extra });
+const twoTiers = () => [
+    { key: "proposal", lines: [{ who: "Company 1", owed: "Walk the proposal", due: "2026-10-12", url: url("1") }] },
+    { key: "warm_sql", lines: [{ who: "Company 3", owed: "second touch due", due: "", url: url("3") }] },
+];
+
+test("a reply owed on a company with a named line folds into that line and is not lost", () => {
+    const owed = { reply: [person("Ana", "1", "a", { note: "asked whether the price holds through November" }), person("Bo", "2", "b", { note: "wants a call" })] };
+    const tiers = twoTiers();
+    const out = settleOwed(owed, tiers);
+    assert.deepEqual(out.owed.reply.map((n) => n.person), ["Bo"], "Ana's reply is on the proposal's line now");
+    assert.deepEqual(out.tiers[0].lines[0], { who: "Company 1", owed: "reply owed to Ana: asked whether the price holds through November", due: "2026-10-12", url: url("1") });
+    assert.equal(tiers[0].lines[0].owed, "Walk the proposal", "the tiers handed in are not changed");
+});
+
+test("second touches and first touches are never removed, since their drafts fire either way", () => {
     const owed = {
-        reply: [name("Ana", "1", "a"), name("Bo", "2", "b")],
-        bump: [name("Bo", "2", "b"), name("Cy", "3", "c"), { person: "Di", company: "company 1", contact_url: null, company_url: null }],
-        visit: [name("Bea", "2", "b2")],
-        first_touch: [name("Eli", "5", "e")],
+        reply: [person("Bo", "2", "b")],
+        bump: [person("Bo", "2", "b"), person("Cy", "3", "c"), person("Ana", "1", "a")],
+        first_touch: [person("Dee", "3", "d"), person("Eli", "5", "e")],
+        visit: [person("Bea", "2", "b2"), person("Cy", "3", "c"), person("Flo", "6", "f"), { person: "Di", company: "company 1", contact_url: null, company_url: null }],
         decide: null,
     };
-    const tiers = [{ key: "proposal", lines: [{ who: "Company 1", url: url("1") }] }, { key: "warm_sql", lines: [{ who: "Company 3", url: url("3") }] }];
-    const out = dedupeOwed(owed, tiers);
-    assert.deepEqual(out.reply.map((n) => n.person), ["Bo"], "the proposal's company is a named line already");
-    assert.deepEqual(out.bump, [], "Bo is owed a reply, Cy's company is a warm SQL, Di matched on the name alone");
-    assert.deepEqual(out.visit, [], "a second person at a company owed a reply is not also counted");
-    assert.deepEqual(out.first_touch.map((n) => n.person), ["Eli"]);
+    const out = settleOwed(owed, twoTiers()).owed;
+    assert.deepEqual(out.bump.map((n) => n.person), ["Bo", "Cy", "Ana"]);
+    assert.deepEqual(out.first_touch.map((n) => n.person), ["Dee", "Eli"]);
+    assert.deepEqual(out.visit.map((n) => n.person), ["Flo"], "a visit on a named company, or at a company owed a reply, is worked on that line");
     assert.deepEqual(out.decide, []);
 });
 
@@ -338,8 +419,14 @@ test("the Linear read pages through the active cycle and sends the key bare", as
     assert.match(JSON.parse(calls[0].body).query, /isActive: \{ eq: true \}/);
 });
 
+test("a failed Linear read never carries the response body, which travels into the mail", async () => {
+    const echo = { ok: false, status: 401, text: async () => JSON.stringify({ error: "invalid key lin_api_SECRETSECRET" }) };
+    await assert.rejects(activeCycleIssues({ key: "lin_api_SECRETSECRET", fetchImpl: async () => echo }), (error) => !/SECRET/.test(error.message));
+});
+
 test("the Linear read fails loudly on a missing key, a bad status, and an error that arrives as a 200", async () => {
     await assert.rejects(activeCycleIssues({ key: "" }), /no LINEAR_API_KEY/);
-    await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => answer({ message: "nope" }, 401) }), /Linear 401/);
+    await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => answer({ message: "nope" }, 401) }), /^Error: Linear answered 401$/);
+    await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => ({ ok: true, status: 200, text: async () => "<html>gateway</html>" }) }), /not JSON/);
     await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => answer({ errors: [{ message: "Query too complex" }] }) }), /Query too complex/);
 });

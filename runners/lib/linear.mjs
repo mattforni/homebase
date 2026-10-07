@@ -50,11 +50,19 @@ export async function activeCycleIssues({ key, fetchImpl = fetch, timeoutMs = 30
             signal: AbortSignal.timeout(timeoutMs),
         });
         const text = await res.text();
-        if (!res.ok) throw new Error(`Linear ${res.status}: ${text.slice(0, 200)}`);
+        // The reason travels into pulls.md and the mail's Left for You line,
+        // so it carries the status and never the response body: nothing an
+        // API echoes back belongs in a mailbox.
+        if (!res.ok) throw new Error(`Linear answered ${res.status}`);
         // A GraphQL error arrives as a 200 with an errors array, which reads
         // as success to anything that only checks the status.
-        const body = JSON.parse(text);
-        if (body.errors?.length) throw new Error(`Linear: ${String(body.errors[0].message).slice(0, 200)}`);
+        let body;
+        try {
+            body = JSON.parse(text);
+        } catch {
+            throw new Error("Linear answered with something that is not JSON");
+        }
+        if (body.errors?.length) throw new Error(`Linear refused the query: ${String(body.errors[0].message).slice(0, 120)}`);
         const conn = body.data?.issues;
         if (!conn) throw new Error("Linear answered without an issues connection");
         for (const n of conn.nodes || []) {

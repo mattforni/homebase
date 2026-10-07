@@ -34,7 +34,7 @@
 # list in his own order, and lib/pipeline.mjs fills it from the records: the
 # named lines (customers from the Linear cycle, open proposals and warm SQLs
 # from the sweep) as `needs`, the trailing send weeks as `health`, and the
-# model's owed names with anyone a named line already covers taken out. The
+# model's owed names settled against those lines so nothing is said twice. The
 # model still writes the read, the names owed a touch with a note each, the
 # flags and the payloads.
 #
@@ -354,6 +354,11 @@ linear_pull() {
         LINEAR_WHY="$(head -c 160 "$WORK/linear-stderr.txt" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')"
         [[ -n "$LINEAR_WHY" ]] || LINEAR_WHY="the read timed out"
         rm -f "$WORK/linear.json"
+    elif ! jq -e '.issues | type == "array"' "$WORK/linear.json" >/dev/null 2>&1; then
+        # A zero exit is not the whole test: a file that is not the shape the
+        # fold reads would be reused by every SKIP_PULLS run after this one.
+        LINEAR_WHY="the read returned no issues list"
+        rm -f "$WORK/linear.json"
     fi
     if [[ -n "$LINEAR_WHY" ]]; then
         echo "linear: not read, $LINEAR_WHY"
@@ -506,7 +511,7 @@ pulls_ready() {
         [[ -s "$WORK/$f" ]] || { fail_reason="SKIP_PULLS is set but $WORK/$f is missing; run once without it"; return 1; }
     done
     # The Linear read is optional on a fresh pull and on a reused one alike.
-    [[ -s "$WORK/linear.json" ]] || LINEAR_WHY="the pulls were skipped and $WORK holds no linear.json"
+    jq -e '.issues | type == "array"' "$WORK/linear.json" >/dev/null 2>&1 || LINEAR_WHY="the pulls were skipped and $WORK holds no linear.json"
     echo "pulls: skipped, reusing $WORK"
 }
 
@@ -590,15 +595,16 @@ if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
 
     # What needs Forni and how the funnel is doing, from the records rather
     # than the model (ATE-630): the named tiers and the weekly target as
-    # `needs`, the trailing send weeks as `health`, and `owed` with anyone a
-    # named line already covers taken out, so nobody is listed twice. The
+    # `needs`, the trailing send weeks as `health`, and `owed` settled against
+    # the named lines (a reply folds into its company's line; second touches
+    # and first touches are never removed, since their drafts fire). The
     # result is held to the shape the renderer reads before it replaces the
     # draft. Not fatal: a fold that fails leaves the draft as it was, the
     # mail renders its counts alone, and a flag under Left for You says why,
     # because the roster and the fires behind this point are worth more than
     # the list.
     linear_file=""
-    [[ ! -s "$WORK/linear.json" ]] || linear_file="$WORK/linear.json"
+    [[ -n "$LINEAR_WHY" || ! -s "$WORK/linear.json" ]] || linear_file="$WORK/linear.json"
     if node "$LIB_DIR/pipeline.mjs" fold "$DRAFT_JSON" "$WORK/portal.json" "$MONDAY" "$linear_file" "$LINEAR_WHY" \
             > "$WORK/draft-folded.json" 2>"$WORK/pipeline-stderr.txt" \
         && jq -e '(.needs.tiers | type == "array") and (.needs.first_touch_target | type == "number")
