@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from "react";
-import { useEmailTheme } from "@atelic-action/ui/email";
+import { eyebrowStyle, useEmailTheme } from "@atelic-action/ui/email";
 
 /*
  * The handful of rows and spans the three jq renderers built by hand rather
@@ -102,26 +102,85 @@ export function RosterLine({ url }: RosterLineProps) {
 	);
 }
 
-export type NameRunProps = { names: { text: string; url?: string | null }[] };
+/**
+ * One line of the list: a bold lead (linked when it carries the record), the
+ * sentence after it, the due date, and a linked key at the end. The due date
+ * and the key each hold to one line, since a browser breaks "10-15" and
+ * "ATE-633" at the hyphen and leaves half a date at the end of a row.
+ */
+export type NeedsItem = { lead: string; url?: string | null; rest: string; due?: string; ref?: string; refUrl?: string | null };
+export type NeedsGroup = { label: string; items: NeedsItem[] };
+export type NeedsListProps = { groups: NeedsGroup[] };
 
 /**
- * Names in one sentence, each linked, a comma between them. The waiting names
- * in a stage read this way rather than as cards (Forni, 2026-09-29): nothing
- * is owed on them, and a card each ran a sixty name mail past the hundred
- * kilobytes where Gmail clips.
+ * The numbered list the mail opens on (Forni, 2026-10-07, ATE-630): one line
+ * per thing that needs him, numbered straight through, with a quiet label
+ * over each group so a line's rank explains itself. The number is a cell of
+ * its own rather than an ordered list's marker, since Gmail drops list
+ * markers inside a table cell on some accounts and a to do list without its
+ * numbers is a paragraph.
  */
-export function NameRun({ names }: NameRunProps) {
-	const { palette } = useEmailTheme();
+export function NeedsList({ groups }: NeedsListProps) {
+	const { palette, fonts } = useEmailTheme();
+	const starts = groups.map((_, g) => groups.slice(0, g).reduce((sum, group) => sum + group.items.length, 0));
+	const line = `1px solid ${palette.hair}`;
 	return (
-		<div style={{ fontSize: "14px", lineHeight: "1.6", color: palette.dim }}>
-			{names.map((name, i) => (
-				// biome-ignore lint/suspicious/noArrayIndexKey: a name's position is its identity
-				<Fragment key={i}>
-					{i === 0 ? null : ", "}
-					<Link text={name.text} url={name.url} />
-				</Fragment>
-			))}
-		</div>
+		<table role="presentation" cellPadding="0" cellSpacing="0" border={0} width="100%">
+			<tbody>
+				{groups.map((group, g) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: a group's position is its identity
+					<Fragment key={g}>
+						<tr>
+							<td colSpan={2} style={{ padding: g === 0 ? "0 0 6px" : "18px 0 6px", ...eyebrowStyle(fonts), color: palette.faint }}>
+								{group.label}
+							</td>
+						</tr>
+						{group.items.map((item, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: a line's position is its identity
+							<tr key={i}>
+								<td
+									width="26"
+									valign="top"
+									align="right"
+									style={{
+										width: "26px",
+										padding: "8px 10px 8px 0",
+										borderTop: line,
+										fontFamily: fonts.mono,
+										fontSize: "12px",
+										lineHeight: "22px",
+										color: palette.faint,
+										whiteSpace: "nowrap",
+									}}
+								>
+									{`${starts[g] + i + 1}.`}
+								</td>
+								<td valign="top" style={{ padding: "8px 0", borderTop: line, fontSize: "15px", lineHeight: "22px", color: palette.ink }}>
+									<b style={{ fontWeight: "600" }}>
+										<Link text={item.lead} url={item.url} />
+									</b>
+									{item.rest}
+									{item.due ? (
+										<>
+											{" "}
+											<span style={{ whiteSpace: "nowrap" }}>{item.due}</span>
+										</>
+									) : null}
+									{item.ref ? (
+										<>
+											{" "}
+											<span style={{ whiteSpace: "nowrap" }}>
+												<Link text={item.ref} url={item.refUrl} />.
+											</span>
+										</>
+									) : null}
+								</td>
+							</tr>
+						))}
+					</Fragment>
+				))}
+			</tbody>
+		</table>
 	);
 }
 

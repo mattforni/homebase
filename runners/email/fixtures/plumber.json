@@ -75,6 +75,27 @@
             2
           ]
         }
+      },
+      {
+        "person": "Callum Rhys",
+        "company": "Juniper Street Framing",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/104",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/204",
+        "note": "Day 8 on the first send, tracked and never opened.",
+        "metrics": {
+          "days_since_send": 8,
+          "touches": 1,
+          "opens": 0,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": 12,
+          "email": "x@example.test",
+          "tracked": 1,
+          "touch_days": [
+            8
+          ],
+          "open_days": []
+        }
       }
     ],
     "visit": [
@@ -666,5 +687,103 @@
         "session_id": ""
       }
     ]
+  },
+  "needs": {
+    "tiers": [
+      {
+        "key": "proposal",
+        "label": "Open Proposals",
+        "lines": [
+          {
+            "who": "Rivermark Kitchen and Bath",
+            "owed": "proposal out; reach back out to Odette once she has walked it with her partner",
+            "due": "2026-01-30",
+            "url": "https://app.example.test/contacts/1/record/0-2/9",
+            "amount": 8500
+          }
+        ]
+      },
+      {
+        "key": "paying_build",
+        "label": "Paying Customers in Build",
+        "lines": [
+          {
+            "who": "Westbrook Skylights",
+            "owed": "audit the analytics and the tag container, then update the writeup",
+            "due": "2026-01-29",
+            "ref": "EXA-101",
+            "url": "https://tracker.example.test/issue/EXA-101"
+          },
+          {
+            "who": "Westbrook Skylights",
+            "owed": "this week's follow ups",
+            "ref": "EXA-102",
+            "url": "https://tracker.example.test/issue/EXA-102"
+          }
+        ]
+      },
+      {
+        "key": "operate",
+        "lines": []
+      },
+      {
+        "key": "trade_build",
+        "lines": [
+          {
+            "who": "Thistle Lane Florist",
+            "owed": "Countersign, or nudge Marguerite if the agreement is still unsigned.",
+            "due": "next week",
+            "url": "https://app.example.test/contacts/1/record/0-2/203"
+          }
+        ]
+      },
+      {
+        "key": "warm_sql",
+        "lines": [
+          {
+            "who": "Granite Peak Tile",
+            "owed": "Priya is scoping; reply when she answers"
+          }
+        ]
+      }
+    ]
+  },
+  "health": {
+    "weeks": [
+      {
+        "week": "2026-W02",
+        "sends": 14,
+        "tracked": 12,
+        "opened": 9,
+        "rate": 75,
+        "delta": null
+      },
+      {
+        "week": "2026-W03",
+        "sends": 20,
+        "tracked": 20,
+        "opened": 12,
+        "rate": 60,
+        "delta": -15
+      },
+      {
+        "week": "2026-W04",
+        "sends": 31,
+        "tracked": 30,
+        "opened": 18,
+        "rate": 60,
+        "delta": 0
+      },
+      {
+        "week": "2026-W05",
+        "sends": 9,
+        "tracked": 8,
+        "opened": 3,
+        "rate": 38,
+        "delta": -22,
+        "partial": true
+      }
+    ],
+    "flag": "The open rate fell twenty two points on eight tracked sends, which is too few to call a trend and enough to watch."
   }
 }

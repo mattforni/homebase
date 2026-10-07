@@ -14,133 +14,60 @@ The full read is in the roster: https://github.com/atelic-action/practice/blob/m
 
 
 ================================================================
-THE PIPELINE
+NEEDS YOU NOW · 10
 ================================================================
 
-  Stage     Now  Change
-  Lead       22  -3 (12%)
-  MQL         7  +3 (75%)
-  SQL         3  +3 (from 0)
-  Oppty       1  0
-  Customer    2  0
-  Closed      9  +1 (13%)
+  PAYING CUSTOMERS IN BUILD
+   1. Westbrook Skylights: audit the analytics and the tag
+      container, then update the writeup. Due Thu 01-29. EXA-101.
+      https://tracker.example.test/issue/EXA-101
+   2. Westbrook Skylights: this week's follow ups. EXA-102.
+      https://tracker.example.test/issue/EXA-102
 
-  # a send · o an open · @ both · | today · 30 days to today
+  TRADE CUSTOMERS IN BUILD
+   3. Thistle Lane Florist: Countersign, or nudge Marguerite if the
+      agreement is still unsigned. Due next week.
+      https://app.example.test/contacts/1/record/0-2/203
 
+  OPEN PROPOSALS
+   4. Rivermark Kitchen and Bath, $8,500: proposal out; reach back
+      out to Odette once she has walked it with her partner. Due Fri
+      01-30.
+      https://app.example.test/contacts/1/record/0-2/9
 
-================================================================
-LEAD · 22
-================================================================
+  WARM SQLS IN A LIVE CONVERSATION
+   5. Granite Peak Tile: Priya is scoping; reply when she answers.
 
-
-  Waiting on a send, 2: Pinewood Cabinetry, Harbor Lane Bakery
-
-
-================================================================
-MQL · 7
-================================================================
-
-
-  Waiting on a send, 1: Sunridge Dental
-
-
-================================================================
-SQL · 3
-================================================================
-
-  Granite Peak Tile [New]
-    no send logged · replied 3 days ago
-
-  Northwind Outfitters
-    3 touches · 2 opens · visit 19 days ago · opened 3 days ago ·
-    replied 3 days ago
-
-  Silver Sage Counseling
-    1 touch · 1 open · first 24 days ago · opened 4 days ago ·
-    replied 3 days ago
+  TOUCHES OWED
+   6. Replies owed: 2
+   7. Bumps to people who opened: 1 draft ready
+   8. First touches: 2, not every draft fired
+   9. Bumps to people who have not opened: 1 draft ready
+  10. Visits: 1, Thursday walkabout
 
 
 ================================================================
-OPPTY · 1
+FUNNEL HEALTH
 ================================================================
 
-  Rivermark Kitchen and Bath
-    Proposal · $8,500
-    closes 2026-10-31
+  Stage     Now  Change       In  Out
+  Lead       22  -3 (12%)      1    4
+  MQL         7  +3 (75%)      3    1
+  SQL         3  +3 (from 0)   1    0
+  Oppty       1  0             0    0
+  Customer    2  0             0    0
+  Closed      9  +1 (13%)      1    0
 
+Tracked Sends and Open Rate by Week
+  Flag: The open rate fell twenty two points on eight tracked sends,
+  which is too few to call a trend and enough to watch.
 
-================================================================
-CUSTOMER · 2
-================================================================
+  Week       Sends  Tracked  Opened  Rate   Change
+  W2            14       12       9   75%
+  W3            20       20      12   60%  -15 pts
+  W4            31       30      18   60%    0 pts
+  W5 so far      9        8       3   38%  -22 pts
 
-  Alder and Oak Physical Therapy
-    Closed Won · $9,090
-    signed 2026-09-17
-
-  Westbrook Skylights
-    Closed Won · $7,500
-    signed 2026-08-20
-
-
-================================================================
-THIS WEEK
-================================================================
-
-  Touch        Owed
-  First touch     2
-  Bump            1
-  Decide          0
-  Reply to        2
-  Visit           1
-
-
-================================================================
-FIRST TOUCH · 2
-================================================================
-
-  Ines Ferreira
-    Harbor Lane Bakery and Provisions of Old Town · fit 17 · owner
-    direct
-    audit led, owner direct, graded A minus
-
-  Tobias Wren
-    Ridgeback Fencing · fit 17 · shared inbox
-    heads up on the hours mismatch, graded A
-
-================================================================
-BUMP · 1
-================================================================
-
-  Renata Oyelaran
-    30d [····················#······o··|]
-    Sable Creek Landscaping · 1 touch · 6 opens · opened 2d
-    Day 9 on the first send, no open yet.
-
-================================================================
-REPLY TO · 2
-================================================================
-
-  Salley Wilson
-    30d [··························#·o·|]
-    Pinewood Cabinetry · 2 touches · 5 opens · replied 2026-09-18 ·
-    opened 1d
-    Owed a number since Tuesday, sending as Atelic, graded A, and
-    she asked twice whether the audit could be walked through in
-    person at the shop rather than over a call.
-
-  Dov Marchetti
-    30d [··························#·o·|]
-    Harbor Line Plumbing · 2 touches · 5 opens · replied 2026-09-18
-    · opened 1d
-
-================================================================
-VISIT · 1
-================================================================
-
-  Marguerite Bell
-    30d [········#······#··············|]
-    Thistle Lane Florist · 2 touches · no opens yet
-    Walkable, open until 17:00.
 
 ================================================================
 DRAFTING · 3
@@ -149,14 +76,10 @@ DRAFTING · 3
   2 of 3 payload(s) went to the routine; each draft lands in the
   matt@atelic.me Drafts a few minutes after its fire.
 
-  Granite Peak Tile and Stone Restoration of the Front Range
-    Bump · fired · HTTP 200
-
-  Native Roofing
-    First touch · fired · HTTP 200
-
+Did Not Fire · 1
   Cherry Creek Appliance Repair
     First touch · failed · HTTP 429
+
 
 ================================================================
 THE GROOM
@@ -165,14 +88,6 @@ THE GROOM
   The groom moved 2 companies and 1 contact to match what the record
   already showed.
 
-  Blue Heron Plumbing
-    Lead to MQL · a tracked open
-
-  Granite Peak Tile
-    Lead to SQL · a reply on the record
-
-  Priya Venkataraman, Granite Peak Tile
-    Contacted to Engaged · they wrote back
 Left for you · 3
   Native Roofing and Native Roofing and Solar,
   nativeroofing.example: two companies on nativeroofing.example;
