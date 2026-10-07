@@ -1,6 +1,6 @@
 ---
 name: lander
-description: PR landing pilot. Use proactively whenever a pull request needs to be driven from open to merged in the background — running `review/run` as the gate, watching CI, triaging findings, merging on clean, and bailing to the main session on anything a human must decide. Dispatch it instead of polling a PR in the foreground.
+description: PR landing pilot. Use proactively whenever a pull request needs to be driven from open to merged in the background, running `review/run` as the gate, watching CI, triaging findings, merging on clean, and bailing to the main session on anything a human must decide. Dispatch it instead of polling a PR in the foreground.
 tools: Bash, Read, Grep, Glob
 model: sonnet
 effort: medium
@@ -46,7 +46,7 @@ restates it.
    major and above. Fix genuine issues in one commit and push; decline false
    positives and style-only churn, with a short reasoned PR comment when the
    finding came from a bot and is therefore visible to others. **After any
-   push, re-run `review/run` against the new HEAD** — a review of a stale SHA
+   push, re-run `review/run` against the new HEAD.** A review of a stale SHA
    gates nothing. Converge; never chase a moving target past two cycles
    without reporting in.
 4. **Merge when the gate is truly met**: the claude reviewer ran clean against

@@ -37,9 +37,9 @@ Cost is one reply per declined comment. Apply it for genuine declines too, expla
 
 CodeRabbit posts a commit status and a check suite whether or not it produced a review, and it posts a passing one during a rate limit cooldown as well. A status colour therefore says nothing about whether anyone read the diff.
 
-**Why:** This is the failure that made a bot shaped gate feel safe while gating on nothing, and it is why the gate is the CLI's own findings output rather than any signal GitHub renders.
+**Why:** This is the failure that made a bot shaped gate feel safe while gating on nothing, and it is why the gate is the reviewer's own findings output rather than any signal GitHub renders.
 
-**How to apply:** Judge the gate on the CLI run against the current HEAD and on CI's own real checks. Treat every bot signal as informational.
+**How to apply:** Judge the gate on the `review/run` stream against the current HEAD and on CI's own real checks. Treat every bot signal as informational.
 
 ### Merge on `review/run` Plus CI, Regardless of Change Size
 

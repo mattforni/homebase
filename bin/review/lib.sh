@@ -14,6 +14,21 @@ REVIEW_HEADER=$'ts\tkind\trepo\tpr\tsha\treviewer\tran\treason\tfindings\tfixed\
 die() { echo "${0##*/}: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required and not on PATH"; }
 
+# The value of a long option, or a die: an option given without its value
+# would otherwise end the script silently under set -e (shift 2 fails) or
+# swallow the next option as the value. Call as: x=$(value "$@") || exit 1
+value() { [[ $# -ge 2 && "$2" != -* ]] || die "$1 needs a value"; printf '%s' "$2"; }
+
+# Print the header comment of the calling script as its usage text, to
+# stderr when exiting non zero. The header runs from line 2 to the first line
+# that is not a comment.
+usage() {
+  local code="${1:-0}" text
+  text=$(sed -n '2,/^[^#]/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//')
+  if [[ "$code" -eq 0 ]]; then printf '%s\n' "$text"; else printf '%s\n' "$text" >&2; fi
+  exit "$code"
+}
+
 review_state_dir() {
   mkdir -p "$REVIEW_STATE/runs" || die "cannot create $REVIEW_STATE"
   # Raw reviewer output is kept for forensics, not forever.

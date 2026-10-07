@@ -19,15 +19,9 @@ set -euo pipefail
 # shellcheck source=bin/review/lib.sh
 . "$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-usage() {
-  sed -n '2,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
-  exit "${1:-0}"
-}
-
-worktree=""; base=""; reviewers="claude,coderabbit,codex"; effort="high"; max=""; budget=540
-# An option given without its value would otherwise end the script silently
-# under set -e (shift 2 fails) or swallow the next option as the value.
-value() { [[ $# -ge 2 && "$2" != -* ]] || die "$1 needs a value"; printf '%s' "$2"; }
+# The default budget leaves room inside a 600 second Bash call for the fetch
+# (30 s), the kill grace (15 s), and process startup.
+worktree=""; base=""; reviewers="claude,coderabbit,codex"; effort="high"; max=""; budget=480
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --base) base=$(value "$@") || exit 1; shift 2 ;;
@@ -42,6 +36,9 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -n "$worktree" ]] || usage 1
 [[ -d "$worktree" ]] || die "no such directory: $worktree"
+case "$effort" in low|medium|high|max) ;; *) die "--effort wants low, medium, high, or max, got $effort" ;; esac
+[[ "$budget" =~ ^[0-9]+$ && "$budget" -ge 60 ]] || die "--timeout wants whole seconds, at least 60, got $budget"
+[[ -z "$max" || "$max" =~ ^[0-9]+$ || "$max" == all ]] || die "--max-findings wants a number or all, got $max"
 need jq; need git; need timeout
 
 cd "$worktree" || die "cannot enter $worktree"
@@ -160,10 +157,18 @@ for r in "${wanted[@]}"; do
   else
     [[ -f "$dir/raw" ]] || : >"$dir/raw"
     cp "$dir/raw" "$state/runs/$stamp-$r.raw" 2>/dev/null || true
+    # A normaliser that dies (a jq error on a shape nobody foresaw) must not
+    # take the stream with it: the reviewer is reported as not run, and the
+    # raw copy under the state dir is there to look at.
     case "$r" in
-      claude) normalise_claude "$dir/raw" "$(cat "$dir/rc" 2>/dev/null || echo 1)" "$sha" "$secs" "$files" >>"$out" ;;
-      coderabbit) normalise_coderabbit "$dir/raw" "$sha" "$secs" "$files" >>"$out" ;;
+      claude) normalise_claude "$dir/raw" "$(cat "$dir/rc" 2>/dev/null || echo 1)" "$sha" "$secs" "$files" >>"$out" || normaliser_failed=1 ;;
+      coderabbit) normalise_coderabbit "$dir/raw" "$sha" "$secs" "$files" >>"$out" || normaliser_failed=1 ;;
     esac
+    if [[ "${normaliser_failed:-0}" == 1 ]]; then
+      normaliser_failed=0
+      jq -cn --arg r "$r" --arg sha "$sha" --argjson secs "$secs" --argjson files "$files" \
+        '{type:"complete",reviewer:$r,ran:false,reason:"normaliser failed; raw kept under the state dir",findings:0,sha:$sha,seconds:$secs,files:$files}' >>"$out"
+    fi
   fi
 done
 
