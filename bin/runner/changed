@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# Print the runners a diff between two commits affects, one per line, sorted.
+#
+# Usage: changed [-C <repo>] <base> <head>
+#        changed [-C <repo>] --all [<head>]
+#
+# This is what turns a merge into a promote: .github/workflows/promote.yml
+# hands it the two ends of a push and promotes each name it prints. Nothing
+# printed and exit zero means the push changed no image.
+#
+# The rules, which mirror what runner_build_context in lib.sh stages:
+#   runners/lib/, runners/email/         every runner (both ship in every image)
+#   bin/runner/promote, bin/runner/lib.sh  every runner (they decide what ships)
+#   runners/<name>/                      that runner, unless every changed path
+#                                        there is one that never ships
+#   .claude/agents/<x>.md                each runner whose agents manifest lists x
+#
+# Runners and manifests are read from the tree at <head>, never from a list
+# kept here, so a new runner is covered the day its Dockerfile lands. A base
+# that is empty, all zeros, or not a commit this clone holds (a first push, a
+# force push) means every runner, since there is nothing honest to diff
+# against. -C names another repository, which is how the test drives this
+# against a throwaway one.
+set -euo pipefail
+
+LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+[[ -r "$LIB" ]] || { echo "cannot read $LIB" >&2; exit 1; }
+# shellcheck source=lib.sh
+. "$LIB"
+
+usage="usage: ${0##*/} [-C <repo>] <base> <head> | --all [<head>]"
+repo=""; all=0; first=""; second=""; count=0
+while (( $# )); do
+    case "$1" in
+        -C)        repo="${2:-}"; [[ -n "$repo" ]] || die "-C needs a directory"; shift 2 ;;
+        --all)     all=1; shift ;;
+        -h|--help) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -*)        die "unknown option $1" ;;
+        *)
+            # An empty base is a real argument here (a workflow hands one over
+            # on a first push), so positions are counted, never tested for
+            # emptiness.
+            count=$((count + 1))
+            case "$count" in
+                1) first="$1" ;;
+                2) second="$1" ;;
+                *) die "unexpected argument $1" ;;
+            esac
+            shift ;;
+    esac
+done
+
+[[ -n "$repo" ]] || repo="$(runner_repo_root)"
+if (( all )); then
+    (( count <= 1 )) || die "$usage"
+    base=""; head="${first:-HEAD}"
+else
+    (( count == 2 )) || die "$usage"
+    base="$first"; head="$second"
+fi
+
+git -C "$repo" rev-parse --verify --quiet "$head^{commit}" >/dev/null \
+    || die "head '$head' is not a commit in $repo"
+
+# Every runner that has a Dockerfile at <head>. A runner without one is local
+# only and promote refuses it by name, so it is never printed.
+every="$(git -C "$repo" -c core.quotePath=false ls-tree -r --name-only "$head" -- runners \
+    | sed -n 's|^runners/\([^/]*\)/Dockerfile$|\1|p' | sort -u)"
+
+# An unusable base widens to everything instead of failing: the push still
+# happened, and promoting too much is the safe side of that guess.
+if (( ! all )); then
+    # Empty, or nothing but zeros (the before of a branch's first push).
+    case "$base" in
+        *[!0]*) ;;
+        *) all=1 ;;
+    esac
+    if (( ! all )) && ! git -C "$repo" rev-parse --verify --quiet "$base^{commit}" >/dev/null; then
+        all=1
+    fi
+fi
+
+if (( all )); then
+    [[ -z "$every" ]] || printf '%s\n' "$every"
+    exit 0
+fi
+
+# The names in a runner's agents manifest at <head>, through the same reader
+# runner_build_context stages from, so a line the staging would ship (indented,
+# say) is a line this matches.
+manifest() {
+    git -C "$repo" show "$head:runners/$1/agents" 2>/dev/null | runner_agent_names || true
+}
+
+# Usage: has_line <lines> <line>
+# Whether a newline separated list holds a line, whole and exact. Matched in
+# the shell and never by piping into grep -q: under pipefail a grep that
+# exits on its first match can leave the writer dying of SIGPIPE, the
+# pipeline then reads as a failure, and a real match is dropped in silence.
+# With no pipe there is no race to lose.
+has_line() {
+    case "
+$1
+" in
+        *"
+$2
+"*) return 0 ;;
+    esac
+    return 1
+}
+
+is_runner() { has_line "$every" "$1"; }
+
+# Whether a path inside a runner's directory is one that never reaches its
+# image. The list is the one runner_build_context excludes by, minus the
+# agents manifest (it decides which agents ship, so it counts), plus the
+# README, which is staged and which no Dockerfile copies.
+never_ships() {
+    local rest="$1" e
+    [[ "$rest" != README.md ]] || return 0
+    for e in $RUNNER_CONTEXT_EXCLUDES; do
+        [[ "$e" != agents ]] || continue
+        [[ "$rest" == "$e" || "$rest" == "$e"/* ]] && return 0
+    done
+    return 1
+}
+
+# The diff is tree against tree, so it is right whether or not base is an
+# ancestor of head. Renames are listed as a delete and an add, which makes a
+# file moved out of one runner and into another count against both. NUL
+# separated, because git otherwise quotes and escapes a name with anything
+# past ASCII in it, and a quoted path matches no rule below. Through a file
+# so a failed diff is an error and not an empty list.
+paths="$(mktemp)"
+trap 'rm -f "$paths"' EXIT
+git -C "$repo" diff -z --name-only --no-renames "$base" "$head" > "$paths" \
+    || die "could not diff $base against $head in $repo"
+
+everything=0; affected=""
+while IFS= read -r -d '' path; do
+    [[ -n "$path" ]] || continue
+    case "$path" in
+        bin/runner/promote|bin/runner/lib.sh|runners/lib/*)
+            everything=1 ;;
+        # The image's first stage builds one bundle from render.tsx and what it
+        # imports, and only that file is copied forward. The tests, their
+        # fixtures and the goldens are inputs to none of it.
+        runners/email/tst/*|runners/email/fixtures/*|runners/email/goldens/*) ;;
+        runners/email/node_modules/*|runners/email/dist/*) ;;
+        runners/email/*)
+            everything=1 ;;
+        runners/*/*)
+            rest="${path#runners/}"
+            name="${rest%%/*}"
+            rest="${rest#*/}"
+            is_runner "$name" || continue
+            never_ships "$rest" || affected="$affected$name
+"
+            ;;
+        .claude/agents/*.md)
+            agent="${path#.claude/agents/}"
+            agent="${agent%.md}"
+            [[ "$agent" != */* ]] || continue
+            while IFS= read -r name; do
+                [[ -n "$name" ]] || continue
+                names="$(manifest "$name")"
+                if has_line "$names" "$agent"; then
+                    affected="$affected$name
+"
+                fi
+            done <<< "$every"
+            ;;
+    esac
+done < "$paths"
+
+if (( everything )); then
+    [[ -z "$every" ]] || printf '%s\n' "$every"
+    exit 0
+fi
+
+printf '%s' "$affected" | sort -u

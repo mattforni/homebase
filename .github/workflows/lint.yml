@@ -95,6 +95,13 @@ jobs:
       - name: Check runners
         run: ./bin/lint/runners
 
+      # bin/runner/changed decides which runner images a merge to main
+      # promotes (promote.yml). A path it misses leaves a scheduled job on an
+      # old image beside a green run, so its table of paths and the runners
+      # each must reach runs here against a throwaway repository.
+      - name: Test the promote path rules
+        run: ./bin/lint/runner-changed-test
+
       # The secrets gate hook denies any Bash command that would print a
       # credentials file into a transcript. A hook that fails open is one
       # regex edit from guarding nothing, so a table of commands that must

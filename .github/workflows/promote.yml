@@ -1,0 +1,203 @@
+name: Promote
+
+# A merge to main is the promote (ATE-608). Each Cloud Run job runner whose
+# image the push changed is rebuilt and its job pointed at the new image,
+# through bin/runner/promote, the same script a hand promote uses.
+#
+# There is no pull_request trigger of any kind, and there must never be one.
+# The deploy identity trusts exactly this repository at refs/heads/main (the
+# attribute condition on the workload identity provider), and a pull request
+# runs code nobody has merged. Lint is where a pull request is checked.
+on:
+  # Every push to main, with no paths filter. GitHub's filter reads only the
+  # first 300 changed files of a push, so a large merge could have skipped
+  # this workflow without a word. bin/runner/changed is the one place the
+  # rules live, and a run that finds nothing to promote costs a few seconds.
+  push:
+    branches: [main]
+  # The choices are spelled out because a choice input has to be static. The
+  # plan job still holds the pick against the runners main really has.
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Which runner to promote from main"
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - plumber
+          - recruiter
+          - retro
+
+# Read only by default. The promote job alone adds id-token, which is what
+# lets it ask Google for a short lived credential. No key exists anywhere.
+permissions:
+  contents: read
+
+env:
+  WORKLOAD_IDENTITY_PROVIDER: projects/897452392033/locations/global/workloadIdentityPools/github/providers/homebase
+  DEPLOY_SERVICE_ACCOUNT: runner-deployer@atelic.iam.gserviceaccount.com
+
+jobs:
+  plan:
+    name: Work out what to promote
+    runs-on: ubuntu-latest
+    outputs:
+      runners: ${{ steps.list.outputs.runners }}
+    steps:
+      # A dispatch can be started from any branch, and Google would refuse it
+      # at the token exchange with an error that names none of this. Refuse it
+      # here in plain words instead.
+      - name: Refuse anything but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Promotes run from main only; this run is on $GITHUB_REF."
+          exit 1
+
+      # The whole history, because the diff is between the commit main was at
+      # before the push and the one it is at now, and a push can carry any
+      # number of commits.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      # On a push, bin/runner/changed reads the two ends of it. A before that
+      # is all zeros or no longer in the history (a force push) comes back as
+      # every runner. On a dispatch there is no before at all and the input
+      # decides. Everything from the event arrives through the environment and
+      # never by interpolation into the script.
+      - name: List the runners to promote
+        id: list
+        env:
+          EVENT: ${{ github.event_name }}
+          CHOICE: ${{ inputs.runner }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          every="$(./bin/runner/changed --all "$AFTER")"
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            if [[ "$CHOICE" == "all" ]]; then
+              names="$every"
+            elif grep -qxF -- "$CHOICE" <<< "$every"; then
+              names="$CHOICE"
+            else
+              echo "::error::No runner named '$CHOICE' has a Dockerfile on main."
+              exit 1
+            fi
+          else
+            names="$(./bin/runner/changed "$BEFORE" "$AFTER")"
+          fi
+          json="$(printf '%s' "$names" | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+          echo "runners=$json" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Promote Plan"
+            echo
+            if [[ "$json" == "[]" ]]; then
+              echo "Nothing in this push reaches a runner image, so nothing is promoted."
+            else
+              echo "Changed as of \`$AFTER\`, each built from the tip of main when its job starts:"
+              echo
+              printf '%s\n' "$names" | sed 's/^/- /'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  promote:
+    name: Promote ${{ matrix.runner }}
+    needs: plan
+    # An empty list skips the job before the matrix is ever expanded, which is
+    # what keeps a matrix of nothing from being an error.
+    if: needs.plan.outputs.runners != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      # One runner failing to build says nothing about the others, and
+      # cancelling them would leave a merge half promoted with no record.
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(needs.plan.outputs.runners) }}
+    # One promote per runner at a time. The script ends by deleting every
+    # other image of the runner, so two of them racing could each delete what
+    # the other just pointed the job at. A later promote waits its turn and is
+    # never cancelled mid build; GitHub keeps one waiting per group, so a third
+    # merge replaces a second that has not started, and builds a newer main.
+    concurrency:
+      group: promote-${{ matrix.runner }}
+      cancel-in-progress: false
+    steps:
+      # The tip of main as it is when this job starts, never the commit that
+      # triggered the run. Runs in a group start in no promised order, and a
+      # failed one can be run again days later, so building the triggering
+      # commit would let an older run point a job at an older image after a
+      # newer one had promoted. Built this way, whichever run goes last
+      # promotes the newest main. The plan job above still decides which
+      # runners from its own push's diff.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          ref: refs/heads/main
+
+      # The commit actually built, for the summary and the log.
+      - name: Name the commit being built
+        id: built
+        run: |
+          sha="$(git rev-parse HEAD)"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Building main at $sha (this run was triggered at $GITHUB_SHA)"
+
+      # Keyless: GitHub signs a token saying which repository and ref this run
+      # is, and Google trades it for an hour as the deploy service account.
+      # Nothing is stored in this repository's secrets and nothing can leak.
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SERVICE_ACCOUNT }}
+
+      # Pins a gcloud wired to the credential above, so the script finds the
+      # same command on PATH here that it finds on a laptop.
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
+      # The same script, with no flag a hand promote would not pass. A failure
+      # fails the job and turns the run red, and GitHub's own notice of a
+      # failed workflow is the mail. Until a promote succeeds the job keeps
+      # firing the image it already had.
+      - name: Promote
+        id: promote
+        env:
+          RUNNER: ${{ matrix.runner }}
+        run: ./bin/runner/promote "$RUNNER"
+
+      # Always, so a failed promote leaves a line saying which image is still
+      # live. The digest read is the same read only call the script's prune
+      # makes, and its failure never changes the job's result.
+      - name: Summarise
+        if: always()
+        env:
+          RUNNER: ${{ matrix.runner }}
+          OUTCOME: ${{ steps.promote.outcome }}
+          BUILT: ${{ steps.built.outputs.sha }}
+        run: |
+          # shellcheck source=/dev/null
+          . ./bin/runner/lib.sh
+          image="$RUNNER_REGISTRY/$RUNNER:latest"
+          digest="$(gcloud artifacts docker images describe "$image" --project="$RUNNER_PROJECT" \
+            --format='value(image_summary.digest)' 2>/dev/null || true)"
+          {
+            echo "## $RUNNER"
+            echo
+            if [[ "$OUTCOME" == "success" ]]; then
+              echo "Promoted, built from main at \`$BUILT\`."
+            else
+              echo "**Not promoted** (the promote step ended as $OUTCOME, building main at \`${BUILT:-unread}\`). The job still fires the image it had before this run, unless the log above shows the job update itself went through. No later push retries this on its own: run the Promote workflow on main for this runner, or wait for the next merge that changes it."
+            fi
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Image | \`$image\` |"
+            echo "| Digest in the registry now | \`${digest:-unread}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
