@@ -364,7 +364,7 @@ linear_pull() {
         echo "linear: not read, $LINEAR_WHY"
         echo "- Linear: NOT read ($LINEAR_WHY). The customer lines of the mail come from open HubSpot tasks this run." >> "$PULLS_MD"
     else
-        echo "linear: $(jq '.issues | length' "$WORK/linear.json") open issues in the active cycle"
+        echo "linear: $(jq '.issues | length' "$WORK/linear.json") open issues in the active cycle$(jq -r 'if .truncated == true then ", stopped at the page cap" else "" end' "$WORK/linear.json")"
     fi
 }
 
@@ -511,7 +511,14 @@ pulls_ready() {
         [[ -s "$WORK/$f" ]] || { fail_reason="SKIP_PULLS is set but $WORK/$f is missing; run once without it"; return 1; }
     done
     # The Linear read is optional on a fresh pull and on a reused one alike.
-    jq -e '.issues | type == "array"' "$WORK/linear.json" >/dev/null 2>&1 || LINEAR_WHY="the pulls were skipped and $WORK holds no linear.json"
+    # A reused one is named as reused, with its age, so nobody reads an old
+    # cycle as this run's; the reason for a missing one names no path, since
+    # it travels into the mail.
+    if jq -e '.issues | type == "array"' "$WORK/linear.json" >/dev/null 2>&1; then
+        echo "linear: reusing the read saved by an earlier pull, $(jq '.issues | length' "$WORK/linear.json") issues, written $(date -r "$WORK/linear.json" +%F 2>/dev/null || echo "on an unknown day")"
+    else
+        LINEAR_WHY="the pulls were skipped and no Linear read was saved"
+    fi
     echo "pulls: skipped, reusing $WORK"
 }
 

@@ -104,8 +104,10 @@ function pastOutreach(company, sentMs) {
  * - A company's day is tracked when any copy that day carried tracking and
  *   opened when a tracked copy shows an open.
  * - That first reply is credited to exactly one send, the latest outreach
- *   send before it, on its own thread when the record carries thread ids and
- *   the latest of any when it does not. One reply marking every earlier send
+ *   send before it: the latest on the reply's own thread when a send shares
+ *   it, and otherwise the latest of any, since a real reply that arrived on
+ *   a thread id no send carries (a new message, a forwarded one) is still an
+ *   answer to the outreach and was being credited to nothing. One reply marking every earlier send
  *   on the thread credited a first touch and its bump alike, and changed a
  *   past week's numbers after the fact.
  */
@@ -131,7 +133,7 @@ export function outreachSends(portal) {
         let credited = null;
         if (first !== null) {
             const threaded = first.thread ? outreach.filter((t) => t.thread === first.thread) : [];
-            const pool = threaded.length > 0 ? threaded : outreach.filter((t) => !t.thread || !first.thread);
+            const pool = threaded.length > 0 ? threaded : outreach;
             credited = pool[pool.length - 1] || null;
         }
         const days = new Map();
@@ -201,8 +203,12 @@ const dueOrder = (a, b) => (a.due || "9999").localeCompare(b.due || "9999");
 // Linear's priority runs 1 (urgent) to 4 (low) with 0 for none, which sorts last.
 const priorityRank = (p) => (p >= 1 && p <= 4 ? p : 5);
 
+// What the sweep reads as the next touch, in words. The portal's read of a
+// reply is worded as what it is, a direction logged on a record: whether a
+// reply is owed is decided by the mailbox thread, which is the model's
+// `owed.reply`, and only that can put "reply owed" on a line (settleOwed).
 const NEXT_WORDS = {
-    reply: "reply owed; theirs is the last message on the record",
+    reply: "last message on the record is theirs, check the thread",
     decide: "close or keep, past the clock",
     visit: "visit or call due",
     bump: "second touch due",
@@ -223,32 +229,33 @@ function dealsOf(portal) {
 }
 
 /**
- * Open proposals: one line per open deal on a live funnel company, the
- * larger first and then the sooner due. What is owed is the company's nearest
- * open task, parked or not, since a proposal's task is the date Forni said
- * he would reach back out; with no task the line says where the deal stands.
- * A company with two deals open gets two lines, each led by its deal's own
- * name, since the company and the task are the same on both and the name and
- * the money are what tell them apart.
+ * Open proposals: exactly one line per open deal, the larger first and then
+ * the sooner due. A deal is named by its first company the sweep knows; a
+ * deal on two companies is still one proposal and one line, and a deal whose
+ * company is outside the funnel rows is named by the deal itself, since
+ * money on the table is not something to leave off for want of a row. A deal
+ * whose company has been closed with a reason is left out. What is owed is
+ * that company's nearest open task, parked or not, since a proposal's task
+ * is the date Forni said he would reach back out; with no task the line says
+ * where the deal stands. Two deals open at one company are each led by the
+ * deal's own name, which with the money is what tells them apart.
  */
 function proposalLines(portal, rows) {
-    const open = dealsOf(portal).filter((d) => !d.closed);
+    const placed = dealsOf(portal).filter((d) => !d.closed).map((deal) => {
+        const id = (deal.companies || []).find((co) => portal.companies?.[co]) || null;
+        return { deal, id, company: id ? portal.companies[id] : null };
+    }).filter(({ company }) => !company?.disqualification_reason);
     const perCompany = new Map();
-    for (const deal of open) for (const id of deal.companies || []) perCompany.set(id, (perCompany.get(id) || 0) + 1);
-    const lines = [];
-    for (const deal of open) {
-        for (const id of deal.companies || []) {
-            const company = portal.companies?.[id];
-            if (!company || company.disqualification_reason) continue;
-            const task = rows.get(id)?.task || null;
-            const owed = task?.subject || deal.stage || "an open deal";
-            lines.push({
-                who: company.name, amount: deal.amount ?? null,
-                owed: perCompany.get(id) > 1 && deal.name ? `${deal.name}: ${owed}` : owed,
-                due: task?.due || "", url: company.url,
-            });
-        }
-    }
+    for (const { id } of placed) if (id) perCompany.set(id, (perCompany.get(id) || 0) + 1);
+    const lines = placed.map(({ deal, id, company }) => {
+        const task = (id && rows.get(id)?.task) || null;
+        const owed = task?.subject || deal.stage || "an open deal";
+        return {
+            who: company?.name || deal.name || "An open deal", amount: deal.amount ?? null,
+            owed: company && perCompany.get(id) > 1 && deal.name ? `${deal.name}: ${owed}` : owed,
+            due: task?.due || "", url: company?.url || null,
+        };
+    });
     return lines.sort((a, b) => ((b.amount || 0) - (a.amount || 0)) || dueOrder(a, b));
 }
 
@@ -374,25 +381,35 @@ const norm = (v) => String(v || "").trim().toLowerCase();
 // first touches against the week's target (review, 2026-10-07).
 const DRAFTED_KINDS = new Set(["bump", "first_touch"]);
 
+// What a visit or a close adds to a named line when the company already has one.
+const FOLDED_WORDS = { visit: "visit owed", decide: "close or keep" };
+
 /**
  * The model's owed names settled against the named lines, so the mail says
- * each thing once and loses nothing:
+ * each thing once and loses nothing. A company with a named line is worked
+ * on that line, so what else the model owes there is added to it:
  *
- * - A reply owed on a company that already has a named line is folded into
- *   that line as what is owed, the model's note and the person it is owed to,
- *   since a reply outranks a task's subject or a deal's stage; then it leaves
- *   `owed.reply`, which would otherwise print it a second time.
- * - A visit or a close on such a company, or on a person still owed a reply,
- *   leaves its count: the named line is where that name is worked.
+ * - A reply owed is appended as "; reply owed to <person>: <note>", then
+ *   leaves `owed.reply`, which would otherwise print it a second time.
+ * - A visit or a close is appended as "; visit owed" or "; close or keep",
+ *   then leaves its count.
  * - Second touches and first touches are left exactly as the model sent them.
  *
+ * A fold adds and never replaces: the line keeps its own words (the ticket's
+ * title, the task's subject), several replies at one company each add
+ * theirs, and the same words are never added twice. The line it lands on is
+ * the company's first, in the tiers' own order, which is its most senior.
  * Matched on the record's url, and on the company's name for a row with no
- * url. Returns the settled `owed` and the tiers with any folded reply.
+ * url. Returns the settled `owed` and the tiers with what was folded in.
  */
 export function settleOwed(owed, tiers) {
     const settled = tiers.map((t) => ({ ...t, lines: (t.lines || []).map((l) => ({ ...l })) }));
     const lines = settled.flatMap((t) => t.lines);
     const lineOf = (n) => lines.find((l) => (norm(n.company_url) && norm(l.url) === norm(n.company_url)) || (norm(n.company) && norm(l.who) === norm(n.company)));
+    const add = (line, words) => {
+        const held = String(line.owed || "").split("; ").filter(Boolean);
+        if (!held.includes(words)) line.owed = [...held, words].join("; ");
+    };
     const out = {};
     for (const [kind, list] of Object.entries(owed || {})) out[kind] = [...(list || [])];
     out.reply = (out.reply || []).filter((n) => {
@@ -400,13 +417,16 @@ export function settleOwed(owed, tiers) {
         if (!line) return true;
         const to = String(n.person || "").trim();
         const note = String(n.note || "").trim();
-        line.owed = `reply owed${to ? ` to ${to}` : ""}${note ? `: ${note}` : ""}`;
+        add(line, `reply owed${to ? ` to ${to}` : ""}${note ? `: ${note}` : ""}`);
         return false;
     });
-    const replied = new Set(out.reply.flatMap((n) => [norm(n.contact_url), norm(n.company_url)]).filter(Boolean));
-    for (const kind of Object.keys(out)) {
-        if (kind === "reply" || DRAFTED_KINDS.has(kind)) continue;
-        out[kind] = out[kind].filter((n) => !lineOf(n) && !replied.has(norm(n.contact_url)) && !(norm(n.company_url) && replied.has(norm(n.company_url))));
+    for (const [kind, words] of Object.entries(FOLDED_WORDS)) {
+        if (!out[kind]) continue;
+        out[kind] = out[kind].filter((n) => {
+            const line = lineOf(n);
+            if (line) add(line, words);
+            return !line;
+        });
     }
     return { owed: out, tiers: settled };
 }
@@ -418,13 +438,16 @@ export function settleOwed(owed, tiers) {
  * settled against the named lines, and a flag (which the mail prints under Left for You) when
  * the customer lines did not come from Linear.
  */
-export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null, linearError = "" } = {}) {
+export function fold(draft, portal, { monday, nowMs = Date.now(), linear = null, linearError = "", linearTruncated = false } = {}) {
     const built = needsOf(portal, linear);
     const flags = [...(draft.flags || [])];
     if (linear === null && built.customers > 0) {
         flags.unshift({ lead: `The Linear read did not run${linearError ? ` (${linearError})` : ""}, so the customer lines are open HubSpot tasks.` });
     } else if (built.unmapped.length > 0) {
         flags.unshift({ lead: `No linear_project on ${built.unmapped.join(", ")}, so ${built.unmapped.length === 1 ? "its" : "their"} lines are open HubSpot tasks.` });
+    }
+    if (linear !== null && linearTruncated) {
+        flags.unshift({ lead: `The Linear read stopped at ${linear.length} issues, so a customer line may be missing.` });
     }
     const settled = settleOwed(draft.owed, built.needs.tiers);
     return {
@@ -446,16 +469,18 @@ if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
     }
     const read = (path) => JSON.parse(readFileSync(path, "utf8"));
     let linear = null;
+    let linearTruncated = false;
     let why = linearError || "";
     if (linearPath) {
         try {
             const issues = read(linearPath).issues;
             if (!Array.isArray(issues)) throw new Error("no issues array");
             linear = issues;
+            linearTruncated = read(linearPath).truncated === true;
         } catch (error) {
-            why = why || `unreadable ${linearPath}`;
+            why = why || "the saved Linear read could not be parsed";
         }
     }
-    const out = fold(read(draftPath), read(portalPath), { monday, linear, linearError: why });
+    const out = fold(read(draftPath), read(portalPath), { monday, linear, linearError: why, linearTruncated });
     process.stdout.write(`${JSON.stringify(out, null, 2)}\n`);
 }

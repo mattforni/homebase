@@ -281,9 +281,12 @@ function bumps(owed: Owed, opened: boolean): Name[] {
  * lines share a kind and each has to speak for its own people, and counted
  * from what fired rather than from what is owed, so a dry run or a missing
  * token says nothing about drafts at all (review, 2026-10-07; the first cut
- * keyed on the kind alone and read every one of those cases wrong).
+ * keyed on the kind alone and read every one of those cases wrong). A fire
+ * is one draft, so it is spent on the first name it matches: `spent` is the
+ * list's own tally, shared by its lines, without which two people at one
+ * company claimed the same draft, on one line or on both second touch lines.
  */
-function draftsReady(drafting: Drafting, touch: string, names: Name[]): number {
+function draftsReady(drafting: Drafting, touch: string, names: Name[], spent: Set<Fire>): number {
 	const same = (a: unknown, b: unknown) => {
 		const x = jqToString(alt(a, "")).trim().toLowerCase();
 		return x !== "" && x === jqToString(alt(b, "")).trim().toLowerCase();
@@ -291,7 +294,14 @@ function draftsReady(drafting: Drafting, touch: string, names: Name[]): number {
 	const fired = alt(drafting?.fires, []).filter(
 		(fire) => jqToString(alt(fire.touch, "")) === touch && jqToString(alt(fire.outcome, "")) === "fired",
 	);
-	return names.filter((name) => fired.some((fire) => same(fire.company_url, name.company_url) || same(fire.business, name.company))).length;
+	let ready = 0;
+	for (const name of names) {
+		const fire = fired.find((f) => !spent.has(f) && (same(f.company_url, name.company_url) || same(f.business, name.company)));
+		if (fire === undefined) continue;
+		spent.add(fire);
+		ready += 1;
+	}
+	return ready;
 }
 
 /** "Person, Company", or whichever of the two the record has. */
@@ -375,11 +385,12 @@ function namedGroups(draft: PipelineDraft): NeedsGroup[] {
 function countGroup(draft: PipelineDraft): NeedsGroup[] {
 	const owed = alt(draft.owed, {});
 	const target = draft.needs?.first_touch_target;
+	const spent = new Set<Fire>();
 	const items = OWED_COUNTS.map((line) => ({ line, names: line.names(owed) }))
 		.filter(({ names }) => names.length > 0)
 		.map(({ line, names }) => {
 			const count = names.length;
-			const drafts = line.drafted === undefined ? 0 : draftsReady(draft.drafting ?? null, line.drafted, names);
+			const drafts = line.drafted === undefined ? 0 : draftsReady(draft.drafting ?? null, line.drafted, names, spent);
 			const ready = drafts === count ? (count === 1 ? " draft ready" : " drafts ready") : "";
 			const against = line.target && target !== null && target !== undefined ? ` of ${numberString(target)} a week` : "";
 			const partial = drafts > 0 && drafts < count ? `, ${numberString(drafts)} of ${numberString(count)} drafts ready` : "";

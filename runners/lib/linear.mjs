@@ -2,8 +2,8 @@
 // cycle, as the customer lines of the Pipeline mail (ATE-630).
 //
 //   node linear.mjs issues > linear.json
-//       Prints {issues: [{identifier, title, url, priority, dueDate, project}]}
-//       and exits zero; on anything else it prints one line to stderr and
+//       Prints {issues: [{identifier, title, url, priority, dueDate, project}],
+//       truncated} and exits zero; on anything else it prints one line to stderr and
 //       exits non zero, and the caller goes on without it. Nothing about the
 //       mail is worth failing a run over a tracker being down.
 //
@@ -35,13 +35,25 @@ const QUERY = `query ActiveCycleIssues($first: Int!, $after: String) {
 }`;
 
 /**
- * Every open issue in the active cycle. `fetchImpl` is the seam the tests
- * use; production passes nothing and gets the global fetch.
+ * A failure whose words are this file's own. The reason a read failed
+ * travels into pulls.md and the mail's Left for You line, so it is an HTTP
+ * status or one of the fixed phrases below and never a word of what Linear
+ * sent back: nothing an API echoes belongs in a mailbox (review, 2026-10-07).
+ */
+export class LinearError extends Error {}
+
+/**
+ * Every open issue in the active cycle, as `{ issues, truncated }`.
+ * `truncated` is true when the page cap stopped the read with more to come,
+ * so the caller can say so rather than hand over a short list as the whole
+ * one. `fetchImpl` is the seam the tests use; production passes nothing and
+ * gets the global fetch.
  */
 export async function activeCycleIssues({ key, fetchImpl = fetch, timeoutMs = 30000 } = {}) {
-    if (!key) throw new Error("no LINEAR_API_KEY in the environment");
+    if (!key) throw new LinearError("no LINEAR_API_KEY in the environment");
     const issues = [];
     let after = null;
+    let truncated = false;
     for (let page = 0; page < MAX_PAGES; page += 1) {
         const res = await fetchImpl(ENDPOINT, {
             method: "POST",
@@ -50,21 +62,18 @@ export async function activeCycleIssues({ key, fetchImpl = fetch, timeoutMs = 30
             signal: AbortSignal.timeout(timeoutMs),
         });
         const text = await res.text();
-        // The reason travels into pulls.md and the mail's Left for You line,
-        // so it carries the status and never the response body: nothing an
-        // API echoes back belongs in a mailbox.
-        if (!res.ok) throw new Error(`Linear answered ${res.status}`);
+        if (!res.ok) throw new LinearError(`Linear answered ${res.status}`);
         // A GraphQL error arrives as a 200 with an errors array, which reads
         // as success to anything that only checks the status.
         let body;
         try {
             body = JSON.parse(text);
         } catch {
-            throw new Error("Linear answered with something that is not JSON");
+            throw new LinearError("Linear answered with something that is not JSON");
         }
-        if (body.errors?.length) throw new Error(`Linear refused the query: ${String(body.errors[0].message).slice(0, 120)}`);
+        if (body.errors?.length) throw new LinearError("Linear refused the query");
         const conn = body.data?.issues;
-        if (!conn) throw new Error("Linear answered without an issues connection");
+        if (!conn) throw new LinearError("Linear answered without an issues list");
         for (const n of conn.nodes || []) {
             issues.push({
                 identifier: n.identifier, title: n.title || "", url: n.url || "",
@@ -73,8 +82,9 @@ export async function activeCycleIssues({ key, fetchImpl = fetch, timeoutMs = 30
         }
         if (!conn.pageInfo?.hasNextPage) break;
         after = conn.pageInfo.endCursor;
+        truncated = page === MAX_PAGES - 1;
     }
-    return issues;
+    return { issues, truncated };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
@@ -84,10 +94,12 @@ if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
         process.exit(2);
     }
     try {
-        const issues = await activeCycleIssues({ key: process.env.LINEAR_API_KEY || "" });
-        process.stdout.write(`${JSON.stringify({ issues }, null, 2)}\n`);
+        const read = await activeCycleIssues({ key: process.env.LINEAR_API_KEY || "" });
+        process.stdout.write(`${JSON.stringify(read, null, 2)}\n`);
     } catch (error) {
-        console.error(`linear: ${error instanceof Error ? error.message : String(error)}`);
+        // Only this file's own words leave it. Anything else (a network
+        // failure, a timeout, a bug) is said as one fixed phrase.
+        console.error(error instanceof LinearError ? error.message : "the Linear request did not complete");
         process.exit(1);
     }
 }

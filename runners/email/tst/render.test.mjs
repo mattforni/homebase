@@ -106,6 +106,18 @@ test("a dry run, a missing token, and a week with no fires make no claim about d
     assert.ok(countLines(none).every((line) => !/draft/.test(line)));
 });
 
+test("a fire is one draft, spent on one name, never claimed by two people at one company", () => {
+    const draft = plumberDraft();
+    const [opened, unopened] = draft.owed.bump;
+    // A second person at the opened name's company, on the other second touch line and on the same one.
+    draft.owed.bump.push({ ...unopened, person: "Second Contact", company: opened.company, company_url: opened.company_url, contact_url: null });
+    draft.owed.bump.push({ ...opened, person: "Third Contact", contact_url: null });
+    assert.deepEqual(countLines(draft).filter((line) => /Second touch/.test(line)).map((line) => line.replace(/^\s+\d+\. /, "")), [
+        "Second touch to people who opened: 2, 1 of 2 drafts ready",
+        "Second touch to people who have not opened: 2",
+    ]);
+});
+
 test("the week table draws four weeks and reads the oldest one's change off the fifth", () => {
     const text = renderRaw("plumber", "text", JSON.stringify(plumberDraft())).stdout;
     const rows = text.split("\n").filter((line) => /^\s+W\d+\s/.test(line));

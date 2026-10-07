@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { activeCycleIssues } from "../linear.mjs";
+import { spawnSync } from "node:child_process";
+import { activeCycleIssues, LinearError } from "../linear.mjs";
 import {
     FIRST_TOUCH_TARGET,
     FLAG_DROP,
@@ -148,12 +149,17 @@ test("one reply is credited to exactly one send, the latest outreach send before
     assert.deepEqual(weeks.slice(-2).map((w) => w.responded), [1, 2]);
 });
 
-test("a reply on a thread no outreach send is on credits nothing", () => {
+test("a real reply on a thread no send shares is still credited, to the latest outreach send before it", () => {
     const portal = portalOf({
         companies: [company("1")],
         contacts: [contact("a", "1", [touch("2026-10-06T15:00:00Z", { thread: "t1" })], [reply("2026-10-06T20:00:00Z", { thread: "t9" })])],
     });
-    assert.deepEqual(outreachSends(portal).map((s) => s.responded), [false]);
+    assert.deepEqual(outreachSends(portal).map((s) => s.responded), [true]);
+    const two = portalOf({
+        companies: [company("1")],
+        contacts: [contact("a", "1", [touch("2026-09-29T15:00:00Z", { thread: "t1" }), touch("2026-10-06T15:00:00Z", { thread: "t2" })], [reply("2026-10-07T20:00:00Z", { thread: "t9" })])],
+    });
+    assert.deepEqual(outreachSends(two).map((s) => [s.day, s.responded]), [["2026-09-29", false], ["2026-10-06", true]]);
 });
 
 test("a send to a company already at Opportunity or Customer is not outreach", () => {
@@ -255,6 +261,25 @@ test("proposals are every open deal, the larger first and then the sooner due", 
     ]);
 });
 
+test("an open deal is exactly one line, whichever companies it sits on", () => {
+    const portal = portalOf({
+        companies: [company("1"), company("2")],
+        stages: { opportunity: [row("1"), row("2")] },
+        deals: [
+            // One deal on two companies is one proposal, named by its first.
+            { id: "d1", name: "Joint rebuild", stage: "Proposal", amount: 9000, closed: false, won: false, companies: ["1", "2"] },
+            // A deal whose company is outside the funnel rows is still money on the table.
+            { id: "d2", name: "Referral build", stage: "Scoping", amount: 4000, closed: false, won: false, companies: ["77"] },
+            { id: "d3", name: "No company at all", stage: "Scoping", amount: 100, closed: false, won: false, companies: [] },
+        ],
+    });
+    assert.deepEqual(tier(needsOf(portal, []).needs, "proposal").map((l) => [l.who, l.amount, l.owed, l.url]), [
+        ["Company 1", 9000, "Proposal", url("1")],
+        ["Referral build", 4000, "Scoping", null],
+        ["No company at all", 100, "Scoping", null],
+    ]);
+});
+
 test("a company with two deals open gets a line for each, told apart by the deal's name", () => {
     const portal = portalOf({
         companies: [company("1")],
@@ -284,7 +309,7 @@ test("a warm SQL is listed when something is owed this week, and a parked or wai
     });
     assert.deepEqual(tier(needsOf(portal, []).needs, "warm_sql").map((l) => [l.who, l.owed, l.due]), [
         ["Company 4", "Talk with Marta in person", "2026-10-08"],
-        ["Company 3", "reply owed; theirs is the last message on the record", ""],
+        ["Company 3", "last message on the record is theirs, check the thread", ""],
     ]);
 });
 
@@ -309,6 +334,21 @@ const customers = () => portalOf({
     ],
 });
 const issue = (identifier, project, title, extra = {}) => ({ identifier, project, title, url: `https://tracker.example.test/${identifier}`, priority: 0, dueDate: "", ...extra });
+
+test("a warm line says a reply is owed only when the model's owed.reply names the company", () => {
+    const portal = portalOf({
+        companies: [company("3"), company("5")],
+        stages: { sql: [row("3", { next: "reply" }), row("5", { next: "reply" })] },
+    });
+    const draft = { flags: [], owed: { reply: [{ person: "Cy", company: "Company 3", contact_url: null, company_url: url("3"), note: "asked for a visit" }] } };
+    const out = fold(draft, portal, { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: [] });
+    assert.deepEqual(tier(out.needs, "warm_sql").map((l) => [l.who, l.owed]), [
+        ["Company 3", "last message on the record is theirs, check the thread; reply owed to Cy: asked for a visit"],
+        // The portal alone logged an inbound message here; the mailbox did not call it a reply owed.
+        ["Company 5", "last message on the record is theirs, check the thread"],
+    ]);
+    assert.ok(!/reply owed/.test(tier(out.needs, "warm_sql")[1].owed));
+});
 
 test("a customer's lines are its Linear project's issues, sorted by due date and then priority, in the tier its deals put it", () => {
     const linear = [
@@ -375,13 +415,41 @@ const twoTiers = () => [
     { key: "warm_sql", lines: [{ who: "Company 3", owed: "second touch due", due: "", url: url("3") }] },
 ];
 
-test("a reply owed on a company with a named line folds into that line and is not lost", () => {
-    const owed = { reply: [person("Ana", "1", "a", { note: "asked whether the price holds through November" }), person("Bo", "2", "b", { note: "wants a call" })] };
-    const tiers = twoTiers();
+test("a reply owed on a company with a named line is added to that line, which keeps its own words", () => {
+    const owed = { reply: [
+        person("Ana", "1", "a", { note: "asked whether the price holds through November" }),
+        person("Bo", "2", "b", { note: "wants a call" }),
+        person("Ada", "1", "a2", { note: "wants the second quote" }),
+    ] };
+    const tiers = [
+        { key: "paying_build", lines: [
+            { who: "Company 1", owed: "audit the tag container", due: "2026-10-08", url: url("1"), ref: "EXA-2", ref_url: "u" },
+            { who: "Company 1", owed: "this week's follow ups", due: "", url: url("1"), ref: "EXA-3", ref_url: "u" },
+        ] },
+        { key: "proposal", lines: [{ who: "Company 1", owed: "Walk the proposal", due: "2026-10-12", url: url("1") }] },
+    ];
     const out = settleOwed(owed, tiers);
-    assert.deepEqual(out.owed.reply.map((n) => n.person), ["Bo"], "Ana's reply is on the proposal's line now");
-    assert.deepEqual(out.tiers[0].lines[0], { who: "Company 1", owed: "reply owed to Ana: asked whether the price holds through November", due: "2026-10-12", url: url("1") });
-    assert.equal(tiers[0].lines[0].owed, "Walk the proposal", "the tiers handed in are not changed");
+    assert.deepEqual(out.owed.reply.map((n) => n.person), ["Bo"], "the two at Company 1 are on its line now");
+    assert.equal(out.tiers[0].lines[0].owed,
+        "audit the tag container; reply owed to Ana: asked whether the price holds through November; reply owed to Ada: wants the second quote",
+        "the ticket's title is kept, both replies are joined, and they land on the company's first line");
+    assert.equal(out.tiers[0].lines[0].ref, "EXA-2");
+    assert.equal(out.tiers[0].lines[1].owed, "this week's follow ups");
+    assert.equal(out.tiers[1].lines[0].owed, "Walk the proposal");
+    assert.equal(tiers[0].lines[0].owed, "audit the tag container", "the tiers handed in are not changed");
+});
+
+test("a visit or a close at a company with a named line is added to the line, never dropped", () => {
+    const owed = {
+        reply: [person("Bo", "2", "b")],
+        visit: [person("Bea", "2", "b2"), person("Cy", "3", "c"), person("Cal", "3", "c2"), person("Flo", "6", "f"), { person: "Di", company: "company 1", contact_url: null, company_url: null }],
+        decide: [person("Ana", "1", "a"), person("Gus", "7", "g")],
+    };
+    const out = settleOwed(owed, twoTiers());
+    assert.deepEqual(out.owed.visit.map((n) => n.person), ["Bea", "Flo"], "Bea's company has no named line, so she stays counted");
+    assert.deepEqual(out.owed.decide.map((n) => n.person), ["Gus"]);
+    assert.equal(out.tiers[0].lines[0].owed, "Walk the proposal; visit owed; close or keep", "Di matched on the name alone");
+    assert.equal(out.tiers[1].lines[0].owed, "second touch due; visit owed", "two people at one company add the words once");
 });
 
 test("second touches and first touches are never removed, since their drafts fire either way", () => {
@@ -389,17 +457,16 @@ test("second touches and first touches are never removed, since their drafts fir
         reply: [person("Bo", "2", "b")],
         bump: [person("Bo", "2", "b"), person("Cy", "3", "c"), person("Ana", "1", "a")],
         first_touch: [person("Dee", "3", "d"), person("Eli", "5", "e")],
-        visit: [person("Bea", "2", "b2"), person("Cy", "3", "c"), person("Flo", "6", "f"), { person: "Di", company: "company 1", contact_url: null, company_url: null }],
         decide: null,
     };
-    const out = settleOwed(owed, twoTiers()).owed;
-    assert.deepEqual(out.bump.map((n) => n.person), ["Bo", "Cy", "Ana"]);
-    assert.deepEqual(out.first_touch.map((n) => n.person), ["Dee", "Eli"]);
-    assert.deepEqual(out.visit.map((n) => n.person), ["Flo"], "a visit on a named company, or at a company owed a reply, is worked on that line");
-    assert.deepEqual(out.decide, []);
+    const out = settleOwed(owed, twoTiers());
+    assert.deepEqual(out.owed.bump.map((n) => n.person), ["Bo", "Cy", "Ana"]);
+    assert.deepEqual(out.owed.first_touch.map((n) => n.person), ["Dee", "Eli"]);
+    assert.deepEqual(out.owed.decide, []);
+    assert.deepEqual(out.tiers.map((t) => t.lines[0].owed), ["Walk the proposal", "second touch due"], "and they add nothing to a line");
 });
 
-/* ---------- the Linear read ---------- */
+/* ---------- the Linear read ---------- *//* ---------- the Linear read ---------- */
 
 const answer = (body, status = 200) => ({ ok: status === 200, status, text: async () => JSON.stringify(body) });
 
@@ -409,7 +476,8 @@ test("the Linear read pages through the active cycle and sends the key bare", as
         { data: { issues: { nodes: [{ identifier: "EXA-1", title: "One", url: "u1", priority: 2, dueDate: "2026-10-08", project: { name: "Westbrook" } }], pageInfo: { hasNextPage: true, endCursor: "c1" } } } },
         { data: { issues: { nodes: [{ identifier: "EXA-2", title: "Two", url: "u2", priority: null, dueDate: null, project: null }], pageInfo: { hasNextPage: false } } } },
     ];
-    const issues = await activeCycleIssues({ key: "lin_test", fetchImpl: async (endpoint, init) => { calls.push(init); return answer(pages[calls.length - 1]); } });
+    const { issues, truncated } = await activeCycleIssues({ key: "lin_test", fetchImpl: async (endpoint, init) => { calls.push(init); return answer(pages[calls.length - 1]); } });
+    assert.equal(truncated, false);
     assert.deepEqual(issues, [
         { identifier: "EXA-1", title: "One", url: "u1", priority: 2, dueDate: "2026-10-08", project: "Westbrook" },
         { identifier: "EXA-2", title: "Two", url: "u2", priority: 0, dueDate: "", project: "" },
@@ -428,5 +496,33 @@ test("the Linear read fails loudly on a missing key, a bad status, and an error 
     await assert.rejects(activeCycleIssues({ key: "" }), /no LINEAR_API_KEY/);
     await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => answer({ message: "nope" }, 401) }), /^Error: Linear answered 401$/);
     await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => ({ ok: true, status: 200, text: async () => "<html>gateway</html>" }) }), /not JSON/);
-    await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => answer({ errors: [{ message: "Query too complex" }] }) }), /Query too complex/);
+    await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => answer({ errors: [{ message: "Query too complex" }] }) }), /^Error: Linear refused the query$/);
+});
+
+test("no word of what Linear sends back can reach the mail, on any failure", async () => {
+    const leak = "LEAK lin_api_SECRETSECRET";
+    const failures = [
+        { ok: false, status: 500, text: async () => leak },
+        { ok: true, status: 200, text: async () => `<html>${leak}</html>` },
+        answer({ errors: [{ message: leak }] }),
+        answer({ data: { note: leak } }),
+    ];
+    for (const failure of failures) {
+        await assert.rejects(activeCycleIssues({ key: "k", fetchImpl: async () => failure }), (error) => error instanceof LinearError && !/LEAK|SECRET/.test(error.message));
+    }
+    // The command line says a failure that is not this file's own as one fixed phrase.
+    const run = spawnSync(process.execPath, [new URL("../linear.mjs", import.meta.url).pathname, "issues"], { encoding: "utf8", env: { ...process.env, LINEAR_API_KEY: "" } });
+    assert.equal(run.status, 1);
+    assert.equal(run.stderr.trim(), "no LINEAR_API_KEY in the environment");
+    assert.equal(run.stdout, "");
+});
+
+test("a Linear read that stops at the page cap says so, and the mail is told", async () => {
+    let n = 0;
+    const page = () => { n += 1; return answer({ data: { issues: { nodes: [{ identifier: `EXA-${n}`, title: "t", url: "u" }], pageInfo: { hasNextPage: true, endCursor: `c${n}` } } } }); };
+    const read = await activeCycleIssues({ key: "k", fetchImpl: async () => page() });
+    assert.equal(read.truncated, true);
+    assert.equal(read.issues.length, 5);
+    const out = fold({ flags: [], owed: {} }, portalOf({}), { monday: "2026-10-05", nowMs: ms("2026-10-06T04:00:00Z"), linear: read.issues, linearTruncated: true });
+    assert.equal(out.flags[0].lead, "The Linear read stopped at 5 issues, so a customer line may be missing.");
 });
