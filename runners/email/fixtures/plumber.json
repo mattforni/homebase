@@ -153,6 +153,166 @@
           "fit": 17,
           "email": ""
         }
+      },
+      {
+        "person": "Odalys Brandt",
+        "company": "Cedar Hollow Veterinary",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/310",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/410",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Jonas Whitlock",
+        "company": "Whitlock and Sons Masonry",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/311",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/411",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Mireille Okafor",
+        "company": "Lantern Street Bookshop",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/312",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/412",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Teodor Vance",
+        "company": "Vance Garage Doors",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/313",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/413",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Priscilla Yu",
+        "company": "Blue Door Acupuncture",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/314",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/414",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Anselm Reyes",
+        "company": "Reyes Family Dentistry",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/315",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/415",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Greta Lindqvist",
+        "company": "Northside Piano Tuning",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/316",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/416",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Hollis Adeyemi",
+        "company": "Adeyemi Window Cleaning",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/317",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/417",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Saoirse Blake",
+        "company": "Marigold Day Spa",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/318",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/418",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
+      },
+      {
+        "person": "Caspian Moreau",
+        "company": "Front Range Locksmiths",
+        "contact_url": "https://app.example.test/contacts/1/record/0-1/319",
+        "company_url": "https://app.example.test/contacts/1/record/0-2/419",
+        "note": "placed ahead from the windshield list",
+        "metrics": {
+          "days_since_send": null,
+          "touches": 0,
+          "opens": null,
+          "days_since_open": null,
+          "last_reply": "",
+          "fit": null,
+          "email": ""
+        }
       }
     ],
     "decide": []

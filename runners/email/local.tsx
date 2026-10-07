@@ -118,6 +118,9 @@ export type NeedsItem = {
 	ref?: string;
 	refUrl?: string | null;
 	names?: { text: string; url?: string | null }[];
+	/** The closing line when the names were capped, "and 20 more in the roster", linked to the roster when the mail knows where it is. */
+	more?: string;
+	moreUrl?: string | null;
 };
 export type NeedsGroup = { label: string; items: NeedsItem[] };
 export type NeedsListProps = { groups: NeedsGroup[] };
@@ -187,7 +190,7 @@ export function NeedsList({ groups }: NeedsListProps) {
 											</span>
 										</>
 									) : null}
-									{item.names && item.names.length > 0 ? <NameRun names={item.names} /> : null}
+									{item.names && item.names.length > 0 ? <NameRun names={item.names} more={item.more} moreUrl={item.moreUrl} /> : null}
 								</td>
 							</tr>
 						))}
@@ -198,7 +201,7 @@ export function NeedsList({ groups }: NeedsListProps) {
 	);
 }
 
-export type NameRunProps = { names: { text: string; url?: string | null }[] };
+export type NameRunProps = { names: { text: string; url?: string | null }[]; more?: string; moreUrl?: string | null };
 
 /**
  * The people a count line counts, each on a line of their own, linked. Until
@@ -209,7 +212,7 @@ export type NameRunProps = { names: { text: string; url?: string | null }[] };
  * A line rather than a card each: cards are what ran a sixty name mail past
  * the hundred kilobytes where Gmail clips.
  */
-export function NameRun({ names }: NameRunProps) {
+export function NameRun({ names, more, moreUrl }: NameRunProps) {
 	const { palette } = useEmailTheme();
 	return (
 		<div style={{ fontSize: "13px", lineHeight: "1.55", color: palette.dim, marginTop: "3px" }}>
@@ -226,6 +229,20 @@ export function NameRun({ names }: NameRunProps) {
 					)}
 				</Fragment>
 			))}
+			{more ? (
+				<>
+					<br />
+					<span style={{ color: palette.faint }}>
+						{moreUrl ? (
+							<a href={moreUrl} style={{ color: palette.faint, textDecoration: "underline", textDecorationColor: palette.line }}>
+								{more}
+							</a>
+						) : (
+							more
+						)}
+					</span>
+				</>
+			) : null}
 		</div>
 	);
 }

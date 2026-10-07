@@ -257,6 +257,15 @@ const OWED_COUNTS: {
 	},
 ];
 
+/**
+ * How many people a count line names before it stops. Forni asked for a line
+ * per person on 2026-10-07, and the first real read the same day put 76 of
+ * them under four counts, which is the wall of names the list exists to
+ * remove. So a line names ten and says how many more are in the roster; the
+ * count itself stays whole.
+ */
+const NAMES_SHOWN = 10;
+
 /** The bumps owed to people who opened a send, or to the ones who did not; an untracked send counts as not opened. */
 function bumps(owed: Owed, opened: boolean): Name[] {
 	return alt(owed.bump, []).filter((name) => alt(name.metrics?.opens, 0) > 0 === opened);
@@ -363,7 +372,9 @@ function countGroup(draft: PipelineDraft): NeedsGroup[] {
 			return {
 				lead: line.label,
 				rest: `: ${numberString(count)}${ready}${against}${partial}${line.tail === undefined ? "" : line.tail(count)}`,
-				names: names.map((name) => ({ text: whoOf(name), url: recordOf(name) })),
+				names: names.slice(0, NAMES_SHOWN).map((name) => ({ text: whoOf(name), url: recordOf(name) })),
+				more: count > NAMES_SHOWN ? `and ${numberString(count - NAMES_SHOWN)} more in the roster` : undefined,
+				moreUrl: jqToString(alt(draft.roster_url, "")) || null,
 			};
 		});
 	return items.length === 0 ? [] : [{ label: "Cold Touches", items }];
@@ -397,6 +408,7 @@ function needsText(groups: NeedsGroup[]): string {
 					hang(lpad(`${numberString(n)}.`, width - 1), text, width),
 					...urls.map((url) => `${spaces(2 + width)}${url}\n`),
 					...alt(item.names, []).map((name) => hang("", name.text, width)),
+					item.more ? hang("", item.more, width) : "",
 				].join("");
 			});
 			return `${wrap(asciiUpcase(group.label))}\n${lines.join("")}`;
