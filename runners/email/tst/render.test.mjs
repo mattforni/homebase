@@ -126,6 +126,20 @@ test("the week table draws four weeks and reads the oldest one's change off the 
     assert.ok(!/^\s+W1\s/m.test(text), "the fifth week is never drawn");
 });
 
+test("the week table draws every week it is handed but the oldest, however many arrive", () => {
+    const weekRowsOf = (draft) => renderRaw("plumber", "text", JSON.stringify(draft)).stdout.split("\n").filter((line) => /^\s+W\d+\s/.test(line)).map((line) => line.trim().split(/\s+/)[0]);
+    const week = (n) => ({ week: `2026-W${String(n).padStart(2, "0")}`, tracked: 10 + n, opened: n, rate: null, responded: 0, respond_rate: null });
+    const draft = plumberDraft();
+    draft.health.weeks = [1, 2, 3, 4, 5, 6, 7].map(week);
+    assert.deepEqual(weekRowsOf(draft), ["W7", "W6", "W5", "W4", "W3", "W2"], "seven handed over, six drawn");
+    draft.health.weeks = [4, 5].map(week);
+    assert.deepEqual(weekRowsOf(draft), ["W5"]);
+    draft.health.weeks = [5].map(week);
+    assert.deepEqual(weekRowsOf(draft), ["W5"], "a lone week is drawn as it is");
+    draft.health.weeks = Array.from({ length: 30 }, (_, i) => week(i + 1));
+    assert.equal(weekRowsOf(draft).length, 12, "and a runner that sends a year by mistake is capped");
+});
+
 test("an unknown runner fails loudly", () => {
 	const result = render("nosuchrunner", "html", "retro");
 	assert.equal(result.status, 1);

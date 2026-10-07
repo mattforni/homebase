@@ -345,11 +345,17 @@ portal_pull() {
 # one line under Left for You saying the read did not run, with the reason
 # kept here.
 LINEAR_WHY=""
+# Set on a skip pulls run that reused a saved read: the day it was written,
+# which the fold turns into a line under Left for You.
+LINEAR_REUSED=""
 linear_pull() {
     rm -f "$WORK/linear.json"
     if [[ -z "${LINEAR_API_KEY:-}" ]]; then
         LINEAR_WHY="no LINEAR_API_KEY in the environment"
-    elif ! LINEAR_API_KEY="$LINEAR_API_KEY" timeout 2m node "$LIB_DIR/linear.mjs" issues \
+    # The outer bound sits above the script's own worst case (five pages at
+    # thirty seconds each, linear.mjs PAGE_TIMEOUT_MS and MAX_PAGES), so the
+    # script fails in its own words first. Change one and change the other.
+    elif ! LINEAR_API_KEY="$LINEAR_API_KEY" timeout 4m node "$LIB_DIR/linear.mjs" issues \
             > "$WORK/linear.json" 2>"$WORK/linear-stderr.txt"; then
         LINEAR_WHY="$(head -c 160 "$WORK/linear-stderr.txt" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')"
         [[ -n "$LINEAR_WHY" ]] || LINEAR_WHY="the read timed out"
@@ -515,7 +521,8 @@ pulls_ready() {
     # cycle as this run's; the reason for a missing one names no path, since
     # it travels into the mail.
     if jq -e '.issues | type == "array"' "$WORK/linear.json" >/dev/null 2>&1; then
-        echo "linear: reusing the read saved by an earlier pull, $(jq '.issues | length' "$WORK/linear.json") issues, written $(date -r "$WORK/linear.json" +%F 2>/dev/null || echo "on an unknown day")"
+        LINEAR_REUSED="written $(date -r "$WORK/linear.json" +%F 2>/dev/null || echo "on an unknown day")"
+        echo "linear: reusing the read saved by an earlier pull, $(jq '.issues | length' "$WORK/linear.json") issues, $LINEAR_REUSED"
     else
         LINEAR_WHY="the pulls were skipped and no Linear read was saved"
     fi
@@ -612,7 +619,7 @@ if jq -e '.funnel' "$WORK/portal.json" >/dev/null 2>&1; then
     # the list.
     linear_file=""
     [[ -n "$LINEAR_WHY" || ! -s "$WORK/linear.json" ]] || linear_file="$WORK/linear.json"
-    if node "$LIB_DIR/pipeline.mjs" fold "$DRAFT_JSON" "$WORK/portal.json" "$MONDAY" "$linear_file" "$LINEAR_WHY" \
+    if node "$LIB_DIR/pipeline.mjs" fold "$DRAFT_JSON" "$WORK/portal.json" "$MONDAY" "$linear_file" "$LINEAR_WHY" "$LINEAR_REUSED" \
             > "$WORK/draft-folded.json" 2>"$WORK/pipeline-stderr.txt" \
         && jq -e '(.needs.tiers | type == "array") and (.needs.first_touch_target | type == "number")
             and (.health.weeks | type == "array") and (.owed | type == "object") and (.flags | type == "array")

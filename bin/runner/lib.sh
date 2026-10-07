@@ -283,7 +283,11 @@ runner_build_context() {
         --exclude=./agents --exclude=./mounts -cf - .) \
         | (cd "$staged" && tar -xf -) || return 1
     # The whole shared library: runner.sh for the entrypoint, the pull
-    # scripts, and whatever joins them.
+    # scripts, and whatever joins them. Files only: this copy is flat, so a
+    # directory under runners/lib makes cp fail and every promote and every
+    # container run of every runner dies here, staging its context. That
+    # shipped once (ATE-630, the unit tests, 2026-10-07; they live in
+    # runners/tst now) and bin/lint/runners refuses it since.
     cp "$root/runners/lib/"* "$staged/lib/" || return 1
     # The node renderer's sources, as a sibling of lib/ rather than a child,
     # because the flat copy above carries files and not directories. Its

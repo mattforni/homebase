@@ -22,6 +22,12 @@ const PAGE = 100;
 // A cycle holds tens of issues, never hundreds; the cap is a stop on a
 // pagination that never ends, not a limit anyone should meet.
 const MAX_PAGES = 5;
+// Each page gets this long. The worst case for a whole read is therefore
+// MAX_PAGES times this, two and a half minutes, and the entrypoint's own
+// `timeout` around this script is set above that on purpose: the outer bound
+// is the backstop, and it must never fire before this file has had the
+// chance to fail in its own words. Change one and change the other.
+const PAGE_TIMEOUT_MS = 30000;
 
 const QUERY = `query ActiveCycleIssues($first: Int!, $after: String) {
   issues(
@@ -49,7 +55,7 @@ export class LinearError extends Error {}
  * one. `fetchImpl` is the seam the tests use; production passes nothing and
  * gets the global fetch.
  */
-export async function activeCycleIssues({ key, fetchImpl = fetch, timeoutMs = 30000 } = {}) {
+export async function activeCycleIssues({ key, fetchImpl = fetch, timeoutMs = PAGE_TIMEOUT_MS } = {}) {
     if (!key) throw new LinearError("no LINEAR_API_KEY in the environment");
     const issues = [];
     let after = null;
