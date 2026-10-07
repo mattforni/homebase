@@ -4,13 +4,13 @@ A Cloud Run Job (`retro`, project `atelic`, region `us-central1`) that fires eve
 
 The runtime one pager (why Cloud Run over Routines and launchd, the service account and its secrets, the schedule, the traps) lives in Eudy at `Admin/Tools/cloud-run.md`.
 
-**Iterate locally first.** The loops and the promote step are in [../README.md](../README.md); the short version is `bin/runner/render-local retro` while changing how the email looks, `bin/runner/run-local retro --reuse` while changing what it says, and `bin/runner/promote retro` once it is right.
+**Iterate locally first.** The loops and the promote step are in [../README.md](../README.md); the short version is `bin/runner/render-local retro` while changing how the email looks, `bin/runner/run-local retro --reuse` while changing what it says, and a merge to main once it is right, which builds the image and points the job at it on its own ([../README.md](../README.md#a-merge-to-main-is-the-promote)). `bin/runner/promote retro` is the same script, kept for a promote by hand.
 
 ```bash
 bin/runner/fetch-env retro                 # once per machine
 bin/runner/run-local retro --week 2026-W35 # renders to out/, sends nothing
 bin/runner/render-local retro              # instant re-render after a renderer edit
-bin/runner/promote retro                   # build and point the job at it
+bin/runner/promote retro                   # by hand only: the merge already does this
 bin/runner/fire retro                      # run production now
 ```
 

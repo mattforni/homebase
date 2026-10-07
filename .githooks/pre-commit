@@ -69,6 +69,23 @@ if [[ ${#runners[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runners" ]]; then
   fi
 fi
 
+# The promote path rules, only when the script that holds them, its library or
+# its test is staged. It builds its own throwaway repository, so it runs in
+# about a second and reads nothing of the commit being made.
+changed=()
+for f in "${staged[@]}"; do
+  case "$f" in
+    bin/runner/changed|bin/runner/lib.sh|bin/lint/runner-changed-test) changed+=("$f") ;;
+  esac
+done
+
+if [[ ${#changed[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runner-changed-test" ]]; then
+  if ! "$ROOT/bin/lint/runner-changed-test" >/dev/null; then
+    printf "${RED}[x]${NC} promote path rules failed. Run bin/lint/runner-changed-test to see which, or run again with --no-verify.\n" >&2
+    status=1
+  fi
+fi
+
 # Context size ratchet, only when an always loaded file is staged
 ctx=()
 for f in "${staged[@]}"; do

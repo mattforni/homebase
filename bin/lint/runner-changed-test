@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# Table test for bin/runner/changed, the script that decides which runner
+# images a merge to main promotes.
+#
+# A wrong answer here is silent in both directions: a path that should promote
+# and does not leaves a scheduled job on an old image with a green run beside
+# it, and one that promotes when nothing shipped spends a Cloud Build for
+# nothing. So this builds a throwaway repository with a small invented
+# runners/ tree, commits one change at a time, and holds the printed list
+# against what each rule says.
+#
+# Checks: the shared library and the renderer reach every runner, the two
+# scripts that decide what ships do too, a runner's own files reach only it,
+# the paths that never ship reach nothing, an agent reaches the runners whose
+# manifest names it, a runner without a Dockerfile is never printed, an
+# unusable base means everything, and --all.
+set -uo pipefail
+
+# Under the pre-commit hook git exports where its index and directory are, and
+# every git call below would then land on the real repository's index instead
+# of the throwaway one.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR
+
+REPO=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null) \
+  || { echo "not in a git repo"; exit 1; }
+CHANGED="$REPO/bin/runner/changed"
+
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+FAKE="$WORK/repo"
+
+pass=0; fail=0
+ok()   { printf '  \033[0;32mok\033[0m   %s\n' "$1"; pass=$((pass+1)); }
+bad()  { printf '  \033[0;31mFAIL\033[0m %s\n' "$1"; fail=$((fail+1)); }
+
+g() { git -C "$FAKE" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false "$@"; }
+
+# Usage: put <path> [content]. Writes a file in the fake repository.
+put() {
+  mkdir -p "$FAKE/$(dirname "$1")"
+  printf '%s\n' "${2:-$RANDOM$RANDOM}" > "$FAKE/$1"
+}
+
+# Usage: commit. Commits everything and prints the new commit.
+commit() {
+  g add -A >/dev/null && g commit --quiet --no-verify --allow-empty -m change >/dev/null || return 1
+  g rev-parse HEAD
+}
+
+# Usage: expect <label> <want, space separated> <base> <head>
+expect() {
+  local label="$1" want="$2" got
+  shift 2
+  if ! got="$("$CHANGED" -C "$FAKE" "$@" 2>"$WORK/err")"; then
+    bad "$label (exited non zero: $(cat "$WORK/err"))"
+    return
+  fi
+  got="$(printf '%s' "$got" | tr '\n' ' ' | sed 's/ $//')"
+  if [[ "$got" == "$want" ]]; then ok "$label"; else bad "$label (wanted '$want', got '$got')"; fi
+}
+
+# Usage: change <label> <want> <path>... Touches each path, commits, and
+# holds the diff from the commit before against the list.
+change() {
+  local label="$1" want="$2" before after p
+  shift 2
+  before="$(g rev-parse HEAD)"
+  for p in "$@"; do put "$p"; done
+  after="$(commit)" || { bad "$label (could not commit)"; return; }
+  expect "$label" "$want" "$before" "$after"
+}
+
+# --- the invented tree --------------------------------------------------------
+# Three runners with a Dockerfile and one without. alpha and beta each name an
+# agent, gamma names none, and beta's manifest carries a comment and a blank
+# line the way a real one may.
+git init --quiet "$FAKE" || exit 1
+for r in alpha beta gamma; do
+  put "runners/$r/Dockerfile"
+  put "runners/$r/entrypoint.sh"
+  put "runners/$r/prompt.md"
+  put "runners/$r/README.md"
+done
+put runners/alpha/agents "alpha"
+printf '# what beta runs\n\nbeta\nshared\n' > "$FAKE/runners/beta/agents"
+put runners/alpha/mounts
+put runners/localonly/entrypoint.sh
+put runners/localonly/prompt.md
+put runners/lib/runner.sh
+put runners/email/render.tsx
+put runners/email/package.json
+put runners/email/tst/render.test.mjs
+put runners/email/fixtures/alpha.json
+put runners/email/goldens/alpha.html
+put runners/tst/lib.test.mjs
+put runners/README.md
+put .claude/agents/alpha.md
+put .claude/agents/beta.md
+put .claude/agents/shared.md
+put .claude/agents/unlisted.md
+put bin/runner/promote
+put bin/runner/lib.sh
+put bin/runner/changed
+put bin/runner/fire
+put README.md
+ROOT_COMMIT="$(commit)" || { echo "could not build the fake repository"; exit 1; }
+
+echo "Shared paths reach every runner"
+change "runners/lib reaches every runner"        "alpha beta gamma" runners/lib/runner.sh
+change "a new file in runners/lib does too"      "alpha beta gamma" runners/lib/pull.mjs
+change "runners/email reaches every runner"      "alpha beta gamma" runners/email/render.tsx
+change "the renderer's package file does too"    "alpha beta gamma" runners/email/package.json
+change "bin/runner/promote reaches every runner" "alpha beta gamma" bin/runner/promote
+change "bin/runner/lib.sh reaches every runner"  "alpha beta gamma" bin/runner/lib.sh
+
+echo "A runner's own files reach only that runner"
+change "an entrypoint reaches its runner"        "beta"       runners/beta/entrypoint.sh
+change "a Dockerfile reaches its runner"         "gamma"      runners/gamma/Dockerfile
+change "a new file reaches its runner"           "alpha"      runners/alpha/listings.jq
+change "two runners in one diff, sorted"         "alpha gamma" runners/gamma/prompt.md runners/alpha/prompt.md
+change "a nested README still ships"             "beta"       runners/beta/docs/README.md
+
+echo "Paths that never ship reach nothing"
+change "a runner's README"                       "" runners/alpha/README.md
+change "a runner's mounts"                       "" runners/alpha/mounts
+change "a runner's out, .build and .env.local"   "" runners/alpha/out/email.html runners/alpha/.build/Dockerfile runners/alpha/.env.local
+change "the renderer's tests"                    "" runners/email/tst/render.test.mjs
+change "the renderer's fixtures and goldens"     "" runners/email/fixtures/alpha.json runners/email/goldens/alpha.html
+change "the library's tests in runners/tst"      "" runners/tst/lib.test.mjs
+change "runners/README.md"                       "" runners/README.md
+change "a runner with no Dockerfile"             "" runners/localonly/entrypoint.sh
+change "this script and its neighbours"          "" bin/runner/changed bin/runner/fire
+change "a file nowhere near a runner"            "" README.md
+
+echo "A never ships path does not hide one that ships"
+change "README beside an entrypoint"             "alpha" runners/alpha/README.md runners/alpha/entrypoint.sh
+change "README in one runner, prompt in another" "beta"  runners/alpha/README.md runners/beta/prompt.md
+
+echo "Agents follow the manifests"
+change "an agent reaches the runner naming it"   "alpha" .claude/agents/alpha.md
+change "an agent listed after a comment"         "beta"  .claude/agents/shared.md
+change "an agent no manifest names"              ""      .claude/agents/unlisted.md
+change "a file under agents that is no agent"    ""      .claude/agents/notes/alpha.md
+# The manifest never reaches the staged context itself, but it decides which
+# agents do, so a change to it is a change to the image.
+put runners/gamma/agents "shared"
+before="$(g rev-parse HEAD)"
+after="$(commit)"
+expect "a new manifest reaches its runner" "gamma" "$before" "$after"
+change "the manifest is read at head"            "beta gamma" .claude/agents/shared.md
+
+echo "Deletes, renames and new runners"
+before="$(g rev-parse HEAD)"
+g mv runners/alpha/listings.jq runners/beta/listings.jq
+after="$(commit)"
+expect "a file moved between runners reaches both" "alpha beta" "$before" "$after"
+before="$after"
+g rm --quiet runners/gamma/prompt.md
+after="$(commit)"
+expect "a deleted file reaches its runner" "gamma" "$before" "$after"
+before="$after"
+put runners/localonly/Dockerfile
+after="$(commit)"
+expect "a runner gaining a Dockerfile is discovered" "localonly" "$before" "$after"
+before="$after"
+g rm --quiet runners/localonly/Dockerfile
+after="$(commit)"
+expect "a runner losing its Dockerfile is not printed" "" "$before" "$after"
+
+echo "An unusable base means every runner"
+HEAD_COMMIT="$(g rev-parse HEAD)"
+expect "an all zero base"       "alpha beta gamma" 0000000000000000000000000000000000000000 "$HEAD_COMMIT"
+expect "an empty base"          "alpha beta gamma" "" "$HEAD_COMMIT"
+expect "a base this clone lacks" "alpha beta gamma" 1234567890abcdef1234567890abcdef12345678 "$HEAD_COMMIT"
+expect "--all"                  "alpha beta gamma" --all
+expect "--all at a named commit" "alpha beta gamma" --all "$ROOT_COMMIT"
+
+echo "Edges"
+expect "a base equal to the head prints nothing" "" "$HEAD_COMMIT" "$HEAD_COMMIT"
+expect "a span of many commits is one diff" "alpha beta gamma" "$ROOT_COMMIT" "$HEAD_COMMIT"
+if "$CHANGED" -C "$FAKE" "$ROOT_COMMIT" not-a-commit >/dev/null 2>&1; then
+  bad "an unresolvable head is refused"
+else
+  ok "an unresolvable head is refused"
+fi
+if "$CHANGED" -C "$FAKE" "$ROOT_COMMIT" >/dev/null 2>&1; then
+  bad "a missing head is refused"
+else
+  ok "a missing head is refused"
+fi
+
+# The real tree, so a rename of runners/ or of the Dockerfile convention that
+# empties the list fails here and not as a promote that quietly does nothing.
+real="$("$CHANGED" --all 2>/dev/null | tr '\n' ' ')"
+if [[ -n "$real" ]]; then ok "the real tree lists at least one runner ($real)"; else bad "the real tree lists no runner"; fi
+
+echo
+printf 'pass %d, fail %d\n' "$pass" "$fail"
+[[ $fail -eq 0 ]]

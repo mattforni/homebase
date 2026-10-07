@@ -68,21 +68,93 @@ Then, and only then:
 
 ```bash
 bin/runner/mail <name>             # read the draft in Gmail, where it lands
-bin/runner/promote <name>          # Cloud Build builds it, the job points at it
+# merge to main: Cloud Build builds it and the job points at it, unasked
 bin/runner/fire <name>             # run production now and print its log
 ```
 
 A browser preview is not the artifact. Gmail collapses styles, rewrites markup,
-and renders on a phone, so `mail` is the last check before `promote`: it sends
+and renders on a phone, so `mail` is the last check before the merge: it sends
 the exact rendered bytes through the same Resend sender the job uses. Its key
-comes from the Keychain through `bin/lib/email-report.sh`, never from the
-vault, because the vault copy belongs to the container.
+comes from the Keychain through `runner_local_credentials` in
+`bin/runner/lib.sh`, never from the vault, because the vault copy belongs to
+the container.
 
-**A merge does not promote.** A change under `runners/` reaches the scheduled
-job only when `promote` runs for every runner it touches (all of them for
-`runners/lib/` and `runners/email/`); a fire between the merge and the promote
-runs the old image. ATE-608 makes the merge promote on its own, and this
-paragraph goes when it lands.
+### A Merge to Main Is the Promote
+
+**A merge to main promotes without asking** (Forni, 2026-09-30, ATE-608). A
+promote by hand, a scheduler change, or any other deploy still takes his
+explicit yes each time, and that includes starting the workflow by hand or
+running a failed promote again.
+
+`.github/workflows/promote.yml` runs on every push to main that touches a
+runner path. It asks `bin/runner/changed` which images the push changed and
+runs `bin/runner/promote <name>` for each, the same script a hand promote
+uses, so there is one path to production and not two.
+
+| A Change To | Promotes |
+|---|---|
+| `runners/lib/`, `runners/email/` | every runner with a Dockerfile, since both ship in every image |
+| `bin/runner/promote`, `bin/runner/lib.sh` | every runner with a Dockerfile, since they decide what ships |
+| `runners/<name>/` | that runner |
+| `.claude/agents/<x>.md` | each runner whose `agents` manifest names `x` |
+| a runner's `README.md`, `mounts`, `out/`, `.build/`, `.env.local` | nothing: none of them reaches an image |
+| `runners/email/tst/`, `fixtures/`, `goldens/` | nothing: the image's first stage bundles `render.tsx` and what it imports, and copies only that file forward |
+| anything else (`runners/tst/`, this README, the other `bin/runner/` scripts) | nothing |
+
+The rules live in `bin/runner/changed` and nowhere else; the workflow's own
+path filter is only wide enough to never miss. Runners and manifests are read
+from the tree being promoted, so a new runner is covered the day its Dockerfile
+lands. A push with no usable starting point (a force push, a first push)
+promotes every runner. `bin/lint/runner-changed-test` holds each row of the
+table.
+
+**Between the merge and the end of its Actions run, the old image still
+fires.** A build takes a few minutes per runner, each runner is its own job,
+and two promotes of one runner never overlap (the script ends by deleting
+every other image, so the second waits for the first). Merge well ahead of a
+schedule, or check the run before trusting a fire.
+
+**A failure is loud and changes nothing.** The runner's job fails, the run
+goes red, and GitHub's own failed workflow notice is the mail. The job summary
+names each runner, whether it was promoted, and the digest the registry holds.
+One runner failing does not stop the others. A runner that failed keeps firing
+the image it already had, and the next merge that touches it tries again.
+
+**By hand, with Forni's yes.** From the Actions tab, run the Promote workflow
+on main and pick one runner or all of them, or from a clean checkout of main:
+
+```bash
+gh workflow run promote.yml --repo <owner>/homebase --ref main -f runner=all
+bin/runner/promote <name>          # one runner, from this machine
+```
+
+A local promote builds from whatever is checked out, so it is also how an
+image is built from a branch on purpose (`--dirty` for uncommitted work). The
+next merge that touches that runner replaces it.
+
+### The Deploy Identity
+
+What the workflow runs as in Google Cloud, recorded here so it can be audited
+or removed. **No key exists anywhere**: GitHub signs a token naming the
+repository and the ref of the run, and Google trades it for an hour as the
+service account, so there is nothing to store, rotate, or leak.
+
+| Piece | Value |
+|---|---|
+| Service account | `runner-deployer@atelic.iam.gserviceaccount.com` |
+| Roles on the project | `cloudbuild.builds.editor`, `run.developer`, `logging.viewer`, `serviceusage.serviceUsageConsumer` |
+| Role on `gs://atelic_cloudbuild` | `storage.admin` (where Cloud Build takes the uploaded context) |
+| Role on the `runners` repository | `artifactregistry.repoAdmin` (push the image, delete the earlier ones) |
+| Role on the three runtime accounts and the compute default account | `iam.serviceAccountUser` (point a job at an image while it runs as its own account; build as the default one) |
+| Workload identity pool and provider | `github` and `homebase`, issuer `https://token.actions.githubusercontent.com` |
+| Provider resource | `projects/897452392033/locations/global/workloadIdentityPools/github/providers/homebase` |
+| Attribute condition | `assertion.repository=='mattforni/homebase' && assertion.ref=='refs/heads/main'` |
+
+The condition is why the workflow has no `pull_request` trigger and must never
+gain one: only a run on main of this repository can become the deploy
+identity, and a pull request runs code nobody has merged. To remove the whole
+thing, delete the provider (or the pool), then the service account, then the
+workflow. Created 2026-10-07.
 
 ### The Commands
 
@@ -92,7 +164,8 @@ paragraph goes when it lands.
 | `run-local <name>` | Runs the real `entrypoint.sh` against those real secrets, rendering the email into `out/` instead of sending. `--week` drafts another week, `--reuse` skips the pulls, `--send` actually delivers. A runner with no `.env.local` is fine and falls back to the Keychain. |
 | `run-scheduled <name>` | The same execution path, sending for real and logging to `~/.claude/debug/runner-<name>.log`. This is what a LaunchAgent points at, and the only thing a plist needs to know is the runner's name. |
 | `render-local <name>` | Pushes the saved `out/<name>.json` (or `out/result.json` for a runner with no draft) back through the node renderer with the shared design and the saved run's footer line. No network, no model. |
-| `promote <name>` | Cloud Build builds the image, the job is pointed at it, and promotion attempts to delete every earlier image of that runner from the registry (a failure here only warns; the promote itself has already succeeded). Refuses a dirty tree without `--dirty`. |
+| `changed <base> <head>` | Prints the runners a diff between two commits affects, one per line; `--all` prints every runner with a Dockerfile. The promote workflow's only source of what to promote. |
+| `promote <name>` | What a merge to main runs for each runner it changed, and what a hand promote runs. Cloud Build builds the image, the job is pointed at it, and promotion attempts to delete every earlier image of that runner from the registry (a failure here only warns; the promote itself has already succeeded). Refuses a dirty tree without `--dirty`. |
 | `fire <name>` | Executes the job now and prints its log. `--week` is applied, used, and cleared again. |
 | `mail <name>` | Mails whatever is rendered in `out/` to the production recipient, so a draft can be read in Gmail rather than a browser. Preview only; production sending stays in the runner. |
 
@@ -127,7 +200,7 @@ esbuild render.tsx --bundle --platform=node --format=cjs --target=node24 --jsx=a
 
 **When the renderer cannot start.** The scaffold looks for the bundle beside the shared library and then in the repo's own build, and when it is missing, exits non zero, or writes an empty file, it says so on one loud `RENDERER:` line and fails the run, which mails the failure page. That page is the one thing with a fallback left: it renders through the same bundle (`render.cjs failure html`, the log's tail on stdin) and drops to a bare `<pre>` if even that cannot run, because it mails at the moment everything else is already broken.
 
-**A layout change is three steps, in order.** Change the component in the `ui` repo and release it; bump the exact pin in `runners/email/package.json` and commit the lockfile that moves with it; then `bin/runner/promote <name>` for each runner, so the image carries the new bundle. Nothing about the email design is edited in this repo any more.
+**A layout change is three steps, in order.** Change the component in the `ui` repo and release it; bump the exact pin in `runners/email/package.json` and commit the lockfile that moves with it; then merge, which promotes every runner because `runners/email/` ships in all of them, so each image carries the new bundle. Nothing about the email design is edited in this repo any more.
 
 **Parity, before any of that lands.** Render the same draft before and after the change and compare the parsed documents, which is how a `ui` bump is held to the layout it claims to leave alone:
 
