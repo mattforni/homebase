@@ -115,7 +115,7 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 
 - Job search, recruiting, career -> `🛠️ Craft/💼 Vocation`
 - Zero Homes -> `🛠️ Craft/💼 Vocation/0️⃣ Zero` (historical; W2 ended 2026-06-29, still matches old mail)
-- Gremlin -> `🛠️ Craft/💼 Vocation/😈 Gremlin` (historical; still matches old mail)
+- Gremlin -> `🛠️ Craft/💼 Vocation` (the `😈 Gremlin` sublabel no longer exists)
 - Networking, intros, conferences -> `🛠️ Craft/💼 Vocation/🕸 Networking`
 - Mentorship -> `🛠️ Craft/💼 Vocation/👨‍🏫 Mentorship`
 - Software, dev tools, GitHub -> `🛠️ Craft/🧑‍💻 Development`
