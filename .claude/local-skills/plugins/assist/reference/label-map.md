@@ -38,7 +38,7 @@ Always route to the most specific sublabel. Never label with just a parent pilla
 - `🧠 Contemplation/🧑‍🎓 Education` -- courses, MOOCs, certifications, learning
 - `🧠 Contemplation/🇮🇹 Italiano` -- Italian language learning (moved from Community)
 
-### Community (🤝)
+### Community (🤗)
 
 - `🤗 Community` (parent)
 - `🤗 Community/👬 Friends` -- personal friends

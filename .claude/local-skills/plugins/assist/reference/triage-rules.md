@@ -109,11 +109,11 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 **Craft signals:**
 
 - Job search, recruiting, applications -> `🛠️ Craft/💼 Vocation/🔎 Job Search`
-- Career, networking, mentorship, former employers (Gremlin, Zero Homes) -> `🛠️ Craft/💼 Vocation`
+- Career, networking, mentorship, former employers (Gremlin, Zero Homes) -> `🛠️ Craft/💼 Vocation`; Happy Isles mail -> `🛠️ Craft/💼 Vocation/🏝️ Happy Isles`
 - Software, dev tools, GitHub -> `🛠️ Craft/🧑‍💻 Development`
-- Atelic, RYLLC, consulting -> `🛠️ Craft/💼 Vocation/💻 Atelic`
+- Atelic, RYLLC, consulting -> `🛠️ Craft/💼 Vocation/💻 Atelic`; the Pinole app, its hosting, and its users -> `🛠️ Craft/💼 Vocation/💻 Atelic/🌽 Pinole`
 - Travel, trips, flights, hotels -> `🛠️ Craft/🌏 Adventure`
-- Vehicles, auto -> `🛠️ Craft/🌏 Adventure`
+- Vehicles, auto (insurance mail goes to Admin Insurance instead) -> `🛠️ Craft/🌏 Adventure`
 - Climate tech -> `🛠️ Craft/🌦️ Climate`
 - Photography -> `🛠️ Craft/🎨 Leisure`
 - Outdoor gear, REI, backcountry -> `🛠️ Craft/🌲 Outdoorsman`
