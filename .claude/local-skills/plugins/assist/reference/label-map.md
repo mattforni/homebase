@@ -2,7 +2,7 @@
 
 The **personal** account's label taxonomy (`mattforni@gmail.com`). The practice
 mailbox has its own tree in [label-map-atelic.md](label-map-atelic.md); the two
-never mix. Label IDs are resolved at runtime via `gws gmail users labels list`. Trued up against the live label list 2026-08-09.
+never mix. Label IDs are resolved at runtime via `gws gmail users labels list`. Trued up against the live label list 2026-10-09.
 
 Always route to the most specific sublabel. Never label with just a parent pillar when a sublabel fits.
 
@@ -38,11 +38,12 @@ Always route to the most specific sublabel. Never label with just a parent pilla
 - `🧠 Contemplation/🧑‍🎓 Education` -- courses, MOOCs, certifications, learning
 - `🧠 Contemplation/🇮🇹 Italiano` -- Italian language learning (moved from Community)
 
-### Community (🤝)
+### Community (🤗)
 
 - `🤗 Community` (parent)
 - `🤗 Community/👬 Friends` -- personal friends
 - `🤗 Community/🧬 Family` -- family members (always surface for response)
+- `🤗 Community/❤️ Romantic` -- dating, a romantic partner
 - `🤗 Community/🏛 Brown` -- Brown University
 - `🤗 Community/🏛 Brown/🍻 Phi Psi` -- Phi Psi fraternity
 - `🤗 Community/🏛 Brown/Interviews` -- Brown alumni interviews
@@ -52,7 +53,9 @@ Always route to the most specific sublabel. Never label with just a parent pilla
 ### Craft (🛠️)
 
 - `🛠️ Craft` (parent)
-- `🛠️ Craft/💼 Vocation` -- job search, career
+- `🛠️ Craft/💼 Vocation` -- career, networking, former employers
+- `🛠️ Craft/💼 Vocation/🔎 Job Search` -- job search, recruiting, applications
+- `🛠️ Craft/💼 Vocation/🏝️ Happy Isles` -- Happy Isles (historical)
 - `🛠️ Craft/💼 Vocation/💻 Atelic` -- Atelic, the practice
 - `🛠️ Craft/💼 Vocation/💻 Atelic/🌽 Pinole` -- Pinole, the meal and training dojo
 - `🛠️ Craft/🧑‍💻 Development` -- software, dev tools, GitHub, tech subscriptions

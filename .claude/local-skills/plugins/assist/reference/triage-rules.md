@@ -58,11 +58,11 @@ Family emails always get surfaced for response, regardless of content.
 **Known family senders:**
 
 - `mfornaciari2000@yahoo.com` Michael Fornaciari (dad): Likes to send articles and links. Read the full content, summarize the article/topic, offer to draft a warm, appreciative reply.
-- Any sender in `🤗 Community/👨‍👩‍👦‍👦 Family` label history
+- Any sender in `🤗 Community/🧬 Family` label history
 
 **Handling:**
 
-1. Label `🤗 Community/👨‍👩‍👦‍👦 Family`
+1. Label `🤗 Community/🧬 Family`
 2. Yellow or red star (red if >3 days old)
 3. Read full email content
 4. Present overview to user
@@ -77,16 +77,14 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 - `samwieds@gmail.com` -> `🤗 Community/👬 Friends` (Sam Wiedemeier; adventure/outdoor content may also get `🛠️ Craft/🌏 Adventure`)
 - `mealplanner@richroll.com` -> `🍏 Constitution/🥕 Nutrition`, archive + Linear ticket in Atelic
 - `gifts@childhelp.org` -> `🤗 Community/🤲 Giving` (donation receipts, archive)
-- `do_not_reply@geico.com` -> `🍏 Constitution/🪪 Insurance` (NOT Healthcare; GEICO is auto insurance)
+- `do_not_reply@geico.com` -> `📑 Admin/🪪 Insurance` (NOT Healthcare; GEICO is auto insurance)
 
 **Constitution signals:**
 
-- Auto insurance (GEICO) -> `🍏 Constitution/🪪 Insurance`
 - Health insurance, medical -> `🍏 Constitution/🏥 Healthcare`
-- Financial, banking, investment -> `🍏 Constitution/💰 Financial`
+- Financial, banking, investment, trust and estate -> `🍏 Constitution/💰 Financial`
 - Tax documents -> `🍏 Constitution/💰 Financial/💸 Taxes`
-- Trust/estate -> `🍏 Constitution/💰 Financial/📜 Trust`
-- Gym, fitness, running, climbing -> `🍏 Constitution/💪 Athlete`
+- Gym, fitness, running, climbing -> `🍏 Constitution/💪 Fitness`
 - Supplements, diet -> `🍏 Constitution/🥕 Nutrition`
 - Grooming, skincare -> `🍏 Constitution/🧖 Personal Care`
 - Recovery, AA, meetings -> `🍏 Constitution/🍾 Sobriety`
@@ -96,39 +94,32 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 - Books, reading lists, Kindle -> `🧠 Contemplation/📖 Reading`
 - Streaming, TV, movies, music -> `🧠 Contemplation/🍿 Entertainment`
 - Therapy, counseling -> `🧠 Contemplation/🛋️ Therapy`
-- Courses, education, learning -> `🧠 Contemplation/👨‍🎓 Education`
+- Courses, education, learning -> `🧠 Contemplation/🧑‍🎓 Education`
+- Italian language -> `🧠 Contemplation/🇮🇹 Italiano`
 
 **Community signals:**
 
-- Jasmine -> `🤗 Community/😘 Jasmine`
-- Family members -> `🤗 Community/👨‍👩‍👦‍👦 Family`
+- Dating, a romantic partner -> `🤗 Community/❤️ Romantic`
+- Family members -> `🤗 Community/🧬 Family`
 - Friends (personal social) -> `🤗 Community/👬 Friends`
 - Brown University -> `🤗 Community/🏛 Brown`
-- Book club -> `🤗 Community/📚 Book Club`
-- SCF -> `🤗 Community/🌱 SCF`
 - Denver events/community -> `🤗 Community/🌇 Denver`
-- Italian language -> `🤗 Community/🇮🇹 Italiano`
 - Charity, volunteering -> `🤗 Community/🤲 Giving`
-- Seattle contacts -> `🤗 Community/⚓ Seattle`
 
 **Craft signals:**
 
-- Job search, recruiting, career -> `🛠️ Craft/💼 Vocation`
-- Zero Homes -> `🛠️ Craft/💼 Vocation/0️⃣ Zero` (historical; W2 ended 2026-06-29, still matches old mail)
-- Gremlin -> `🛠️ Craft/💼 Vocation`
-- Networking, intros, conferences -> `🛠️ Craft/💼 Vocation/🕸 Networking`
-- Mentorship -> `🛠️ Craft/💼 Vocation/👨‍🏫 Mentorship`
+- Job search, recruiting, applications -> `🛠️ Craft/💼 Vocation/🔎 Job Search`
+- Career, networking, mentorship, former employers (Gremlin, Zero Homes) -> `🛠️ Craft/💼 Vocation`; Happy Isles mail -> `🛠️ Craft/💼 Vocation/🏝️ Happy Isles`
 - Software, dev tools, GitHub -> `🛠️ Craft/🧑‍💻 Development`
-- RYLLC, consulting -> `🛠️ Craft/💻 RYLLC`
-- Atelic -> `🛠️ Craft/💼 Vocation/💻 Atelic`
+- Atelic, RYLLC, consulting -> `🛠️ Craft/💼 Vocation/💻 Atelic`; the Pinole app, its hosting, and its users -> `🛠️ Craft/💼 Vocation/💻 Atelic/🌽 Pinole`
 - Travel, trips, flights, hotels -> `🛠️ Craft/🌏 Adventure`
-- Australia -> `🛠️ Craft/🌏 Adventure/🇦🇺 Australia`
-- Vehicles, auto -> `🛠️ Craft/🌏 Adventure/🚙 Vehicles`
+- Vehicles, auto (insurance mail goes to Admin Insurance instead) -> `🛠️ Craft/🌏 Adventure`
 - Climate tech -> `🛠️ Craft/🌦️ Climate`
-- Photography -> `🛠️ Craft/🎨 Leisure/📸 Photography`
+- Photography -> `🛠️ Craft/🎨 Leisure`
 - Outdoor gear, REI, backcountry -> `🛠️ Craft/🌲 Outdoorsman`
 
 **Admin signals:**
 
 - Government correspondence -> `📑 Admin/🏛️ Government`
 - Deals, coupons, offers -> `📑 Admin/🏷 Offers`
+- Auto, home, and renters insurance -> `📑 Admin/🪪 Insurance`
