@@ -20,13 +20,19 @@ Claim weeks run Sunday through Saturday; the Monday task files for the week that
 
 - **Applications** (kind `application`) report as job applications with outcome Applied.
 - **Supporting activities** (kinds `listings_review`, `registration`, `registration_maintenance`, `resume_submission`) report with outcome No Decision.
+- **Interviews** (kind `interview`, recruiter screens included) report with outcome Interviewed.
 - **Excluded**: anything still in flight, a `follow_up` with no reportable activity of its own, and anything that would not survive an audit. Every activity left off gets `pinole work activities exclude <id> --reason <text>` so the ledger says why (inline; a background run never writes, and returns each omitted id with its reason for the main session to record); a posting that closed before anything went out or a role declined on fit never became an activity and needs nothing.
 - The cadence targets five activities (three applications plus two supporting, per the FY27 plan). Fewer than five is reported honestly, never padded.
 
 **Sweep forward before trusting the count.** The claim week's own rows are not the whole slate. An activity can land in the claim week without a row of its own in two ways: it was *committed to* in an earlier week and recorded only on that earlier activity, as a note reading "call booked for <date>" or "interview scheduled", or it was booked straight onto the calendar and never logged at all. Reading the claim week alone therefore undercounts. Before settling the count:
 
 1. List the two preceding weeks (one `pinole work activities list --week <YYYY-Www> --table` call each) and scan their notes for any future date falling inside the claim week.
-2. Scan the claim week's own calendar, both the personal and the Atelic calendars (`GWS_FORCE_PROFILE=personal gws calendar events list` and `GWS_FORCE_PROFILE=atelic gws calendar events list`, each over Sunday through Saturday, since the shim resolves the identity from the working directory), for any call with an outside party that has no row in the ledger for that event on that date; an earlier application row for the same employer does not count as a row for the call. Recruiter screens, interviews, and conversations about possible work are candidates. A call with a practice prospect or client is Atelic business and never work search.
+2. Scan the claim week's own calendar, both the personal and the Atelic calendars, for any call with an outside party that has no row in the ledger for that event on that date; an earlier application row for the same employer does not count as a row for the call. Recruiter screens, interviews, and conversations about possible work are candidates. A call with a practice prospect or client is Atelic business and never work search. One call per calendar id, `mattforni@gmail.com` and `matt@atelic.me`, both read under the personal profile (the profile is forced because the shim resolves identity from the working directory):
+
+   ```bash
+   GWS_FORCE_PROFILE=personal gws calendar events list --params '{"calendarId":"<calendar id>","timeMin":"<Sunday>T00:00:00<local offset>","timeMax":"<next Sunday>T00:00:00<local offset>","singleEvents":true,"orderBy":"startTime","maxResults":500}'
+   ```
+
 3. Confirm every candidate from either step against the calendar and the mailbox, which is where a call leaves its real trace. A post call email is the strongest evidence a booked call was actually held.
 4. Anything confirmed is a genuine activity: log it on the day it happened (`pinole work activities log --on <date> --kind interview --employer <name> --posting <id>`, or `--kind networking` for a call that was not an interview) before the slate is settled, so the stamp lands on it with the rest. That backfill is the inline path's, exactly like the confirmation stamp: a background run never writes the API, and instead returns the confirmed rows in its report for the main session to log.
 
