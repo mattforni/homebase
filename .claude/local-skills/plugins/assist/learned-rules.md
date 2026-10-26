@@ -137,6 +137,16 @@ Payee corrections (session 2026-10-19):
 - A `Coinbase` ACH deposit -> `Inflow: Ready to Assign`, memo naming the coin sold (`🪙 Sold ETH`). It is cash moved out of an untracked holding, not income.
 - Alaska Airlines award taxes and fees -> `🌏 Adventure` with the memo of the trip it was booked for (the Thailand award, `🇹🇭 Thailand`); ask when more than one trip is open.
 
+Payee corrections (session 2026-10-26):
+
+- **A bank outflow to Venmo is always a transfer to the Venmo account, never a category.** YNAB tracks Venmo as its own account, so one payment imports twice: the Venmo row (the spend, which takes the category and the memo) and the bank leg that funds it (payee `Venmo` on FirstTech Paper or any checking account), which is matched as `Transfer : Venmo`. Forni, 2026-10-26: "Anytime there's that duplication... follow this pattern of labeling one a transfer and the other one as the actual payment."
+- `Jeffrey McGinnis` (Venmo, the CPA) -> `💰 Financial`, memo `🧾 <year> Tax Prep` (the 2025 personal return, 2026-10-26). The business return's fee sits on Atelic under its own rule.
+- **A memo is an emoji and a short Title Case name** (`🧾 2025 Tax Prep`, `🏔️ Aspen`, `💵 2026 October Build Fee`), never a sentence or a payee restatement.
+- `Comedy Works` and `Cantina New` -> `❤️ Romantic` on 2026-10-21 and 10-22 (a date). A show and a sit down restaurant are still asked about each time.
+- `Grab & Go` stays always confirm; it was `🚬 Nicotine` on 2026-10-20.
+- `St Moritz Lodge & Condominiums` is a second spelling of `St Moritz Lodge`; reassign to the first. The 🏔️ Aspen weekend (10-17 to 10-19) itemized: lodging `🌏 Adventure`, `Hotel Jerome` and `520 Grill` `🍽️ Dining Out`, `Leadville Exchange`, `Melanzana Mountain`, `Aspen Thrift Shop` `🧥 Clothing`, every row memoed `🏔️ Aspen`.
+- An `Airbnb` charge refunded the same day stays at `🌏 Adventure` on both rows so they net to zero.
+
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
 - **Renaming a payee to an existing name does NOT merge them via the API.** It just creates a second payee with the same display name (verified: renamed `Illegalpetes` -> `Illegal Pete's` and ended with two `Illegal Pete's` records). The app merges on rename; the public API does not.
