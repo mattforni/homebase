@@ -36,3 +36,4 @@ runners/email/dist/
 # Claude Code syncs account skills into ~/.claude/skills/synced/, which is
 # this repo's .claude/skills through the symlink; foreign writes, never tracked.
 .claude/skills/synced/
+.claude/worktrees/
