@@ -110,7 +110,7 @@ Sharpen answers five questions about the whole AI setup (new tooling to adopt, c
 
 ## The Pick Overview Is a Table in Plain Words
 
-At Pick, the five answers reach Forni as one table, a row per question: what we asked, what we found, what to do about it, each cell one or two plain sentences. Then why the one real finding happened, in a short paragraph, then the picks as a numbered list of at most three, each one line. No class names, seat names, counts in prose, or file pointers in the overview; those belong to the log entry.
+At Pick, the five answers reach Forni as one table, a row per question: what we asked, what we found, what to do about it, each cell one or two plain sentences. Then why the top finding happened, in a short paragraph, then the picks as a numbered list of at most three, each one line. No class names, seat names, counts in prose, or file pointers in the overview; those belong to the log entry.
 
 **Why:** 2026-10-28. The first overview was five dense paragraphs lifted from the sharpener's report. Forni: "this is just a wall of text to me. I need you to present this in a way that's consumable for me. I don't know what you're telling me even a little bit." The table that followed was read and all three picks were chosen from it in one reply.
 
