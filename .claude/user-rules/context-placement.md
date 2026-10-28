@@ -46,4 +46,10 @@ Conflict, not count. Two rules that cannot both be satisfied let Claude pick eit
 - A rule that keeps getting dropped gets scoped or enforced, not restated louder.
 - One emphasized line per file at most. Emphasize many and none stands out.
 - Block level HTML comments are stripped before injection, so maintainer notes cost nothing.
-- Nested CLAUDE.md files and path scoped rules drop out of context after a compaction until a matching file is read again; anything that must survive compaction belongs in a root CLAUDE.md, an unscoped rule, or auto memory.
+- Nested CLAUDE.md files and path scoped rules drop out of context after a compaction until a matching file is read again; anything that must survive compaction belongs in a root CLAUDE.md or an unscoped rule. Auto memory backs up only what no rule file holds: once a rule lands, the memory that carried it is struck (the memory strike hook names the day's memories at every rule write).
+
+## Principles
+
+- **Placement and enforcement beat volume.** A rule belongs at the single layer that owns it, stated once, with other layers pointing to it rather than repeating it. Prose is a request; a flow skill step is stronger; a hook is the only guarantee, so load bearing gates are enforced at the point of use.
+- **Trim before adding.** A rule that keeps getting dropped gets scoped or enforced, not restated louder, and a fact that stops being true gets deleted, never a dated paragraph layered over it saying so. Every line admitted to GC or `~/CLAUDE.md` is paid for with a cut; homebase's `bin/lint/context-size` holds both at their last measured size.
+- **Conflict is the expensive failure, not length.** Adopted 2026-09-03 (ATE-472); the evidence is the section above.

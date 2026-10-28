@@ -63,13 +63,7 @@ Human authored rules and conventions live in repo files (project CLAUDE.md, home
 
 ### Context Architecture
 
-The stores above are the layers of the context architecture (GC, `~/CLAUDE.md`, the output style, rules, the Eudy and repo CLAUDE.md chains, skill files, hooks, tool docs, auto memory). Principles, grounded in Anthropic's guidance, audited by `assist:groom-context`:
-
-- **The placement test is `~/.claude/rules/context-placement.md`** (homebase `.claude/user-rules/`), loaded whenever a context file is open: route a rule by its trigger, admit it to an always loaded file only through the three tests there, and treat a contradiction between two rules, not file length, as the expensive failure. Adopted 2026-09-03 (ATE-472).
-- **Placement and enforcement beat volume.** A rule belongs at the single layer that owns it, stated once, with other layers pointing to it rather than repeating it. Prose is a request; a flow skill step is stronger; a hook is the only guarantee, so load bearing gates are enforced at the point of use.
-- **Trim before adding.** A rule that keeps getting dropped gets scoped or enforced, not restated louder, and a fact that stops being true gets deleted, never a dated paragraph layered over it saying so. Every line admitted to GC or `~/CLAUDE.md` is paid for with a cut; homebase's `bin/lint/context-size` holds both at their last measured size.
-
-When context sprawls or duplicates, run `assist:groom-context`.
+The stores above are the layers of the context architecture (GC, `~/CLAUDE.md`, the output style, rules, the Eudy and repo CLAUDE.md chains, skill files, hooks, tool docs, auto memory). **The placement test is `~/.claude/rules/context-placement.md`**, loaded whenever a context file is open; it holds the principles (route by trigger, placement and enforcement over volume, trim before adding) and the byte ratchet is `bin/lint/context-size`. When context sprawls or duplicates, run `assist:groom-context`.
 
 ## Skills
 
