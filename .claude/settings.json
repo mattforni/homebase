@@ -89,7 +89,8 @@
       "WebSearch"
     ],
     "deny": [
-      "Bash(agent-browser *chkEnhancedConfirmation*)"
+      "Bash(agent-browser *chkEnhancedConfirmation*)",
+      "mcp__claude-in-chrome"
     ],
     "ask": [],
     "defaultMode": "auto"
