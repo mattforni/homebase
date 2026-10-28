@@ -112,6 +112,6 @@ Sharpen answers five questions about the whole AI setup (new tooling to adopt, c
 
 At Pick, the five answers reach Forni as one table, a row per question: what we asked, what we found, what to do about it, each cell one or two plain sentences. Then why the top finding happened, in a short paragraph, then the picks as a numbered list of at most three, each one line. No class names, seat names, counts in prose, or file pointers in the overview; those belong to the log entry.
 
-**Why:** 2026-10-28. The first overview was five dense paragraphs lifted from the sharpener's report. Forni: "this is just a wall of text to me. I need you to present this in a way that's consumable for me. I don't know what you're telling me even a little bit." The table that followed was read and all three picks were chosen from it in one reply.
+**Why:** 2026-10-28. The first overview was five dense paragraphs lifted from the sharpener's report. Forni: "this is just a wall of text to me. I need you to present this in a way that's consumable for me. I don't know what you're telling me even a little bit." The table that followed was read and answered in one reply.
 
 **How to apply:** The sharpener's report is the main session's input, never its output. Translate every answer into what it means for him and what it costs; a term from the method (held, seat, class, flag) is a tell that the line has not been translated yet.
