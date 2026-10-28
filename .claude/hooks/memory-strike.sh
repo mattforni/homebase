@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Memory strike: after a Write or Edit lands in a rule file, name every auto
-# memory written today so the one the rule just promoted is struck on the spot.
+# memory written today so the one the rule just promoted is flagged for the strike.
 # PostToolUse on Write|Edit; reports through additionalContext, never blocks.
 #
 # Why a hook and not a rule: a correction is written to memory the moment it
@@ -39,5 +39,5 @@ done < <(find "$HOME/.claude/projects" -path '*/memory/*.md' -newermt "$today" -
 [[ ${#candidates[@]} -eq 0 ]] && exit 0
 
 list=$(printf '%s, ' "${candidates[@]}"); list=${list%, }
-jq -cn --arg p "$path" --arg l "$list" '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:("Memory strike: a rule just landed in " + $p + ". Memory written today: " + $l + ". If the rule now states what one of them says, delete that memory and its MEMORY.md line now; a memory backs up only what no rule file holds.")}}'
+jq -cn --arg p "$path" --arg l "$list" '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:("Memory strike: a rule just landed in " + $p + ". Memory written today: " + $l + ". If the rule now states what one of them says, note that memory for the strike, to be deleted with its MEMORY.md line once this rule has landed (after the merge when it rides a PR, since a strike before then loses the learning if the PR dies); a memory backs up only what no rule file holds.")}}'
 exit 0
