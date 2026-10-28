@@ -107,3 +107,11 @@ Sharpen answers five questions about the whole AI setup (new tooling to adopt, c
 **Why:** 2026-10-14. Three audit sessions in a row verified three cloud routines that already worked, and Forni asked whether sharpen was "tilting at windmills." His own words for what it was meant to be: "making my AI development cycles and AI routines better, moving things up the levels path, and ensuring that I'm using my AI tooling in the right way." socrates traced the drift to the LEVELS.md Direction line ("toward Level 7 or 8"), which both method versions had obeyed faithfully; the routine audit was its logical endpoint. The same fortnight held 38 corrections from Forni inside live sessions, which the routine measure could not see.
 
 **How to apply:** The audit answers all five questions every week and the session acts on the top pick. A single layer never becomes the measure again; a session that only verifies routines or only trims context has lost the plot. The levels are the map, not the destination.
+
+## The Pick Overview Is a Table in Plain Words
+
+At Pick, the five answers reach Forni as one table, a row per question: what we asked, what we found, what to do about it, each cell one or two plain sentences. Then why the one real finding happened, in a short paragraph, then the picks as a numbered list of at most three, each one line. No class names, seat names, counts in prose, or file pointers in the overview; those belong to the log entry.
+
+**Why:** 2026-10-28. The first overview was five dense paragraphs lifted from the sharpener's report. Forni: "this is just a wall of text to me. I need you to present this in a way that's consumable for me. I don't know what you're telling me even a little bit." The table that followed was read and all three picks were chosen from it in one reply.
+
+**How to apply:** The sharpener's report is the main session's input, never its output. Translate every answer into what it means for him and what it costs; a term from the method (held, seat, class, flag) is a tell that the line has not been translated yet.
