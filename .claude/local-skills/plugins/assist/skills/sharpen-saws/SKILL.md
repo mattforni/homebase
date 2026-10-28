@@ -48,7 +48,7 @@ Answer the five questions, one short section each, each ending in a recommended 
 
 ### Phase 3: Pick
 
-The main session gives Forni the five answers as a short overview, one line each, and the top one or two picks in his voice, then asks one question: which action this session? The overview is the last text of its turn, and the question comes after he has read it. Any unticketed item in the last entry's Next line is closed, ticketed, or retired here, never carried. Cut the worktrees here, before the first write.
+The main session gives Forni the five answers in the overview format the learned rules set (a table, a short paragraph on the top finding, and up to three picks in his voice), then asks one question: which action this session? The overview is the last text of its turn, and the question comes after he has read it. Any unticketed item in the last entry's Next line is closed, ticketed, or retired here, never carried. Cut the worktrees here, before the first write.
 
 ### Phase 4: Cut
 
