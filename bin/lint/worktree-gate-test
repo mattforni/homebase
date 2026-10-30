@@ -40,6 +40,7 @@ printf 'echo "then git checkout main"\nprintf "cd x && git reset --hard\\n"\n' >
 printf 'echo "done" && git -C %s commit -m x\n' "$P" >"$S/print-chain.sh"
 printf 'echo "done" && git -C "%s" commit -m "x"\n' "$P" >"$S/print-chain-quoted.sh"
 printf "git -C '%s' reset --hard\n" "$P" >"$S/single-quoted.sh"
+printf 'gi""t -C %s commit -m x\n' "$P" >"$S/split-quote.sh"
 chmod +x "$S/primary.sh" "$S/runme"
 # Heredoc commit commands, built so no git command sits bare in this file (the
 # gate reads this file when it runs, and its quote pairing is line by line).
@@ -93,6 +94,7 @@ expect allow "$P"  "bash $S/prints-git.sh"
 expect deny  "$WT" "bash $S/print-chain.sh"
 expect deny  "$WT" "bash $S/print-chain-quoted.sh"
 expect deny  "$WT" "bash $S/single-quoted.sh"
+expect deny  "$WT" "bash $S/split-quote.sh"
 expect deny  "$WT" "bash -c $S/primary.sh"
 expect deny  "$WT" "bash -c '$S/primary.sh --flag'"
 expect deny  "$WT" "sh -xc \"$S/primary.sh\""
