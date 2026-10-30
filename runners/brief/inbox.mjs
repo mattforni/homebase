@@ -114,12 +114,12 @@ export function shapeMessage(msg, labelNames, address) {
     const starred = ids.filter((l) => l.endsWith("_STAR") || l === "STARRED");
     return {
         id: msg.id,
-        thread_id: msg.threadId,
+        threadId: msg.threadId,
         from: header(msg, "From"),
         to: header(msg, "To"),
         subject: header(msg, "Subject"),
         date: header(msg, "Date"),
-        internal_date: msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : "",
+        internalDate: msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : "",
         snippet: msg.snippet || "",
         labels: ids.filter((l) => !/^(INBOX|UNREAD|STARRED|IMPORTANT|CATEGORY_|SENT|DRAFT|.*_STAR$)/.test(l)).map((l) => labelNames.get(l) || l),
         unread: ids.includes("UNREAD"),
@@ -143,7 +143,7 @@ async function pullMailbox(name, token, address) {
     const messages = await pool(ids, POOL, (id) => gmail(token, `messages/${id}`, {
         params: { format: "metadata", metadataHeaders: ["From", "To", "Subject", "Date"] },
     }).then((m) => shapeMessage(m, labelNames, address)));
-    messages.sort((a, b) => (a.internal_date < b.internal_date ? 1 : -1));
+    messages.sort((a, b) => (a.internalDate < b.internalDate ? 1 : -1));
     log(`${name}: ${messages.length} in the inbox, ${labels.length} labels`);
     return { address, labels, messages, truncated: Boolean(pageToken) };
 }
@@ -167,7 +167,7 @@ async function pull(outDir) {
         // read as not read. Both failing fails the pull.
         try {
             const box = await pullMailbox(name, token, addresses[name] || "");
-            writeFileSync(mailboxFile(outDir, name), JSON.stringify({ mailbox: name, pulled_at: new Date().toISOString(), ...box }, null, 1));
+            writeFileSync(mailboxFile(outDir, name), JSON.stringify({ mailbox: name, pulledAt: new Date().toISOString(), ...box }, null, 1));
             read += 1;
         } catch (e) {
             log(`${name}: not read, ${String(e.message).slice(0, 160)}`);
@@ -226,14 +226,14 @@ async function apply(outDir, rowsPath) {
             // or a second correspondent (a person who replied), and the
             // thread stays for the Monday session.
             if (r.archive) {
-                const thread = await gmail(token, `threads/${msg.thread_id}`, { params: { format: "metadata", metadataHeaders: ["From", "Subject"] } });
+                const thread = await gmail(token, `threads/${msg.threadId}`, { params: { format: "metadata", metadataHeaders: ["From", "Subject"] } });
                 const others = (thread.messages || []).filter((m) => m.id !== msg.id);
                 const protectedOne = others.find((m) => NEVER_ARCHIVE.test(`${header(m, "From")} ${header(m, "Subject")}`));
                 if (protectedOne) { dropped.push({ kind: "gmail", id: r.id, reason: "another message in the thread is protected mail; the thread stays" }); continue; }
                 const strangers = others.filter((m) => addressOf(header(m, "From")) !== addressOf(msg.from) && !OWN.has(addressOf(header(m, "From"))));
                 if (strangers.length > 0) { dropped.push({ kind: "gmail", id: r.id, reason: `the thread holds ${strangers.length} message${strangers.length === 1 ? "" : "s"} from another sender; the session decides` }); continue; }
             }
-            await gmail(token, `threads/${msg.thread_id}/modify`, { method: "POST", body: { addLabelIds: add, removeLabelIds: remove } });
+            await gmail(token, `threads/${msg.threadId}/modify`, { method: "POST", body: { addLabelIds: add, removeLabelIds: remove } });
             applied.push({ mailbox, id: r.id, subject: msg.subject, from: msg.from, labels: r.labels || [], archived: Boolean(r.archive) });
         } catch (e) {
             dropped.push({ kind: "gmail", id: r.id, reason: String(e.message).slice(0, 160) });

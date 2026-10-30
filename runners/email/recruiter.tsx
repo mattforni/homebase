@@ -67,7 +67,7 @@ export type RecruiterDraft = {
 	prospects?: unknown;
 	tradeoff?: unknown;
 	rejected?: Rejected[] | null;
-	rejected_note?: unknown;
+	rejectedNote?: unknown;
 	sources?: Source[] | null;
 };
 
@@ -82,7 +82,7 @@ export function recruiterHTML(input: unknown, context: RenderContext): string {
 	const sources = alt(draft.sources, []);
 	const prospects = jqToString(alt(draft.prospects, ""));
 	const tradeoff = jqToString(alt(draft.tradeoff, ""));
-	const rejectedNote = jqToString(alt(draft.rejected_note, ""));
+	const rejectedNote = jqToString(alt(draft.rejectedNote, ""));
 
 	return renderEmail({
 		title: `${context.week} Recruiter`,
@@ -271,7 +271,7 @@ export function recruiterText(input: unknown, context: RenderContext): string {
 	const sources = alt(draft.sources, []);
 	const prospects = jqToString(alt(draft.prospects, ""));
 	const tradeoff = jqToString(alt(draft.tradeoff, ""));
-	const rejectedNote = jqToString(alt(draft.rejected_note, ""));
+	const rejectedNote = jqToString(alt(draft.rejectedNote, ""));
 
 	let out = `ATELIC · RECRUITER · WEEK ${number}\n`;
 	out += `Week ${number} · ${shortDate(context.monday)} to ${shortDate(context.sunday)}\n\n`;

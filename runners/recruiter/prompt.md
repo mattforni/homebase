@@ -59,7 +59,7 @@ The shape, every key present (use `null` or `[]` where a week has nothing):
   "rejected": [
     { "company": "Zanskar", "reason": "Hybrid Salt Lake City on its own posting" }
   ],
-  "rejected_note": "One line with counts for what was not individually verified: resurfaced dedupes and deny list hits.",
+  "rejectedNote": "One line with counts for what was not individually verified: resurfaced dedupes and deny list hits.",
   "sources": [
     { "lead": "Lowercarbon is back.", "note": "Cert failure from Sep 8 did not repeat; failure counter reset." }
   ],

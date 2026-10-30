@@ -63,7 +63,7 @@
     { "company": "Lantern Hill Roofing", "reason": "Comp band tops out under the floor" },
     { "company": "Thornfield Ridge Energy Cooperative, Principal Platform Reliability Engineer", "reason": "Onsite four days in a city the posting never names, relocation expected inside ninety days, and the listed band tops out well under the floor even at the principal level." }
   ],
-  "rejected_note": "Another 14 were resurfaced dedupes and 6 were deny list hits, neither individually verified.",
+  "rejectedNote": "Another 14 were resurfaced dedupes and 6 were deny list hits, neither individually verified.",
   "sources": [
     { "lead": "The co-op board is back.", "note": "The cert failure from the last two sweeps did not repeat." },
     { "lead": "One query hid roles.", "note": "The platform engineering query returned its full page, so anything past twenty was not seen." }

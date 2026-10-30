@@ -7,8 +7,8 @@ import { budgetsFromEnv, dollars, isTripMemo, monthsBack, spendFor } from "../yn
 const TODAY = "2026-10-19";
 
 const t = (date, amount, payee, category = "🛒 Groceries", memo = "") => ({
-    id: `${date}-${payee}`, date, amount, payee_name: payee, category_id: "c", category_name: category, memo,
-    transfer_account_id: null, deleted: false,
+    id: `${date}-${payee}`, date, amount, payeeName: payee, categoryId: "c", categoryName: category, memo,
+    transferAccountId: null, deleted: false,
 });
 
 const file = (transactions, accounts = []) => ({ budget: { name: "Personal", id: "p" }, accounts, categories: [], payees: [], queue: [], transactions });
@@ -56,15 +56,15 @@ test("typical spend is the recurring rows; the pace is the three month average p
         t("2026-10-08", -120, "Airbnb", "🏠 Lodging", "🇹🇭 Thailand"),
         t("2026-10-09", -400, "United Airlines", "🌏 Adventure"),
         // A transfer and an inflow never count.
-        { ...t("2026-10-10", -500, "Transfer: Savings", "🏦 Transfer"), transfer_account_id: "x" },
+        { ...t("2026-10-10", -500, "Transfer: Savings", "🏦 Transfer"), transferAccountId: "x" },
         t("2026-10-11", 3000, "Employer", "Inflow: Ready to Assign"),
     ];
     const s = spendFor(file(rows), TODAY, true);
     assert.equal(s.month, "2026-10");
-    assert.equal(s.day_of_month, 19);
-    assert.equal(s.days_in_month, 31);
+    assert.equal(s.dayOfMonth, 19);
+    assert.equal(s.daysInMonth, 31);
     assert.deepEqual(s.typical.months.map((m) => m.total), [-2300, -2300, -2300]);
-    assert.equal(s.typical.monthly_average, -2300);
+    assert.equal(s.typical.monthlyAverage, -2300);
     assert.equal(s.typical.pace, Math.round(-2300 * 19 / 31 * 100) / 100);
     assert.equal(s.typical.spent, -2150);
     assert.deepEqual(s.outliers.map((o) => o.payee), ["Dr. Lowy"]);
@@ -87,11 +87,11 @@ test("the mortgage stays typical because it recurs, and the exclusions only bite
 
 test("a split transaction counts through its parts, not its uncategorized parent", () => {
     const split = {
-        id: "split", date: "2026-10-12", amount: -150, payee_name: "Costco", category_id: null, category_name: "", memo: "",
-        transfer_account_id: null, deleted: false, account_name: "Card",
+        id: "split", date: "2026-10-12", amount: -150, payeeName: "Costco", categoryId: null, categoryName: "", memo: "",
+        transferAccountId: null, deleted: false, accountName: "Card",
         subtransactions: [
-            { id: "s1", amount: -100, category_id: "c", category_name: "🛒 Groceries", payee_name: "Costco", memo: "", transfer_account_id: null },
-            { id: "s2", amount: -50, category_id: "c", category_name: "🧥 Clothing", payee_name: "Costco", memo: "", transfer_account_id: null },
+            { id: "s1", amount: -100, categoryId: "c", categoryName: "🛒 Groceries", payeeName: "Costco", memo: "", transferAccountId: null },
+            { id: "s2", amount: -50, categoryId: "c", categoryName: "🧥 Clothing", payeeName: "Costco", memo: "", transferAccountId: null },
         ],
     };
     const s = spendFor(file([split]), TODAY, true);
@@ -100,9 +100,9 @@ test("a split transaction counts through its parts, not its uncategorized parent
 
 test("accounts in error are the open, linked ones", () => {
     const accounts = [
-        { name: "BofA Checking", closed: false, direct_import_linked: true, direct_import_in_error: true },
-        { name: "Old Card", closed: true, direct_import_linked: true, direct_import_in_error: true },
-        { name: "Cash", closed: false, direct_import_linked: false, direct_import_in_error: false },
+        { name: "BofA Checking", closed: false, directImportLinked: true, directImportInError: true },
+        { name: "Old Card", closed: true, directImportLinked: true, directImportInError: true },
+        { name: "Cash", closed: false, directImportLinked: false, directImportInError: false },
     ];
-    assert.deepEqual(spendFor(file([], accounts), TODAY, true).accounts_in_error, ["BofA Checking"]);
+    assert.deepEqual(spendFor(file([], accounts), TODAY, true).accountsInError, ["BofA Checking"]);
 });

@@ -307,11 +307,11 @@ pull_sources() {
         fail_reason="listings.jq failed: $(head -c 300 "$PULLS/listings-stderr.txt")"
         return 1
     fi
-    if [[ "$(jq -r '.counts.fetches_ok' "$LISTINGS_JSON")" == "0" ]]; then
+    if [[ "$(jq -r '.counts.fetchesOk' "$LISTINGS_JSON")" == "0" ]]; then
         fail_reason="no Getro board answered; the pull records are in $GETRO_DIR"
         return 1
     fi
-    echo "pulls: $(jq -r '"\(.counts.fetches_ok) of \(.counts.fetches) Getro fetches answered; \(.counts.cards) cards, \(.counts.unique) unique, \(.counts.denied) denied, \(.counts.kept) kept"' "$LISTINGS_JSON")"
+    echo "pulls: $(jq -r '"\(.counts.fetchesOk) of \(.counts.fetches) Getro fetches answered; \(.counts.cards) cards, \(.counts.unique) unique, \(.counts.denied) denied, \(.counts.kept) kept"' "$LISTINGS_JSON")"
 
     {
         echo "# What the runner pulled for $WEEK"
@@ -463,7 +463,7 @@ log_sweep_activity() {
 
     sources="$(printf '%s\n' "${GETRO_BOARDS[@]}" | cut -d'|' -f1 | paste -sd ',' - | sed 's/,/, /g')"
     sources="$sources, Built In, Himalayas, Tech Jobs for Good, Fractional Jobs, a16z Jobs"
-    getro="$(jq -r '"\(.counts.fetches_ok) of \(.counts.fetches) Getro fetches answered"' "$LISTINGS_JSON")"
+    getro="$(jq -r '"\(.counts.fetchesOk) of \(.counts.fetches) Getro fetches answered"' "$LISTINGS_JSON")"
     swept="$(sed -n 's/^- \(.*\): pulled from.*/\1/p' "$PULLS_MD" | paste -sd ',' - | sed 's/,/, /g')"
     missed="$(sed -n 's/^- \(.*\): NOT pulled.*/\1/p' "$PULLS_MD" | paste -sd ',' - | sed 's/,/, /g')"
     channel="Recruiter sweep of the codified sources from the runner's pulls ($getro${swept:+; $swept pulled}${missed:+; not pulled: $missed}) plus WebSearch angles; $judged postings judged on the employer's own ATS"

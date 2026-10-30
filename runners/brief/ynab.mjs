@@ -129,34 +129,34 @@ function shapeTransaction(t) {
         id: t.id,
         date: t.date,
         amount: dollars(t.amount),
-        payee_id: t.payee_id || null,
-        payee_name: t.payee_name || "",
-        category_id: t.category_id || null,
-        category_name: t.category_name || "",
+        payeeId: t.payee_id || null,
+        payeeName: t.payee_name || "",
+        categoryId: t.category_id || null,
+        categoryName: t.category_name || "",
         memo: t.memo || "",
         approved: Boolean(t.approved),
-        transfer_account_id: t.transfer_account_id || null,
-        account_name: t.account_name || "",
+        transferAccountId: t.transfer_account_id || null,
+        accountName: t.account_name || "",
         cleared: t.cleared || "",
-        flag_color: t.flag_color || null,
+        flagColor: t.flag_color || null,
         deleted: Boolean(t.deleted),
         // A split keeps its parts: the parent carries no category of its own,
         // so the spend lives in the parts and the arithmetic reads them.
         subtransactions: (t.subtransactions || []).filter((s) => !s.deleted).map((s) => ({
             id: s.id,
             amount: dollars(s.amount),
-            category_id: s.category_id || null,
-            category_name: s.category_name || "",
-            payee_name: s.payee_name || t.payee_name || "",
+            categoryId: s.category_id || null,
+            categoryName: s.category_name || "",
+            payeeName: s.payee_name || t.payee_name || "",
             memo: s.memo || t.memo || "",
-            transfer_account_id: s.transfer_account_id || null,
+            transferAccountId: s.transfer_account_id || null,
         })),
     };
 }
 
 /** A transaction as the rows the arithmetic reads: itself, or its parts when it is a split. */
 export const spendRows = (t) => (t.subtransactions && t.subtransactions.length > 0
-    ? t.subtransactions.map((s) => ({ ...s, date: t.date, account_name: t.account_name, deleted: false }))
+    ? t.subtransactions.map((s) => ({ ...s, date: t.date, accountName: t.accountName, deleted: false }))
     : [t]);
 
 async function pull(outDir, today) {
@@ -178,11 +178,11 @@ async function pull(outDir, today) {
         // takes in one go and it needs none of them.
         const file = {
             budget,
-            pulled_at: new Date().toISOString(),
+            pulledAt: new Date().toISOString(),
             since,
             accounts: (accounts.accounts || []).filter((a) => !a.deleted).map((a) => ({
-                id: a.id, name: a.name, on_budget: Boolean(a.on_budget), closed: Boolean(a.closed),
-                direct_import_linked: Boolean(a.direct_import_linked), direct_import_in_error: Boolean(a.direct_import_in_error),
+                id: a.id, name: a.name, onBudget: Boolean(a.on_budget), closed: Boolean(a.closed),
+                directImportLinked: Boolean(a.direct_import_linked), directImportInError: Boolean(a.direct_import_in_error),
             })),
             categories: flattenCategories(categories.category_groups),
             queue: (queue.transactions || []).filter((t) => !t.deleted).map(shapeTransaction),
@@ -196,14 +196,14 @@ async function pull(outDir, today) {
         const stem = join(outDir, `ynab-${budget.name.toLowerCase()}`);
         writeFileSync(`${stem}.json`, JSON.stringify(file, null, 1));
         writeFileSync(`${stem}-history.json`, JSON.stringify(history));
-        log(`${budget.name}: ${file.queue.length} unapproved, ${history.transactions.length} since ${since}, ${file.accounts.filter((a) => a.direct_import_in_error && !a.closed).length} accounts in error`);
+        log(`${budget.name}: ${file.queue.length} unapproved, ${history.transactions.length} since ${since}, ${file.accounts.filter((a) => a.directImportInError && !a.closed).length} accounts in error`);
     }
 }
 
 /* ---------- week ---------- */
 
-const isSpend = (t) => !t.transfer_account_id && t.category_id && !/^Inflow/.test(t.category_name) && !t.deleted;
-const isExcluded = (t) => EXCLUDED_WORDS.some((w) => t.category_name.includes(w));
+const isSpend = (t) => !t.transferAccountId && t.categoryId && !/^Inflow/.test(t.categoryName) && !t.deleted;
+const isExcluded = (t) => EXCLUDED_WORDS.some((w) => t.categoryName.includes(w));
 // A flag is two regional indicators, which Unicode keeps apart from the
 // pictographs, so both classes open a trip memo.
 const EMOJI_START = /^(\p{Extended_Pictographic}|\p{Regional_Indicator})/u;
@@ -225,12 +225,12 @@ export function spendFor(file, today, personal) {
     const rows = file.transactions.flatMap(spendRows).filter(isSpend);
     const monthsByPayee = new Map();
     for (const t of rows) {
-        const key = t.payee_name.toLowerCase();
+        const key = t.payeeName.toLowerCase();
         if (!monthsByPayee.has(key)) monthsByPayee.set(key, new Set());
         monthsByPayee.get(key).add(monthOf(t.date));
     }
     const isOutlier = (t) => Math.abs(t.amount) >= OUTLIER_DOLLARS
-        && (monthsByPayee.get(t.payee_name.toLowerCase())?.size || 0) < RECURRING_MONTHS;
+        && (monthsByPayee.get(t.payeeName.toLowerCase())?.size || 0) < RECURRING_MONTHS;
     const classify = (t) => {
         if (isTripMemo(t.memo)) return "trip";
         if (personal && isExcluded(t)) return "excluded";
@@ -248,7 +248,7 @@ export function spendFor(file, today, personal) {
             if (m === month) spent += t.amount;
             else if (totals.has(m)) totals.set(m, totals.get(m) + t.amount);
         } else if (m === month && kind === "outlier") {
-            outliers.push({ date: t.date, payee: t.payee_name, amount: t.amount, category: t.category_name, memo: t.memo });
+            outliers.push({ date: t.date, payee: t.payeeName, amount: t.amount, category: t.categoryName, memo: t.memo });
         } else if (m === month && kind === "trip") {
             const memo = t.memo.trim();
             const cur = trips.get(memo) || { memo, total: 0, count: 0 };
@@ -264,12 +264,12 @@ export function spendFor(file, today, personal) {
     outliers.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
     return {
         month,
-        day_of_month: day,
-        days_in_month: dim,
-        typical: { spent: round(spent), pace: round(monthlyAverage * day / dim), monthly_average: round(monthlyAverage), months },
+        dayOfMonth: day,
+        daysInMonth: dim,
+        typical: { spent: round(spent), pace: round(monthlyAverage * day / dim), monthlyAverage: round(monthlyAverage), months },
         outliers: outliers.map((o) => ({ ...o, amount: round(o.amount) })),
         trips: [...trips.values()].map((t) => ({ ...t, total: round(t.total) })),
-        accounts_in_error: file.accounts.filter((a) => a.direct_import_linked && a.direct_import_in_error && !a.closed).map((a) => a.name),
+        accountsInError: file.accounts.filter((a) => a.directImportLinked && a.directImportInError && !a.closed).map((a) => a.name),
         rule: RULE,
     };
 }
@@ -337,7 +337,7 @@ async function apply(outDir, rowsPath) {
         const batch = [];
         for (const r of list) {
             const t = queue.get(r.id);
-            if (t?.transfer_account_id) { dropped.push({ kind: "ynab", id: r.id, reason: "a transfer is approved uncategorized by the Monday session, never categorized here" }); continue; }
+            if (t?.transferAccountId) { dropped.push({ kind: "ynab", id: r.id, reason: "a transfer is approved uncategorized by the Monday session, never categorized here" }); continue; }
             // A split is categorized in its parts; one category on the parent
             // would collapse them, so the session handles it by hand.
             if (t?.subtransactions?.length > 0) { dropped.push({ kind: "ynab", id: r.id, reason: "a split transaction is categorized in its parts by the Monday session, never here" }); continue; }
@@ -353,7 +353,7 @@ async function apply(outDir, rowsPath) {
             // (a trip, a note) is a decision in the prompt's own terms and is
             // written by the Monday session on Forni's nod, never here.
             batch.push(row);
-            applied.push({ budget: file.budget.name, id: r.id, payee: t.payee_name, amount: t.amount, category: r.category, date: t.date });
+            applied.push({ budget: file.budget.name, id: r.id, payee: t.payeeName, amount: t.amount, category: r.category, date: t.date });
         }
         if (batch.length === 0) continue;
         try {

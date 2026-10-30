@@ -99,19 +99,19 @@ export function shapeEvent(e, calendar) {
         calendar,
         id: e.id,
         summary: e.summary || "",
-        all_day: allDay,
+        allDay: allDay,
         date: allDay ? e.start.date : s.date,
-        end_date: allDay ? e.end?.date : t.date,
+        endDate: allDay ? e.end?.date : t.date,
         day: allDay ? null : s.day,
         start: allDay ? null : s.time,
         end: allDay ? null : t.time,
-        start_iso: startIso,
-        end_iso: endIso,
+        startIso: startIso,
+        endIso: endIso,
         transparency: e.transparency === "transparent" ? "transparent" : "opaque",
-        label_id: e.eventLabelId || e.eventLabel?.id || null,
+        labelId: e.eventLabelId || e.eventLabel?.id || null,
         location: e.location || "",
         description: (e.description || "").slice(0, 200),
-        recurring_event_id: e.recurringEventId || null,
+        recurringEventId: e.recurringEventId || null,
         status: e.status || "confirmed",
     };
 }
@@ -122,13 +122,13 @@ const isFlank = (ev) => /↔️|🚙|✈️|🚆|🚲/u.test(ev.summary) || /^To
 const minutes = (iso) => new Date(iso).getTime() / 60000;
 
 export function lint(events) {
-    const timed = events.filter((e) => !e.all_day && e.status !== "cancelled").sort((a, b) => (a.start_iso < b.start_iso ? -1 : 1));
+    const timed = events.filter((e) => !e.allDay && e.status !== "cancelled").sort((a, b) => (a.startIso < b.startIso ? -1 : 1));
     const findings = [];
     const opaque = timed.filter((e) => e.transparency === "opaque" || /ATE-\d+/.test(e.summary));
     for (let i = 0; i < opaque.length; i += 1) {
         for (let j = i + 1; j < opaque.length; j += 1) {
             const a = opaque[i], b = opaque[j];
-            if (b.start_iso >= a.end_iso) break;
+            if (b.startIso >= a.endIso) break;
             if (isFlank(a) || isFlank(b)) continue;
             findings.push({ kind: "overlap", when: `${a.day} ${a.start}`, what: `${a.summary} (${a.start} to ${a.end}, ${a.calendar}) overlaps ${b.summary} (${b.start} to ${b.end}, ${b.calendar})` });
         }
@@ -137,15 +137,15 @@ export function lint(events) {
     for (let i = 1; i < located.length; i += 1) {
         const prev = located[i - 1], cur = located[i];
         if (prev.date !== cur.date || prev.location === cur.location) continue;
-        const gap = minutes(cur.start_iso) - minutes(prev.end_iso);
+        const gap = minutes(cur.startIso) - minutes(prev.endIso);
         if (gap >= FLANK_MINUTES) continue;
-        const flankBetween = timed.some((e) => isFlank(e) && e.start_iso >= prev.end_iso && e.end_iso <= cur.start_iso);
+        const flankBetween = timed.some((e) => isFlank(e) && e.startIso >= prev.endIso && e.endIso <= cur.startIso);
         if (flankBetween) continue;
         findings.push({ kind: "missing flank", when: `${cur.day} ${cur.start}`, what: `${prev.summary} at ${prev.location} ends ${prev.end} and ${cur.summary} at ${cur.location} starts ${cur.start}, with no transition between them` });
     }
     // Only the Life calendar carries labels; Atelic events have none by design
     // (google-calendar.md) and the Todoist feed is not ours to label.
-    const unlabeled = timed.filter((e) => !e.label_id && e.calendar === "life" && e.transparency === "opaque").map((e) => ({ kind: "unlabeled", when: `${e.day} ${e.start}`, what: `${e.summary} (${e.calendar}) carries no label` }));
+    const unlabeled = timed.filter((e) => !e.labelId && e.calendar === "life" && e.transparency === "opaque").map((e) => ({ kind: "unlabeled", when: `${e.day} ${e.start}`, what: `${e.summary} (${e.calendar}) carries no label` }));
     return { findings: findings.concat(unlabeled), counts: { events: events.length, timed: timed.length, opaque: opaque.length } };
 }
 
@@ -162,8 +162,8 @@ async function pull(outDir, from, to) {
         events.push(...shaped);
         log(`${cal.name}: ${shaped.length} events`);
     }
-    events.sort((a, b) => ((a.start_iso || `${a.date}T00:00:00`) < (b.start_iso || `${b.date}T00:00:00`) ? -1 : 1));
-    writeFileSync(join(outDir, "calendar.json"), JSON.stringify({ pulled_at: new Date().toISOString(), zone: ZONE, from, to, events }, null, 1));
+    events.sort((a, b) => ((a.startIso || `${a.date}T00:00:00`) < (b.startIso || `${b.date}T00:00:00`) ? -1 : 1));
+    writeFileSync(join(outDir, "calendar.json"), JSON.stringify({ pulledAt: new Date().toISOString(), zone: ZONE, from, to, events }, null, 1));
     const result = lint(events);
     writeFileSync(join(outDir, "calendar-lint.json"), JSON.stringify(result, null, 1));
     log(`lint: ${result.findings.length} findings over ${result.counts.timed} timed events`);

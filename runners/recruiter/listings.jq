@@ -45,15 +45,15 @@ def row($pull):
         id: .id,
         title: (.title // ""),
         company: (.organization.name // ""),
-        company_slug: (.organization.slug // ""),
+        companySlug: (.organization.slug // ""),
         locations: ((.locations // []) | join("; ")),
-        work_mode: (.workMode // ""),
+        workMode: (.workMode // ""),
         seniority: (.seniority // ""),
         comp: comp,
         posted: (if .createdAt then (.createdAt | todate | .[0:10]) else null end),
         source: (.source // ""),
         url: (.url // ""),
-        board_url: ($pull.base + "/companies/" + (.organization.slug // "") + "/jobs/" + (.slug // (.id | tostring))),
+        boardUrl: ($pull.base + "/companies/" + (.organization.slug // "") + "/jobs/" + (.slug // (.id | tostring))),
         boards: [$pull.board],
         queries: [$pull.query]
     };
@@ -77,7 +77,7 @@ def merge_rows:
     pulls: $pull_table,
     counts: {
         fetches: ($pulls | length),
-        fetches_ok: ($pulls | map(select(.error == null)) | length),
+        fetchesOk: ($pulls | map(select(.error == null)) | length),
         cards: ($pulls | map((.found // []) | length) | add // 0),
         unique: ($all | length),
         denied: ($dropped | length),
@@ -90,7 +90,7 @@ def merge_rows:
     (
         [ "# Board pulls for the sweep",
           "",
-          "\($out.counts.fetches_ok) of \($out.counts.fetches) fetches returned a page; \($out.counts.cards) cards, \($out.counts.unique) unique postings, \($out.counts.denied) dropped by the deny list, \($out.counts.kept) below.",
+          "\($out.counts.fetchesOk) of \($out.counts.fetches) fetches returned a page; \($out.counts.cards) cards, \($out.counts.unique) unique postings, \($out.counts.denied) dropped by the deny list, \($out.counts.kept) below.",
           "",
           "| Board | Query | HTTP | Shown | Total | Error |",
           "|---|---|---|---|---|---|"
@@ -108,7 +108,7 @@ def merge_rows:
             "One line per posting: board job id · title · employer (slug) · locations · work mode · seniority · comp · posted · boards · queries · the employer's own posting url · the board's card.",
             "" ]
         + ($out.listings | map(
-            "- \(.id) · \(.title) · \(.company) (\(.company_slug)) · \(if .locations == "" then "no location" else .locations end) · \(.work_mode) · \(.seniority) · \(.comp // "comp not shown") · posted \(.posted // "undated") · \(.boards | join(", ")) · \(.queries | join(", ")) · \(.url) · \(.board_url)"
+            "- \(.id) · \(.title) · \(.company) (\(.companySlug)) · \(if .locations == "" then "no location" else .locations end) · \(.workMode) · \(.seniority) · \(.comp // "comp not shown") · posted \(.posted // "undated") · \(.boards | join(", ")) · \(.queries | join(", ")) · \(.url) · \(.boardUrl)"
           ))
     ) | join("\n")
   else $out end
