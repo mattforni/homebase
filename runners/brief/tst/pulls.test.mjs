@@ -52,7 +52,7 @@ test("an issue carries its load label apart and a trimmed description", () => {
     });
     assert.equal(issue.load, "🧠 Sharp");
     assert.deepEqual(issue.labels, ["🧠 Sharp", "Runner"]);
-    assert.equal(issue.state_type, "started");
+    assert.equal(issue.stateType, "started");
     assert.equal(issue.description.length, 300);
     assert.equal(issue.description.includes("\n"), false);
 });

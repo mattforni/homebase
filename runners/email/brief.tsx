@@ -76,11 +76,11 @@ type AtelicCoverageRow = { measure?: unknown; logged?: unknown; target?: unknown
 
 type Activity = {
 	name?: string | null;
-	sport_type?: string | null;
-	start_date_local?: string | null;
-	distance_mi?: number | null;
-	moving_min?: number | null;
-	athlete_count?: number | null;
+	sportType?: string | null;
+	startDateLocal?: string | null;
+	distanceMi?: number | null;
+	movingMin?: number | null;
+	athleteCount?: number | null;
 };
 
 type FunnelRow = {
@@ -94,8 +94,8 @@ type FunnelRow = {
 	stage?: string | null;
 	cash?: string | null;
 	reason?: unknown;
-	last_touch?: unknown;
-	last_reply?: unknown;
+	lastTouch?: unknown;
+	lastReply?: unknown;
 	/** A sentence the pull adds to a row it wants read twice (a half applied close). */
 	note?: unknown;
 };
@@ -103,21 +103,21 @@ type FunnelRow = {
 export type BriefDraft = {
 	headline?: unknown;
 	coverage?: CoverageRow[] | null;
-	what_moved?: MovedRow[] | null;
-	what_moved_note?: unknown;
-	movement_read?: unknown;
+	whatMoved?: MovedRow[] | null;
+	whatMovedNote?: unknown;
+	movementRead?: unknown;
 	takeout?: TakeoutRow[] | null;
-	takeout_read?: unknown;
-	atelic_read?: unknown;
-	blind_spots?: unknown;
+	takeoutRead?: unknown;
+	atelicRead?: unknown;
+	blindSpots?: unknown;
 	strava?: Activity[] | null;
 	atelic?: {
 		/** The funnel's stage names in funnel order, from the pull. */
 		stages?: string[] | null;
 		coverage?: AtelicCoverageRow[] | null;
-		open_leads?: FunnelRow[] | null;
+		openLeads?: FunnelRow[] | null;
 		opportunities?: FunnelRow[] | null;
-		closed_leads?: FunnelRow[] | null;
+		closedLeads?: FunnelRow[] | null;
 	} | null;
 	/* The planning pass: the model's keys (prompt.md, The Shape). */
 	board?: BoardRow[] | null;
@@ -165,9 +165,9 @@ const PT_NAME = /^(\d{4}\s+)?PT\b(?!\.)/;
 const PT_SPORTS = new Set(["WeightTraining", "Workout"]);
 
 function kindOf(activity: Activity): string {
-	if (PT_SPORTS.has(alt(activity.sport_type, "")) && PT_NAME.test(cleanName(activity).trim())) return "PT";
-	const mapped = KINDS[alt(activity.sport_type, "")];
-	return mapped === undefined ? alt(activity.sport_type, "Session") : mapped;
+	if (PT_SPORTS.has(alt(activity.sportType, "")) && PT_NAME.test(cleanName(activity).trim())) return "PT";
+	const mapped = KINDS[alt(activity.sportType, "")];
+	return mapped === undefined ? alt(activity.sportType, "Session") : mapped;
 }
 
 /**
@@ -176,7 +176,7 @@ function kindOf(activity: Activity): string {
  */
 function isSocial(activity: Activity): boolean {
 	if (kindOf(activity) !== "Run") return false;
-	return alt(activity.athlete_count, 1) >= 2 || /diego|drc|sprc/i.test(alt(activity.name, ""));
+	return alt(activity.athleteCount, 1) >= 2 || /diego|drc|sprc/i.test(alt(activity.name, ""));
 }
 
 /** Session names lose their leading emoji; the table is for reading. */
@@ -197,20 +197,20 @@ type Session = {
 function sessions(draft: BriefDraft): Session[] {
 	const activities = [...alt(draft.strava, [])];
 	activities.sort((a, b) => {
-		const left = alt(a.start_date_local, "");
-		const right = alt(b.start_date_local, "");
+		const left = alt(a.startDateLocal, "");
+		const right = alt(b.startDateLocal, "");
 		return left < right ? -1 : left > right ? 1 : 0;
 	});
 	return activities.map((activity) => {
-		const date = slice(alt(activity.start_date_local, ""), 0, 10);
-		const miles = alt(activity.distance_mi, 0);
+		const date = slice(alt(activity.startDateLocal, ""), 0, 10);
+		const miles = alt(activity.distanceMi, 0);
 		return {
 			day: weekdayName(fromDate(`${date}T00:00:00Z`)),
 			date,
 			name: cleanName(activity),
 			kind: kindOf(activity),
 			social: isSocial(activity),
-			minutes: alt(activity.moving_min, 0),
+			minutes: alt(activity.movingMin, 0),
 			miles: miles > 0 ? miles : null,
 		};
 	});
@@ -344,9 +344,9 @@ function staged(
 function funnel(draft: BriefDraft, names: string[]): Staged[] {
 	const atelic = alt(draft.atelic, {});
 	return [
-		...staged(atelic.open_leads, leadRecord, names),
+		...staged(atelic.openLeads, leadRecord, names),
 		...staged(atelic.opportunities, dealRecord, names),
-		...staged(atelic.closed_leads, closedRecord, names),
+		...staged(atelic.closedLeads, closedRecord, names),
 	];
 }
 
@@ -368,7 +368,7 @@ function funnel(draft: BriefDraft, names: string[]): Staged[] {
 
 /** "Wed 10-07" from 2026-10-07, the way the retro writes a day; "" for none. */
 function replyDay(row: FunnelRow): string {
-	const date = jqToString(alt(row.last_reply, ""));
+	const date = jqToString(alt(row.lastReply, ""));
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
 	return `${weekdayName(fromDate(`${date}T00:00:00Z`))} ${slice(date, 5)}`;
 }
@@ -379,7 +379,7 @@ function replyDay(row: FunnelRow): string {
  * week's touch kinds, title cased the way it always was.
  */
 function lastTouchOf(row: FunnelRow): string {
-	const named = jqToString(alt(row.last_touch, ""));
+	const named = jqToString(alt(row.lastTouch, ""));
 	const kind = titlecase(alt(row.kind, ""));
 	return named !== "" ? named : kind === "None" ? "" : kind;
 }
@@ -461,8 +461,8 @@ function funnelTable(stages: Stage[]): string[][] {
 		stage.rows.map((row) => [
 			jqToString(alt(row.company, "")),
 			stage.name,
-			jqToString(alt(row.last_touch, "")),
-			dayOf(row.last_reply),
+			jqToString(alt(row.lastTouch, "")),
+			dayOf(row.lastReply),
 		]),
 	);
 }
@@ -544,7 +544,7 @@ type TripMemo = { memo?: unknown; ids?: unknown[] | null };
 type InboxRow = {
 	mailbox?: unknown;
 	id?: unknown;
-	thread_id?: unknown;
+	threadId?: unknown;
 	from?: unknown;
 	subject?: unknown;
 	date?: unknown;
@@ -575,17 +575,17 @@ type SpendTrip = { memo?: unknown; total?: unknown; count?: unknown };
 
 type BudgetSpend = {
 	month?: unknown;
-	day_of_month?: unknown;
-	days_in_month?: unknown;
+	dayOfMonth?: unknown;
+	daysInMonth?: unknown;
 	typical?: {
 		spent?: unknown;
 		pace?: unknown;
-		monthly_average?: unknown;
+		monthlyAverage?: unknown;
 		months?: { month?: unknown; total?: unknown }[] | null;
 	} | null;
 	outliers?: SpendLine[] | null;
 	trips?: SpendTrip[] | null;
-	accounts_in_error?: unknown[] | null;
+	accountsInError?: unknown[] | null;
 	rule?: unknown;
 };
 
@@ -803,8 +803,8 @@ function spendBudgets(draft: BriefDraft): { label: string; spend: BudgetSpend | 
 function spendTitle(draft: BriefDraft): string {
 	const read = spendBudgets(draft).find((budget) => budget.spend !== null)?.spend;
 	if (!read) return "Month So Far";
-	const day = str(read.day_of_month);
-	const days = str(read.days_in_month);
+	const day = str(read.dayOfMonth);
+	const days = str(read.daysInMonth);
 	return day === "" || days === "" ? "Month So Far" : `Month So Far · Day ${day} of ${days}`;
 }
 
@@ -818,8 +818,8 @@ function spendRule(draft: BriefDraft): string {
 
 function accountsInError(draft: BriefDraft): string {
 	return spendBudgets(draft)
-		.filter(({ spend }) => spend && list(spend.accounts_in_error).length > 0)
-		.map(({ label, spend }) => `${label}: ${list(spend?.accounts_in_error).map(str).join(", ")}`)
+		.filter(({ spend }) => spend && list(spend.accountsInError).length > 0)
+		.map(({ label, spend }) => `${label}: ${list(spend?.accountsInError).map(str).join(", ")}`)
 		.join(". ");
 }
 
@@ -1078,7 +1078,7 @@ function spendParts(draft: BriefDraft): Part[] {
 	const typical = read.map(({ label, spend }) => {
 		const spent = num(spend?.typical?.spent);
 		const pace = num(spend?.typical?.pace);
-		return { label, spent, pace, average: num(spend?.typical?.monthly_average) };
+		return { label, spent, pace, average: num(spend?.typical?.monthlyAverage) };
 	});
 	const parts: Part[] = [
 		{
@@ -1507,8 +1507,8 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 	const funnelStages = stages(draft);
 	const filled = funnelStages.filter((stage) => stage.rows.length > 0);
 	const funnelRows = filled.reduce((sum, stage) => sum + stage.rows.length, 0);
-	const moved = alt(draft.what_moved, []);
-	const movedNote = jqToString(alt(draft.what_moved_note, ""));
+	const moved = alt(draft.whatMoved, []);
+	const movedNote = jqToString(alt(draft.whatMovedNote, ""));
 	const headline = jqToString(alt(draft.headline, ""));
 
 	return renderEmail({
@@ -1572,7 +1572,7 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 
 				<Eyebrow text="Movement" />
 				<Card>
-					<ReadBlock text={jqToString(alt(draft.movement_read, ""))} divider={true} />
+					<ReadBlock text={jqToString(alt(draft.movementRead, ""))} divider={true} />
 					<SubEyebrow text="By Day" />
 					<DayStrip days={days(context.monday, week)} last={false} />
 					<SubEyebrow text={`Sessions · ${week.length}`} />
@@ -1585,12 +1585,12 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 
 				<Eyebrow text="Takeout" />
 				<Card>
-					<ReadBlock text={jqToString(alt(draft.takeout_read, ""))} divider={false} />
+					<ReadBlock text={jqToString(alt(draft.takeoutRead, ""))} divider={false} />
 				</Card>
 
 				<Eyebrow text="Atelic" />
 				<Card>
-					<ReadBlock text={jqToString(alt(draft.atelic_read, ""))} divider={true} />
+					<ReadBlock text={jqToString(alt(draft.atelicRead, ""))} divider={true} />
 					<Row last={false}>
 						<StatStrip
 							stats={funnelStages.map((stage) => ({ n: stage.rows.length, label: stage.label }))}
@@ -1628,7 +1628,7 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 
 				<Eyebrow text="Blind Spots" />
 				<Card>
-					<ReadBlock text={jqToString(alt(draft.blind_spots, ""))} divider={false} />
+					<ReadBlock text={jqToString(alt(draft.blindSpots, ""))} divider={false} />
 				</Card>
 
 				{thisRunHTML(draft)}
@@ -1648,8 +1648,8 @@ export function briefText(input: unknown, context: RenderContext): string {
 	const movement = [...movementTargets(draft), takeoutTarget(draft)];
 	const atelic = atelicTargets(draft);
 	const funnelStages = stages(draft);
-	const moved = alt(draft.what_moved, []);
-	const movedNote = jqToString(alt(draft.what_moved_note, ""));
+	const moved = alt(draft.whatMoved, []);
+	const movedNote = jqToString(alt(draft.whatMovedNote, ""));
 
 	let out = `ATELIC · BRIEF · WEEK ${number}\n${rangeLine(context.monday, context.sunday)}\n\n`;
 	out += `${asciiUpcase(verdict(draft))}\n\n`;
@@ -1666,7 +1666,7 @@ export function briefText(input: unknown, context: RenderContext): string {
 
 	out += boardText(draft);
 
-	out += textSection("Movement") + textRead(jqToString(alt(draft.movement_read, "")));
+	out += textSection("Movement") + textRead(jqToString(alt(draft.movementRead, "")));
 	out += `\nBy Day\n${days(context.monday, week)
 		.map((day) => {
 			const entries = day.entries
@@ -1701,9 +1701,9 @@ export function briefText(input: unknown, context: RenderContext): string {
 				);
 	out += "\n";
 
-	out += textSection("Takeout") + textRead(jqToString(alt(draft.takeout_read, "")));
+	out += textSection("Takeout") + textRead(jqToString(alt(draft.takeoutRead, "")));
 
-	out += textSection("Atelic") + textRead(jqToString(alt(draft.atelic_read, "")));
+	out += textSection("Atelic") + textRead(jqToString(alt(draft.atelicRead, "")));
 	out += `\nThe Funnel\n${funnelStages
 		.map((stage) => `  ${rpad(stage.label, 10)}${stage.rows.length}`)
 		.join("\n")}\n`;
@@ -1718,7 +1718,7 @@ export function briefText(input: unknown, context: RenderContext): string {
 
 	out += planningText(draft);
 
-	out += textSection("Blind Spots") + textRead(jqToString(alt(draft.blind_spots, "")));
+	out += textSection("Blind Spots") + textRead(jqToString(alt(draft.blindSpots, "")));
 	out += thisRunText(draft);
 	out += `\n\n${context.meta}\n`;
 	return out;

@@ -26,7 +26,7 @@
       "note": "Tue PT Achilles · Thu PT"
     }
   ],
-  "what_moved": [
+  "whatMoved": [
     {
       "subject": "Pinewood Cabinetry",
       "event": "sits at Proposal, $12,000 cash."
@@ -36,8 +36,8 @@
       "event": "closed won at $4,500."
     }
   ],
-  "what_moved_note": "Everything else held its stage.",
-  "movement_read": "Three lifts landed and one social run did, which is the shape of a week that trained alone. The long walk on Sunday is the only thing outside the plan, and it earned its place.",
+  "whatMovedNote": "Everything else held its stage.",
+  "movementRead": "Three lifts landed and one social run did, which is the shape of a week that trained alone. The long walk on Sunday is the only thing outside the plan, and it earned its place.",
   "takeout": [
     {
       "day": "Tue 01-27",
@@ -48,121 +48,121 @@
       "vehicle": "Ember Pizza"
     }
   ],
-  "takeout_read": "Two confirmed orders, both late in the evening, both on days with a session earlier.",
-  "atelic_read": "Five first sends went out against a target of five and three bumps against five. Pinewood Cabinetry is the name worth attention on Monday.",
-  "blind_spots": "This draft cannot see how the body felt, or anything the sources do not carry.",
+  "takeoutRead": "Two confirmed orders, both late in the evening, both on days with a session earlier.",
+  "atelicRead": "Five first sends went out against a target of five and three bumps against five. Pinewood Cabinetry is the name worth attention on Monday.",
+  "blindSpots": "This draft cannot see how the body felt, or anything the sources do not carry.",
   "strava": [
     {
       "name": "Kestrel Loop with the club",
-      "sport_type": "Run",
-      "start_date_local": "2026-01-27T06:40:00Z",
-      "distance_mi": 5.08,
-      "moving_min": 47,
-      "athlete_count": 4
+      "sportType": "Run",
+      "startDateLocal": "2026-01-27T06:40:00Z",
+      "distanceMi": 5.08,
+      "movingMin": 47,
+      "athleteCount": 4
     },
     {
       "name": "Easy miles with Diego",
-      "sport_type": "TrailRun",
-      "start_date_local": "2026-01-29T07:05:00Z",
-      "distance_mi": 3.5,
-      "moving_min": 33,
-      "athlete_count": 1
+      "sportType": "TrailRun",
+      "startDateLocal": "2026-01-29T07:05:00Z",
+      "distanceMi": 3.5,
+      "movingMin": 33,
+      "athleteCount": 1
     },
     {
       "name": "Solo shakeout",
-      "sport_type": "Run",
-      "start_date_local": "2026-01-26T06:15:00Z",
-      "distance_mi": 2.02,
-      "moving_min": 18,
-      "athlete_count": 1
+      "sportType": "Run",
+      "startDateLocal": "2026-01-26T06:15:00Z",
+      "distanceMi": 2.02,
+      "movingMin": 18,
+      "athleteCount": 1
     },
     {
       "name": "» Push day",
-      "sport_type": "WeightTraining",
-      "start_date_local": "2026-01-26T17:30:00Z",
-      "distance_mi": 0,
-      "moving_min": 55,
-      "athlete_count": 1
+      "sportType": "WeightTraining",
+      "startDateLocal": "2026-01-26T17:30:00Z",
+      "distanceMi": 0,
+      "movingMin": 55,
+      "athleteCount": 1
     },
     {
       "name": "Pull day",
-      "sport_type": "WeightTraining",
-      "start_date_local": "2026-01-28T17:20:00Z",
-      "distance_mi": 0,
-      "moving_min": 61,
-      "athlete_count": 1
+      "sportType": "WeightTraining",
+      "startDateLocal": "2026-01-28T17:20:00Z",
+      "distanceMi": 0,
+      "movingMin": 61,
+      "athleteCount": 1
     },
     {
       "name": "Legs",
-      "sport_type": "WeightTraining",
-      "start_date_local": "2026-01-30T17:10:00Z",
-      "distance_mi": 0,
-      "moving_min": 48,
-      "athlete_count": 1
+      "sportType": "WeightTraining",
+      "startDateLocal": "2026-01-30T17:10:00Z",
+      "distanceMi": 0,
+      "movingMin": 48,
+      "athleteCount": 1
     },
     {
       "name": "Slow flow",
-      "sport_type": "Yoga",
-      "start_date_local": "2026-01-28T20:00:00Z",
-      "distance_mi": 0,
-      "moving_min": 40,
-      "athlete_count": 1
+      "sportType": "Yoga",
+      "startDateLocal": "2026-01-28T20:00:00Z",
+      "distanceMi": 0,
+      "movingMin": 40,
+      "athleteCount": 1
     },
     {
       "name": "Bouldering session",
-      "sport_type": "RockClimbing",
-      "start_date_local": "2026-01-30T19:00:00Z",
-      "distance_mi": 0,
-      "moving_min": 75,
-      "athlete_count": 2
+      "sportType": "RockClimbing",
+      "startDateLocal": "2026-01-30T19:00:00Z",
+      "distanceMi": 0,
+      "movingMin": 75,
+      "athleteCount": 2
     },
     {
       "name": "Long walk to the reservoir",
-      "sport_type": "Walk",
-      "start_date_local": "2026-02-01T10:00:00Z",
-      "distance_mi": 4.365,
-      "moving_min": 82,
-      "athlete_count": 1
+      "sportType": "Walk",
+      "startDateLocal": "2026-02-01T10:00:00Z",
+      "distanceMi": 4.365,
+      "movingMin": 82,
+      "athleteCount": 1
     },
     {
       "name": "Rowing intervals",
-      "sport_type": "Rowing",
-      "start_date_local": "2026-02-01T16:00:00Z",
-      "distance_mi": 0,
-      "moving_min": 24,
-      "athlete_count": 1
+      "sportType": "Rowing",
+      "startDateLocal": "2026-02-01T16:00:00Z",
+      "distanceMi": 0,
+      "movingMin": 24,
+      "athleteCount": 1
     },
     {
       "name": "2026 PT Achilles",
-      "sport_type": "WeightTraining",
-      "start_date_local": "2026-01-27T12:00:00Z",
-      "distance_mi": 0,
-      "moving_min": 25,
-      "athlete_count": 1
+      "sportType": "WeightTraining",
+      "startDateLocal": "2026-01-27T12:00:00Z",
+      "distanceMi": 0,
+      "movingMin": 25,
+      "athleteCount": 1
     },
     {
       "name": "2026 PT",
-      "sport_type": "WeightTraining",
-      "start_date_local": "2026-01-29T12:00:00Z",
-      "distance_mi": 0,
-      "moving_min": 22,
-      "athlete_count": 1
+      "sportType": "WeightTraining",
+      "startDateLocal": "2026-01-29T12:00:00Z",
+      "distanceMi": 0,
+      "movingMin": 22,
+      "athleteCount": 1
     },
     {
       "name": "Ride to the studio",
-      "sport_type": "Ride",
-      "start_date_local": "2026-01-28T19:30:00Z",
-      "distance_mi": 4.93,
-      "moving_min": 21,
-      "athlete_count": 1
+      "sportType": "Ride",
+      "startDateLocal": "2026-01-28T19:30:00Z",
+      "distanceMi": 4.93,
+      "movingMin": 21,
+      "athleteCount": 1
     },
     {
       "name": "Track drills",
-      "sport_type": "Workout",
-      "start_date_local": "2026-01-31T09:00:00Z",
-      "distance_mi": 0.16,
-      "moving_min": 15,
-      "athlete_count": 1
+      "sportType": "Workout",
+      "startDateLocal": "2026-01-31T09:00:00Z",
+      "distanceMi": 0.16,
+      "movingMin": 15,
+      "athleteCount": 1
     }
   ],
   "atelic": {
@@ -186,7 +186,7 @@
         "target": "5"
       }
     ],
-    "open_leads": [
+    "openLeads": [
       {
         "company": "Pinewood Cabinetry",
         "funnel": "SQL",
@@ -196,8 +196,8 @@
         "touches": 4,
         "opens": "7",
         "replied": "yes",
-        "last_reply": "2026-01-28",
-        "last_send": "2026-01-27"
+        "lastReply": "2026-01-28",
+        "lastSend": "2026-01-27"
       },
       {
         "company": "Harbor Line Plumbing",
@@ -205,11 +205,11 @@
         "lifecycle": "marketingqualifiedlead",
         "status": "CONTACTED",
         "kind": "notes_from_the_call",
-        "last_touch": "Drop off",
+        "lastTouch": "Drop off",
         "touches": 2,
         "opens": null,
         "replied": "no",
-        "last_send": "2026-01-28"
+        "lastSend": "2026-01-28"
       },
       {
         "company": "Sable Creek Landscaping",
@@ -220,7 +220,7 @@
         "touches": null,
         "opens": "1",
         "replied": "no",
-        "last_send": "2026-01-29"
+        "lastSend": "2026-01-29"
       },
       {
         "company": "Ridgeline Glass",
@@ -231,7 +231,7 @@
         "touches": 1,
         "opens": "0",
         "replied": "no",
-        "last_send": "2026-01-30",
+        "lastSend": "2026-01-30",
         "note": "half applied close: UNQUALIFIED with no Disqualification Reason on the company; set the reason or reopen the contact"
       }
     ],
@@ -243,8 +243,8 @@
         "stage": "Proposal",
         "cash": "$12,000",
         "replied": "yes",
-        "last_reply": "2026-01-29",
-        "last_send": "2026-01-29"
+        "lastReply": "2026-01-29",
+        "lastSend": "2026-01-29"
       },
       {
         "company": "Fernwood Bakery",
@@ -252,7 +252,7 @@
         "lifecycle": "opportunity",
         "stage": null,
         "cash": "-",
-        "last_send": "2026-01-30"
+        "lastSend": "2026-01-30"
       },
       {
         "company": "Birchwood Tile",
@@ -260,7 +260,7 @@
         "lifecycle": "opportunity",
         "stage": "Closed Lost",
         "cash": "-",
-        "last_send": "2026-01-30",
+        "lastSend": "2026-01-30",
         "note": "deal lost with no Disqualification Reason on the company; close the company so the reason mirrors"
       },
       {
@@ -269,7 +269,7 @@
         "lifecycle": "opportunity",
         "stage": "Closed Won",
         "cash": "$4,500",
-        "last_send": "2026-01-31"
+        "lastSend": "2026-01-31"
       },
       {
         "company": "Quarry Road Auto",
@@ -277,10 +277,10 @@
         "lifecycle": "opportunity",
         "stage": "Closed Lost",
         "cash": "-",
-        "last_send": "2026-01-31"
+        "lastSend": "2026-01-31"
       }
     ],
-    "closed_leads": [
+    "closedLeads": [
       {
         "company": "Lantern Hill Roofing",
         "funnel": "Closed",
@@ -291,7 +291,7 @@
         "opens": "2",
         "replied": "no",
         "reason": "NOT_A_FIT",
-        "last_send": "2026-01-26"
+        "lastSend": "2026-01-26"
       },
       {
         "company": "Thistle Lane Florist",
@@ -303,7 +303,7 @@
         "opens": "0",
         "replied": "no",
         "reason": "-",
-        "last_send": "2026-01-27"
+        "lastSend": "2026-01-27"
       }
     ],
     "totals": {
@@ -481,7 +481,7 @@
       {
         "mailbox": "personal",
         "id": "inv-m-001",
-        "thread_id": "inv-t-001",
+        "threadId": "inv-t-001",
         "from": "Bluebird Cleaning",
         "subject": "Your cleaning is Thursday",
         "date": "Sat 01-31",
@@ -498,7 +498,7 @@
       {
         "mailbox": "personal",
         "id": "inv-m-002",
-        "thread_id": "inv-t-002",
+        "threadId": "inv-t-002",
         "from": "Bluebird Cleaning",
         "subject": "Thanks for the review",
         "date": "Sun 02-01",
@@ -515,7 +515,7 @@
       {
         "mailbox": "atelic",
         "id": "inv-m-003",
-        "thread_id": "inv-t-003",
+        "threadId": "inv-t-003",
         "from": "Claude",
         "subject": "2026-W05 Recruiter",
         "date": "Mon 01-26",
@@ -532,7 +532,7 @@
       {
         "mailbox": "personal",
         "id": "inv-m-004",
-        "thread_id": "inv-t-004",
+        "threadId": "inv-t-004",
         "from": "The Long Read Weekly",
         "subject": "Seven essays on slowing down, and one on the opposite",
         "date": "Fri 01-30",
@@ -549,7 +549,7 @@
       {
         "mailbox": "atelic",
         "id": "inv-m-005",
-        "thread_id": "inv-t-005",
+        "threadId": "inv-t-005",
         "from": "Fieldnote Hosting",
         "subject": "Your January invoice",
         "date": "Tue 01-27",
@@ -566,7 +566,7 @@
       {
         "mailbox": "personal",
         "id": "inv-m-006",
-        "thread_id": "inv-t-006",
+        "threadId": "inv-t-006",
         "from": "County Assessor",
         "subject": "Property questionnaire due February 6",
         "date": "Thu 01-29",
@@ -583,7 +583,7 @@
       {
         "mailbox": "atelic",
         "id": "inv-m-007",
-        "thread_id": "inv-t-007",
+        "threadId": "inv-t-007",
         "from": "Pinewood Cabinetry",
         "subject": "Re: proposal and next steps for the showroom site",
         "date": "Sat 01-31",
@@ -684,12 +684,12 @@
   "spend": {
     "personal": {
       "month": "2026-01",
-      "day_of_month": 30,
-      "days_in_month": 31,
+      "dayOfMonth": 30,
+      "daysInMonth": 31,
       "typical": {
         "spent": -4012.37,
         "pace": -3871.29,
-        "monthly_average": -4000,
+        "monthlyAverage": -4000,
         "months": [
           {
             "month": "2025-10",
@@ -721,19 +721,19 @@
           "count": 3
         }
       ],
-      "accounts_in_error": [
+      "accountsInError": [
         "Front Range Checking"
       ],
       "rule": "Typical is every charge under $500 that is not on a trip; outliers are the rest, so one large bill never moves the pace."
     },
     "atelic": {
       "month": "2026-01",
-      "day_of_month": 30,
-      "days_in_month": 31,
+      "dayOfMonth": 30,
+      "daysInMonth": 31,
       "typical": {
         "spent": -318.4,
         "pace": -512.9,
-        "monthly_average": -530,
+        "monthlyAverage": -530,
         "months": [
           {
             "month": "2025-10",
@@ -751,7 +751,7 @@
       },
       "outliers": [],
       "trips": [],
-      "accounts_in_error": [],
+      "accountsInError": [],
       "rule": "Typical is every charge under $500 that is not on a trip; outliers are the rest, so one large bill never moves the pace."
     }
   },

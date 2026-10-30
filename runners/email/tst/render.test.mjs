@@ -139,7 +139,7 @@ test("a render that throws fails loudly rather than writing half a page", () => 
  */
 test("a brief row with no stage is listed under No Stage, never dropped", () => {
 	const draft = JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
-	const tables = ["open_leads", "opportunities", "closed_leads"];
+	const tables = ["openLeads", "opportunities", "closedLeads"];
 	const companies = [];
 	for (const table of tables) {
 		for (const row of draft.atelic[table]) {
@@ -147,7 +147,7 @@ test("a brief row with no stage is listed under No Stage, never dropped", () => 
 			companies.push(row.company);
 		}
 	}
-	draft.atelic.open_leads[0].funnel = "A Stage Nobody Knows";
+	draft.atelic.openLeads[0].funnel = "A Stage Nobody Knows";
 	assert.equal(companies.length, 11);
 
 	const text = renderRaw("brief", "text", JSON.stringify(draft));

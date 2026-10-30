@@ -228,7 +228,7 @@ strava_pull() {
     fi
     curl -sS --max-time 60 -H "Authorization: Bearer $access" \
         "https://www.strava.com/api/v3/athlete/activities?after=$AFTER_EPOCH&before=$BEFORE_EPOCH&per_page=200" \
-        | jq '[.[] | {name, sport_type, start_date_local, distance_mi: ((.distance // 0) / 1609.344 * 100 | round / 100), elevation_ft: ((.total_elevation_gain // 0) * 3.28084 | round), moving_min: ((.moving_time // 0) / 60 | round), elapsed_min: ((.elapsed_time // 0) / 60 | round), average_heartrate, max_heartrate, relative_effort: .suffer_score, average_speed, athlete_count}]' \
+        | jq '[.[] | {name, sportType: .sport_type, startDateLocal: .start_date_local, distanceMi: ((.distance // 0) / 1609.344 * 100 | round / 100), elevationFt: ((.total_elevation_gain // 0) * 3.28084 | round), movingMin: ((.moving_time // 0) / 60 | round), elapsedMin: ((.elapsed_time // 0) / 60 | round), averageHeartrate: .average_heartrate, maxHeartrate: .max_heartrate, relativeEffort: .suffer_score, averageSpeed: .average_speed, athleteCount: .athlete_count}]' \
         > "$WORK/strava.json" || { fail_reason="Strava activities pull failed"; return 1; }
     echo "strava: $(jq length "$WORK/strava.json") activities"
 }
@@ -542,9 +542,9 @@ runner_claude "$(fill_prompt "$PROMPT_FILE")" --model "$RUNNER_MODEL" --allowedT
 # planning keys degrade: an answer that carries the retro but a malformed
 # planning half still mails the retro, with every planning section empty and
 # the ledger saying why, the same way a failed pull costs its section.
-runner_draft '(.headline | type == "string") and (.coverage | type == "array") and (.what_moved | type == "array")
-    and (.movement_read | type == "string") and (.takeout | type == "array") and (.takeout_read | type == "string")
-    and (.atelic_read | type == "string") and (.blind_spots | type == "string")' || exit 1
+runner_draft '(.headline | type == "string") and (.coverage | type == "array") and (.whatMoved | type == "array")
+    and (.movementRead | type == "string") and (.takeout | type == "array") and (.takeoutRead | type == "string")
+    and (.atelicRead | type == "string") and (.blindSpots | type == "string")' || exit 1
 if ! jq -e '(.board | type == "array") and (.money | type == "object") and (.money.rows | type == "array")
     and (.inbox | type == "object") and (.inbox.rows | type == "array")
     and (.work | type == "object") and (.calendar | type == "object") and (.tasks | type == "object")' "$DRAFT_JSON" >/dev/null 2>&1; then
@@ -621,11 +621,11 @@ fi
 # the corrected rows without recomputing anything.
 skips() {
     local f="$WORK/ynab-$1.json"
-    if [[ -s "$f" ]]; then jq -c '[.queue[] | select(.transfer_account_id != null) | {id, date, amount, payee: .payee_name, account: .account_name}]' "$f"; else echo '[]'; fi
+    if [[ -s "$f" ]]; then jq -c '[.queue[] | select(.transferAccountId != null) | {id, date, amount, payee: .payeeName, account: .accountName}]' "$f"; else echo '[]'; fi
 }
-jq --argjson ps "$(skips personal)" --argjson atelic_skips "$(skips atelic)" --slurpfile applied "$APPLIED" \
-    '{personal: [.money.rows[] | select((.budget // "" | ascii_downcase) == "personal")], atelic: [.money.rows[] | select((.budget // "" | ascii_downcase) == "atelic")], deletes: (.money.deletes // []), trips: (.money.trips // []), skips: {personal: $ps, atelic: $atelic_skips},
-      inbox: [.inbox.rows[] | select((.band // "" | ascii_downcase) != "decision") | {mailbox, id, thread_id, from, subject, action, labels: (.labels // []), star, band, rule}],
+jq --argjson ps "$(skips personal)" --argjson atelicSkips "$(skips atelic)" --slurpfile applied "$APPLIED" \
+    '{personal: [.money.rows[] | select((.budget // "" | ascii_downcase) == "personal")], atelic: [.money.rows[] | select((.budget // "" | ascii_downcase) == "atelic")], deletes: (.money.deletes // []), trips: (.money.trips // []), skips: {personal: $ps, atelic: $atelicSkips},
+      inbox: [.inbox.rows[] | select((.band // "" | ascii_downcase) != "decision") | {mailbox, id, threadId, from, subject, action, labels: (.labels // []), star, band, rule}],
       work: (.work // {}), calendar: (.calendar // {}), tasks: (.tasks // {}), board: (.board // []),
       applied: $applied[0]}' \
     "$DRAFT_JSON" > "$WORK/plan.json" && ATTACHMENT="$WORK/plan.json"

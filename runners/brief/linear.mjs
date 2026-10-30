@@ -59,16 +59,16 @@ export function shapeIssue(n) {
         title: n.title,
         url: n.url,
         state: n.state?.name || "",
-        state_type: n.state?.type || "",
+        stateType: n.state?.type || "",
         priority: n.priority,
         estimate: n.estimate ?? null,
         labels,
         load: labels.find((l) => /Sharp|Medium|Light/.test(l)) || null,
-        due_date: n.dueDate || null,
+        dueDate: n.dueDate || null,
         project: n.project?.name || null,
         assignee: n.assignee?.name || null,
-        updated_at: n.updatedAt,
-        created_at: n.createdAt,
+        updatedAt: n.updatedAt,
+        createdAt: n.createdAt,
         description: (n.description || "").replace(/\s+/g, " ").slice(0, 300),
     };
 }
@@ -82,7 +82,7 @@ async function pull(outDir, team) {
     for (let i = 0; i < MAX_PAGES; i += 1) {
         const p = await page(key, team, after);
         for (const n of p.nodes) {
-            if (!cycle && n.cycle) cycle = { number: n.cycle.number, starts_at: n.cycle.startsAt, ends_at: n.cycle.endsAt };
+            if (!cycle && n.cycle) cycle = { number: n.cycle.number, startsAt: n.cycle.startsAt, endsAt: n.cycle.endsAt };
             issues.push(shapeIssue(n));
         }
         if (!p.pageInfo.hasNextPage) break;
@@ -96,7 +96,7 @@ async function pull(outDir, team) {
     // showing a week with no work in it.
     if (issues.length === 0 || !cycle) throw new Error(`no open issues in an active ${team} cycle; the key may belong to another workspace`);
     issues.sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
-    writeFileSync(join(outDir, "linear.json"), JSON.stringify({ pulled_at: new Date().toISOString(), team, cycle, issues, truncated }, null, 1));
+    writeFileSync(join(outDir, "linear.json"), JSON.stringify({ pulledAt: new Date().toISOString(), team, cycle, issues, truncated }, null, 1));
     log(`${team}: ${issues.length} open issues in the active cycle${truncated ? ", stopped at the page cap" : ""}`);
 }
 

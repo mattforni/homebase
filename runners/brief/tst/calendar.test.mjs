@@ -22,7 +22,7 @@ const ev = (summary, start, end, extra = {}) => shapeEvent({
 
 test("an all day event keeps its date and carries no times", () => {
     const e = shapeEvent({ id: "x", summary: "🧭 Gratitude", start: { date: "2026-10-19" }, end: { date: "2026-10-26" }, transparency: "transparent" }, "life");
-    assert.equal(e.all_day, true);
+    assert.equal(e.allDay, true);
     assert.equal(e.date, "2026-10-19");
     assert.equal(e.start, null);
     assert.equal(e.transparency, "transparent");
@@ -35,7 +35,7 @@ test("two opaque events that overlap are a finding; a transparent hold is not", 
         ev("🧘 Align and Flow", "2026-10-20T16:30:00-06:00", "2026-10-20T17:30:00-06:00", { transparency: "transparent" }),
         ev("🧘 Evening Routine", "2026-10-20T17:00:00-06:00", "2026-10-20T18:00:00-06:00"),
     ];
-    const { findings } = lint(events.map((e) => ({ ...e, label_id: "l" })));
+    const { findings } = lint(events.map((e) => ({ ...e, labelId: "l" })));
     assert.deepEqual(findings.map((f) => f.kind), ["overlap"]);
     assert.match(findings[0].what, /Strength .* overlaps 📞 Call/);
 });
@@ -45,8 +45,8 @@ test("events from calendars with different offsets compare as instants, not as s
     const events = [
         ev("📞 Meeting", "2026-10-20T10:00:00-06:00", "2026-10-20T11:00:00-06:00"),
         ev("Pay Jeff", "2026-10-20T09:30:00-07:00", "2026-10-20T10:00:00-07:00", { calendar: "todoist" }),
-    ].map((e) => ({ ...e, label_id: "l" }));
-    assert.equal(events[1].start_iso, "2026-10-20T16:30:00.000Z");
+    ].map((e) => ({ ...e, labelId: "l" }));
+    assert.equal(events[1].startIso, "2026-10-20T16:30:00.000Z");
     assert.deepEqual(lint(events).findings.map((f) => f.kind), ["overlap"]);
 });
 
@@ -55,7 +55,7 @@ test("a named ATE block holds its slot even when it is free", () => {
         ev("📖 ATE-670: The Read", "2026-10-20T11:00:00-06:00", "2026-10-20T13:00:00-06:00", { transparency: "transparent", calendar: "atelic" }),
         ev("🔧 ATE-654: Plumbers", "2026-10-20T12:00:00-06:00", "2026-10-20T12:30:00-06:00", { transparency: "transparent", calendar: "atelic" }),
     ];
-    const { findings } = lint(events.map((e) => ({ ...e, label_id: "l" })));
+    const { findings } = lint(events.map((e) => ({ ...e, labelId: "l" })));
     assert.equal(findings.filter((f) => f.kind === "overlap").length, 1);
 });
 
@@ -65,21 +65,21 @@ test("a change of location with no flank is a finding, and a transition between 
     const bare = [
         ev("💻 Deep Work", "2026-10-21T13:00:00-06:00", "2026-10-21T15:00:00-06:00", home),
         ev("🏋️ Strength", "2026-10-21T15:00:00-06:00", "2026-10-21T16:00:00-06:00", gym),
-    ].map((e) => ({ ...e, label_id: "l" }));
+    ].map((e) => ({ ...e, labelId: "l" }));
     assert.deepEqual(lint(bare).findings.map((f) => f.kind), ["missing flank"]);
     const flanked = [
         bare[0],
-        { ...ev("🚙 To Movement", "2026-10-21T15:00:00-06:00", "2026-10-21T15:30:00-06:00"), label_id: "l" },
-        { ...ev("🏋️ Strength", "2026-10-21T15:30:00-06:00", "2026-10-21T16:30:00-06:00", gym), label_id: "l" },
+        { ...ev("🚙 To Movement", "2026-10-21T15:00:00-06:00", "2026-10-21T15:30:00-06:00"), labelId: "l" },
+        { ...ev("🏋️ Strength", "2026-10-21T15:30:00-06:00", "2026-10-21T16:30:00-06:00", gym), labelId: "l" },
     ];
     assert.deepEqual(lint(flanked).findings, []);
 });
 
 test("an event with no label is a finding on Life only; Atelic and the Todoist feed carry none by design", () => {
     const events = [
-        { ...ev("Dentist", "2026-10-22T09:00:00-06:00", "2026-10-22T10:00:00-06:00"), label_id: null },
-        { ...ev("Pay Jeff", "2026-10-22T10:30:00-06:00", "2026-10-22T11:00:00-06:00", { calendar: "todoist" }), label_id: null },
-        { ...ev("🙈 Deep Work", "2026-10-22T13:00:00-06:00", "2026-10-22T15:00:00-06:00", { calendar: "atelic" }), label_id: null },
+        { ...ev("Dentist", "2026-10-22T09:00:00-06:00", "2026-10-22T10:00:00-06:00"), labelId: null },
+        { ...ev("Pay Jeff", "2026-10-22T10:30:00-06:00", "2026-10-22T11:00:00-06:00", { calendar: "todoist" }), labelId: null },
+        { ...ev("🙈 Deep Work", "2026-10-22T13:00:00-06:00", "2026-10-22T15:00:00-06:00", { calendar: "atelic" }), labelId: null },
     ];
     const { findings } = lint(events);
     assert.deepEqual(findings.map((f) => [f.kind, f.what.split(" (")[0]]), [["unlabeled", "Dentist"]]);

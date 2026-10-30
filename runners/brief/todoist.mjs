@@ -65,11 +65,11 @@ export function shapeTask(t, projects, sections) {
         labels: t.labels || [],
         priority: priorityWord(t.priority),
         due: t.due?.date || null,
-        due_string: t.due?.string || "",
+        dueString: t.due?.string || "",
         recurring: Boolean(t.due?.is_recurring),
         duration: t.duration ? `${t.duration.amount} ${t.duration.unit}` : "",
         url: t.url || `https://app.todoist.com/app/task/${t.id}`,
-        created_at: t.added_at || t.created_at || "",
+        createdAt: t.added_at || t.created_at || "",
     };
 }
 
@@ -93,9 +93,9 @@ async function pull(outDir, monday, before) {
     const seen = new Set();
     const shape = (list) => list.filter((t) => !seen.has(t.id) && seen.add(t.id)).map((t) => shapeTask(t, projectNames, sectionNames));
     const out = {
-        pulled_at: new Date().toISOString(),
+        pulledAt: new Date().toISOString(),
         filter,
-        landing_monday: monday,
+        landingMonday: monday,
         schedule: shape(schedule),
         landing: shape(landing),
     };
