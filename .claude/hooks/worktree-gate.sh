@@ -127,6 +127,9 @@ judge_script() {
     if [[ "$line" =~ $cd_re ]]; then
       fallback=$(resolve "${BASH_REMATCH[1]}" "$fallback")
     fi
+    # A line without git can never be denied, so it skips the subprocesses
+    # below; setup.sh ran past the hook's 10 second timeout without this.
+    [[ "$line" == *git* ]] || continue
     # Quoted text is data, not a command (echo "then git commit"), so it is
     # dropped before judging, after unquoting a -C path so the repo survives.
     line=$(sed -E -e "s/-C[[:space:]]+\"([^\"]*)\"/-C \\1/g" -e "s/-C[[:space:]]+'([^']*)'/-C \\1/g" \
