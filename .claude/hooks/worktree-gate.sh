@@ -118,8 +118,9 @@ is_script() {
 }
 
 # Judge every line of a script, starting from the directory it runs in.
+shopt -s extglob
 judge_script() {
-  local line fallback=$2
+  local line probe fallback=$2
   local cd_re='^cd[[:space:]]+([^;&|[:space:]]+)[[:space:]]*($|[;&|])'
   while IFS= read -r line || [[ -n "$line" ]]; do
     line=${line#"${line%%[![:space:]]*}"}
@@ -127,9 +128,13 @@ judge_script() {
     if [[ "$line" =~ $cd_re ]]; then
       fallback=$(resolve "${BASH_REMATCH[1]}" "$fallback")
     fi
-    # A line without git can never be denied, so it skips the subprocesses
-    # below; setup.sh ran past the hook's 10 second timeout without this.
-    [[ "$line" == *git* ]] || continue
+    # A line that cannot contain git once its quoted spans are dropped (the
+    # sed below drops them, so gi""t becomes git) can never be denied and skips
+    # the subprocesses; setup.sh ran past the hook's 10 second timeout without
+    # this. Same span removal, done in bash.
+    probe=${line//\"*([^\"])\"/}
+    probe=${probe//\'*([^\'])\'/}
+    [[ "$line" == *git* || "$probe" == *git* ]] || continue
     # Quoted text is data, not a command (echo "then git commit"), so it is
     # dropped before judging, after unquoting a -C path so the repo survives.
     line=$(sed -E -e "s/-C[[:space:]]+\"([^\"]*)\"/-C \\1/g" -e "s/-C[[:space:]]+'([^']*)'/-C \\1/g" \
