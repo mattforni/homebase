@@ -147,6 +147,11 @@ Payee corrections (session 2026-10-26):
 - `St Moritz Lodge & Condominiums` is a second spelling of `St Moritz Lodge`; reassign to the first. The 🏔️ Aspen weekend itemized: lodging `🌏 Adventure`, `Hotel Jerome` and `520 Grill` `🍽️ Dining Out`, `Leadville Exchange`, `Melanzana Mountain`, `Aspen Thrift Shop` `🧥 Clothing`, every row memoed `🏔️ Aspen`.
 - An `Airbnb` charge refunded the same day stays at `🌏 Adventure` on both rows so they net to zero.
 
+Payee corrections (session 2026-11-02):
+
+- **A Venmo receipt from a person is a friend's share of a group spend** and nets into that spend's category, `🍽️ Dining Out` when the note reads as food. It is auto decided (high band), not asked.
+- `York Street Club` -> `🍾 Sobriety` on every row, Venmo included, auto decided; it no longer asks.
+
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
 - **Renaming a payee to an existing name does NOT merge them via the API.** It just creates a second payee with the same display name (verified: renamed `Illegalpetes` -> `Illegal Pete's` and ended with two `Illegal Pete's` records). The app merges on rename; the public API does not.
@@ -154,6 +159,6 @@ Payee cleanup mechanics (session 2026-07-18, hard-won):
 - **The API cannot delete payees** (no DELETE endpoint). Emptied/orphan payees are removed by YNAB's own maintenance (unused payees auto-purge), but not on demand. For an immediate purge of hundreds of orphans, use the app's Manage Payees screen (multi-select delete / Combine). Native Renaming Rules to strip Venmo quoted-note sprawl are also app-only.
 - Only bother merging clusters where **two or more spellings both have transactions**; single-used-plus-orphan clusters need no action since the orphan auto-purges. Most Venmo note-variants (e.g. Azam Mughal 15 variants, 0 txns) are pure orphans.
 
-- **Changing a budget's category tree, either budget:** **the web app's stale delta sync will claim categories still have transactions after CLI moves; hard refresh the page before deleting categories in the app.** Category create and delete are app only, driven via agent-browser on the personal Chrome identity (`--identity personal`, signed in to YNAB once by hand in its headed window), with the YNAB tab's URL read back before each create or delete; rename and move go through `ynab categories update <id> --name --category-group-id` with history intact.
+- **Changing a budget's category tree, either budget:** **the web app's stale delta sync will claim categories still have transactions after CLI moves; hard refresh the page before deleting categories in the app.** Category create goes through the API (`ynab api POST '/plans/{plan_id}/categories' --budget <id> --data '{"category":{"name":...,"category_group_id":...}}'`). Category delete is app only, driven via agent-browser on the personal Chrome identity (`--identity personal`, signed in to YNAB once by hand in its headed window), with the YNAB tab's URL read back before each delete; rename and move go through `ynab categories update <id> --name --category-group-id` with history intact.
 
 **The Atelic budget's rules live in the Atelic repo, at `~/Eudaimonia/Craft/Vocation/Atelic/Tools/ynab.md`** (its policy, its payee corrections, its budget id). Read that file before grooming the Atelic budget. This section governs the Personal budget: where a line above names Atelic (a personal Venmo row matched against the Atelic budget, `Google Cloud`, the MONEYLINE deposit), it is settling a Personal row by contrast or by cross check, and the Atelic side of it is that file's rule. Only the mechanics and the category tree rule hold for both budgets.
