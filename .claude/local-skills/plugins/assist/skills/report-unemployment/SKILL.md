@@ -70,7 +70,7 @@ Drive every control by DOM id, and read the section and error state rather than 
 | `registration` | Used online job matching systems, including Connecting Colorado, to submit applications/resumes, search for matches or request referrals, and/or apply for jobs. |
 | `registration_maintenance` | Used online job matching systems (the same option as `registration`). |
 | `resume_submission` | Used online job matching systems (the same option as `registration`). |
-| `networking` | Networked with colleagues or friends. |
+| `networking` | Networked with colleagues or friends, for a one on one contact. A hosted networking event or meetup is "Attended job search seminars, career networking meetings" (`AJSS`). |
 | `interview` | Interviewed with a potential employer in person or by telephone. |
 | `follow_up` | Not reportable on its own. It stays folded into the application it follows and never gets a form of its own. |
 
