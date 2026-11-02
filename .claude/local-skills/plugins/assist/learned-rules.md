@@ -147,8 +147,8 @@ Payee corrections (session 2026-10-26):
 
 Payee corrections (session 2026-11-02):
 
-- **A Venmo receipt from a person is a friend's share of a group spend** and nets into that spend's category, `🍽️ Dining Out` when the note reads as food. It is auto decided (high band), not asked.
-- `York Street Club` -> `🍾 Sobriety` on every row, Venmo included, auto decided; it no longer asks.
+- **A Venmo receipt from a person is a friend's share of a group spend** and nets into that spend's category, `🍽️ Dining Out` when the note reads as food, and that case is auto decided. Any other note is asked, since the repaid category cannot be inferred.
+- `York Street Club` -> `🍾 Sobriety` on every row, Venmo included, auto decided; it no longer asks (a Venmo payment still gets the Atelic duplicate check first).
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
