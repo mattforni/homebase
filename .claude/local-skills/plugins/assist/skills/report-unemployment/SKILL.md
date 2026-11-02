@@ -21,6 +21,7 @@ Claim weeks run Sunday through Saturday; the Monday task files for the week that
 - **Applications** (kind `application`) report as job applications with outcome Applied.
 - **Supporting activities** (kinds `listings_review`, `registration`, `registration_maintenance`, `resume_submission`) report with outcome No Decision.
 - **Interviews** (kind `interview`, recruiter screens included) report with outcome Interviewed.
+- **Networking** (kind `networking`, one on one contacts and hosted meetups alike) reports with outcome No Decision.
 - **Excluded**: anything still in flight, a `follow_up` with no reportable activity of its own, and anything that would not survive an audit. Every activity left off gets `pinole work activities exclude <id> --reason <text>` so the ledger says why (inline; a background run never writes, and returns each omitted id with its reason for the main session to record); a posting that closed before anything went out or a role declined on fit never became an activity and needs nothing.
 - The cadence targets five activities (three applications plus two supporting, per the FY27 plan). Fewer than five is reported honestly, never padded.
 
@@ -34,7 +35,7 @@ Claim weeks run Sunday through Saturday; the Monday task files for the week that
    ```
 
 3. Confirm every candidate from either step against the calendar and the mailbox, which is where a call leaves its real trace. A post call email is the strongest evidence a booked call was actually held.
-4. Anything confirmed is a genuine activity: log it on the day it happened (`pinole work activities log --on <date> --kind interview --employer <name> --posting <id>`, or `--kind networking` for a call that was not an interview) before the slate is settled, so the stamp lands on it with the rest. That backfill is the inline path's, exactly like the confirmation stamp: a background run never writes the API, and instead returns the confirmed rows in its report for the main session to log.
+4. Anything confirmed is a genuine activity: log it on the day it happened (`pinole work activities log --on <date> --kind interview --employer <name> --posting <id>`, or `--kind networking` for a call that was not an interview, with `--position <event name>` when it was a hosted meetup) before the slate is settled, so the stamp lands on it with the rest. That backfill is the inline path's, exactly like the confirmation stamp: a background run never writes the API, and instead returns the confirmed rows in its report for the main session to log.
 
 Codified 2026-08-25, when the week of 08-16 read as three applications and was actually four. A True Search intro call sat in the week of 08-09 as "Call booked 2026-08-18", the calendar showed it at 14:30 that Tuesday, and Forni's own "Great chatting, Nick" email an hour later proved it happened. Forni had to supply it from memory because neither the skill nor the agent thought to look one week back. The calendar scan joined 2026-10-25, when the week of 10-18 read as six and was eight. Recruiter screens with Ambrook and Skylight sat on the calendar, never logged, and Forni supplied them from memory; each one's same day follow up email proved it was held.
 
@@ -70,7 +71,7 @@ Drive every control by DOM id, and read the section and error state rather than 
 | `registration` | Used online job matching systems, including Connecting Colorado, to submit applications/resumes, search for matches or request referrals, and/or apply for jobs. |
 | `registration_maintenance` | Used online job matching systems (the same option as `registration`). |
 | `resume_submission` | Used online job matching systems (the same option as `registration`). |
-| `networking` | Networked with colleagues or friends. |
+| `networking` | Networked with colleagues or friends (`NWCF`). A hosted networking event or meetup is logged as `networking` with the event's name in `position`, and that row reports as "Attended job search seminars, career networking meetings" (`AJSS`). |
 | `interview` | Interviewed with a potential employer in person or by telephone. |
 | `follow_up` | Not reportable on its own. It stays folded into the application it follows and never gets a form of its own. |
 
