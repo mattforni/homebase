@@ -107,7 +107,7 @@ Message formatting, announcement structure, the zero width space spacing rule, a
 
 ## Calendar Preferences
 
-Google Calendar conventions (pillar color coding, transition vs travel, flanking on location shifts, title formats, time alignment) live in `~/Eudaimonia/Admin/Tools/google-calendar.md`.
+Calendar conventions live in `~/Eudaimonia/Admin/Tools/google-calendar.md`. Never rename, retime, or edit a past event others are on, nor its synced HubSpot meeting; guests get notified.
 
 ## Todoist Preferences
 
