@@ -91,7 +91,7 @@ ynab transactions batch-update --transactions \
    {"id":"<venmo bank leg>","payee_id":"<venmo transfer_payee_id>","category_id":null,"approved":true}]'
 ```
 
-The second row is the Venmo pair's bank leg: it carries the Venmo account's `transfer_payee_id` and an explicit `"category_id": null` (YNAB payee memory may have pre-categorized the leg), while its Venmo row rides in the batch with the category and memo like any other.
+The second row is the Venmo pair's bank leg: it carries the Venmo account's `transfer_payee_id` and an explicit `"category_id": null` (YNAB payee memory may already have categorized the leg), while its Venmo row rides in the batch with the category and memo like any other.
 
 Confirm the response count matches the plan's count, and say so. A mismatch means something was rejected silently and needs looking at before moving on.
 
