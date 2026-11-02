@@ -58,6 +58,7 @@ Add `--since <YYYY-MM-DD>` to bound the window. Decode HTML entities in payee na
 For each transaction:
 
 - **Skip** if `transfer_account_id` is set, or the payee matches a transfer/payment pattern (`Transfer`, `CRCARDPMT`, `AUTOPAY`, `External Transfer`, `P2P`, `RECURRING FROM CHK`, `Online Scheduled Payment`, `PAYMENT FROM CHK`, `Confirmation`, `Descriptive Withdrawal/Deposit`). These are account moves, not spend. Leave uncategorized. They can still be approved.
+- **Venmo pair** when one payment imports twice: the Venmo account row and the bank leg that funds it (payee `Venmo` on FirstTech Paper or any checking account). The bank leg becomes a transfer by setting its `payee_id` to the Venmo account's `transfer_payee_id` (from `ynab accounts list`), with no category; a literal payee name does not make a transfer. The Venmo row takes the category and the memo and partitions like any other row. Match the payment against the Atelic budget first: one Atelic already records is proposed as a delete on Personal (listed apart from the batch, made only on Forni's yes to that row), never paired. A Venmo receipt from a person is a friend's share and nets into the spend category it repays, never `Inflow: Ready to Assign`. This pair rule is checked before Skip, so a `P2P` descriptor on the bank leg still forms the pair.
 - **Inflow** if the payee is in the Inflows list. Route to `Inflow: Ready to Assign`.
 - **Auto** if the payee is in the Auto-Categorize map. Apply silently.
 - **Confirm** if the payee is in the Always-Confirm list (split history). Ask before applying.
@@ -86,8 +87,11 @@ Batch the approved plan into one call. Amounts are dollars, not milliunits.
 
 ```bash
 ynab transactions batch-update --transactions \
- '[{"id":"...","category_id":"...","memo":"🏔️ Crested Butte","approved":true}]'
+ '[{"id":"...","category_id":"...","memo":"🏔️ Crested Butte","approved":true},
+   {"id":"<venmo bank leg>","payee_id":"<venmo transfer_payee_id>","category_id":null,"approved":true}]'
 ```
+
+The second row is the Venmo pair's bank leg: it carries the Venmo account's `transfer_payee_id` and an explicit `"category_id": null` (YNAB payee memory may already have categorized the leg), while its Venmo row rides in the batch with the category and memo like any other.
 
 Confirm the response count matches the plan's count, and say so. A mismatch means something was rejected silently and needs looking at before moving on.
 

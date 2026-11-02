@@ -63,4 +63,6 @@ Housing: `Matthew Bigelow` was Rent through May 2026 (the category is now hidden
 
 ## Inflows (route to Inflow: Ready to Assign, not spend)
 
-Bank of America (2), CDLE UI Benefits (4), Chase (5), Credit Dividend (12), Fidelity (8), First Tech Federal Credit Union (5), RYLLC Income (5), Standard transfer (4), Venmo (10), Zero Homes (9)
+Bank of America (2), CDLE UI Benefits (4), Chase (5), Credit Dividend (12), Fidelity (8), First Tech Federal Credit Union (5), RYLLC Income (5), Standard transfer (4), Zero Homes (9)
+
+`Venmo` is not an inflow, whatever YNAB's payee memory suggests. A bank leg to Venmo is a transfer to the Venmo account, and a Venmo receipt from a person is a friend's share that nets into the spend it repays (learned rules, Spend Categorization).
