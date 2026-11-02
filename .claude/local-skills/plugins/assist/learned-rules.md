@@ -81,7 +81,6 @@ Payee corrections (session 2026-06-29):
 - `7-Eleven` -> `🚬 Nicotine` (confirmed, buys nicotine there).
 - `Bunny and Clyde's` -> `☕️ Cafés` (Salida coffee).
 - `Body Jewelry`, `Easy Steez Vintage` -> `🧥 Clothing`.
-- `Gem Figueroa` (friend, Venmo) -> context dependent; was `🍿 Entertainment` (a movie).
 - `Badfish SUP` -> `🌲 Outdoorsman` (was Gear before the tree merge). `Rhino Air`, `Discount Tire`, `Costco Gas` -> `🚙 Transportation`.
 
 Payee corrections (session 2026-07-18):
@@ -114,7 +113,6 @@ Payee corrections (session 2026-10-05):
 - `Arc Thrift` -> `🧥 Clothing`, auto decided and no longer always confirm. Forni: "Arc Thrift Store purchases should be categorized as clothing not home improvement."
 - A `Thule` warranty reimbursement check -> `🌏 Adventure`, with the payee set to Thule; it imports as a `Neo` mobile check deposit. Forni: "I don't want the Thule check to go into transportation. Put it into adventure."
 - `Google Cloud` on Personal -> `💰 Financial`, auto decided: the personal Google Cloud projects (the keys vault). On Atelic it stays `🖥️ Infrastructure`.
-- `Austin Catania` (friend, Venmo) -> context dependent; was `🍽️ Dining Out` for the Florence Supper Club dinner with the Sexy Pace Run Club.
 - A Venmo refund of part of a group payment nets into the original spend category, never `Inflow: Ready to Assign`, which is where YNAB's payee memory routes it.
 - `Rail Yard` (descriptor "Rail Yard Lofts - OnlinePay") is the HOA: `🏡 Housing`, reassigned to the existing `Rail Yard Lofts` payee.
 - On Personal, `ACH Deposit: 261003712 ... MONEYLINE` is still the HSA premium reimbursement; the MONEYLINE suffix marks a funding move only on Atelic.
