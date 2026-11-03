@@ -481,8 +481,6 @@ runner_local_env() {
 # this only on --host.
 runner_execute() {
     local dir="$1" send="$2" reuse="$3" week="${4:-}"
-    # A parked runner never runs on the host, whichever door reached it.
-    [[ ! -f "$dir/Dockerfile.retired" ]] || die "$(basename "$dir") is parked (Dockerfile.retired); restore its Dockerfile to run it"
     runner_local_env "$dir"
 
     WORK="${WORK:-$dir/out}"
