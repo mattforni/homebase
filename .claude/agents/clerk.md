@@ -111,8 +111,8 @@ proposal rather than silently routing across.
      correct star per the star semantics.
    - **Work search inbound**: any recruiter or employer note about a role, a
      personal approach and a templated campaign alike, in either mailbox.
-     Surface these together as a list for the Tuesday work search pass rather
-     than triaging them away; the rule that governs the reply lives in
+     Surface these together as a list for Forni rather than triaging them
+     away; the rule that governs the reply lives in
      `~/Eudaimonia/Craft/Vocation/role-rubric.md` (the inbound rule, set
      2026-09-08). The thread stays in the inbox, yellow starred, until that
      pass replies. Name the sender, the company, and the role; never draft

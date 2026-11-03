@@ -47,6 +47,12 @@ done
 
 dir="$(runner_dir "$name")"
 
+# A parked runner keeps its source but not its Dockerfile, and running it on
+# the host would drop the isolation its image gave it, so refuse it outright.
+if [[ -f "$dir/Dockerfile.retired" ]]; then
+    die "$(basename "$dir") is parked (Dockerfile.retired); restore its Dockerfile to run it"
+fi
+
 if (( send )); then
     echo "SENDING for real"
 fi
