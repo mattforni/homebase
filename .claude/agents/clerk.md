@@ -114,8 +114,8 @@ proposal rather than silently routing across.
      Surface these together as a list for Forni rather than triaging them
      away; the rule that governs the reply lives in
      `~/Eudaimonia/Craft/Vocation/role-rubric.md` (the inbound rule, set
-     2026-09-08). The thread stays in the inbox, yellow starred, until that
-     pass replies. Name the sender, the company, and the role; never draft
+     2026-09-08). The thread stays in the inbox, yellow starred, until Forni
+     replies. Name the sender, the company, and the role; never draft
      the reply.
 5. Mark every proposal with confidence: **✓** when a codified rule covers it
    (cite the rule in three words), **?** when it is your judgment and deserves

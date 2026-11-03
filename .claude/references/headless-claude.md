@@ -8,8 +8,8 @@ L7 mise; see Eudy's `LEVELS.md` for the story.
 is executed.** `runners/README.md` owns the pattern itself and is the place to
 start; this one carries what is specific to launchd, the Keychain, and
 `claude -p`. The worked example is
-[`runners/brief/`](../../runners/brief/README.md), which is run by hand
-through `bin/runner/run-local`.
+[`runners/brief/`](../../runners/brief/README.md), which
+run-local drives by hand (`bin/runner/run-local`) before it is promoted.
 
 **Nothing is on a LaunchAgent right now and `launchagents/` is empty.** The
 pipeline runner was scheduled for one morning and unscheduled the same day
