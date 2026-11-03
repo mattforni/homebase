@@ -11,7 +11,7 @@ The weekly motion that turns the activities ledger into a filed MyUI+ payment re
 
 - **The activities ledger**: the Pinole work API through the `pinole` CLI. The slate is `pinole work activities list --week <YYYY-Www> --table` for the claim week; the confirmation goes back with `pinole work activities report --confirmation <code> <id> [<id>...]` on every included activity id, and an activity left off the slate gets `pinole work activities exclude <id> --reason <text>` so the ledger records why. The table renders Id, Date, Kind, Employer, Position, Channel, Reported, and Notes; the report and exclude verbs take the Id. `--reported false` narrows a listing to what has not been stamped yet.
 - **The claim**: `~/Eudaimonia/Constitution/Financial/FY27-unemployment.md`. Claimant ID, effective date, benefit year end.
-- **The task**: Todoist "💰 Close the UI Claim in MyUI+", the one time task for the final request (the recurring "💰 Request UI Payment in MyUI+" was deleted on 2026-11-02). Completing it after submission is the last step.
+- **The task**: Todoist "💰 Request UI Payment in MyUI+", recurring every Monday at 17:00. Completing it after submission is the last step.
 - **The site**: the [MyUI+ claimant portal](https://myui.clouduim.cdle.state.co.us/Claimant/Core/Login.ASPX), sign in via ID.me. System hours 04:00 to 19:00 MT, nightly processing 22:00 to 03:00 MT.
 
 ## The Slate
@@ -51,8 +51,6 @@ If a fresh ID.me login or MFA is needed, hand the keyboard to Forni in that wind
 If ID.me's Cloudflare check spins, stop and tell Forni rather than reaching for Brave.
 
 ## The Flow
-
-The final request (2026-11-09) is answered by Forni at every step from 2 through 7, as the 2026-11-02 rule in [learned-rules.md](learned-rules.md) says; read it before starting.
 
 Drive every control by DOM id, and read the section and error state rather than trusting a reported success. Snapshot ref clicks do fire on this site, but refs shift on every postback, so a stable id is the safer target. Ids and the entry path are in [learned-rules.md](learned-rules.md).
 
