@@ -43,6 +43,11 @@ done
 # nothing went on with an empty directory, logged to runner-.log, and ran
 # /entrypoint.sh. The reason is already on stderr.
 dir="$(runner_dir "$name")" || exit 1
+
+# A parked runner never runs on the host, whichever door reached it.
+if [[ -f "$dir/Dockerfile.retired" ]]; then
+    die "$(basename "$dir") is parked (Dockerfile.retired); restore its Dockerfile to run it"
+fi
 # A path names a runner as well as a name does, and either way the name used
 # from here on is the directory's own.
 name="$(basename "$dir")"
