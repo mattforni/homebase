@@ -52,6 +52,8 @@ If ID.me's Cloudflare check spins, stop and tell Forni rather than reaching for 
 
 ## The Flow
 
+The final request (2026-11-09) departs from steps 2, 3, 5 and 7 as written in the 2026-11-02 rule in [learned-rules.md](learned-rules.md); read it before starting.
+
 Drive every control by DOM id, and read the section and error state rather than trusting a reported success. Snapshot ref clicks do fire on this site, but refs shift on every postback, so a stable id is the safer target. Ids and the entry path are in [learned-rules.md](learned-rules.md).
 
 1. **Confirm the week.** Start from My Claim Status and open the specific week row whose dates match the slate, not a generic start button. Only one week is ever certifiable, and the next week's row shows the date it opens.
