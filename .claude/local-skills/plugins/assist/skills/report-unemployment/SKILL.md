@@ -52,7 +52,7 @@ If ID.me's Cloudflare check spins, stop and tell Forni rather than reaching for 
 
 ## The Flow
 
-The final request (2026-11-09) departs from steps 2, 3, 5 and 7 as written in the 2026-11-02 rule in [learned-rules.md](learned-rules.md); read it before starting.
+The final request (2026-11-09) departs from steps 2 through 7 and from the work search certification gate, as written in the 2026-11-02 rule in [learned-rules.md](learned-rules.md); read it before starting.
 
 Drive every control by DOM id, and read the section and error state rather than trusting a reported success. Snapshot ref clicks do fire on this site, but refs shift on every postback, so a stable id is the safer target. Ids and the entry path are in [learned-rules.md](learned-rules.md).
 
