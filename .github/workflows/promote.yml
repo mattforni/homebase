@@ -26,7 +26,6 @@ on:
         default: all
         options:
           - all
-          - recruiter
           - brief
 
 # Read only by default. The promote job alone adds id-token, which is what

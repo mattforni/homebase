@@ -306,8 +306,8 @@ install_npm_globals() {
   # and the tag's version so a bumped pin reinstalls instead of sitting behind
   # an "already installed". pinole (the Pinole work API client, 2026-09-16) is
   # not published to npm: the public repo is the package, dist/ is committed,
-  # and the tag is the release. The recruiter image pins the same tag in
-  # runners/recruiter/Dockerfile; bump both together.
+  # and the tag is the release. The parked recruiter image pins the same tag in
+  # runners/recruiter/Dockerfile.retired; bump it only if the runner is revived.
   local git_globals=(
     "pinole|github:atelic-action/pinole-cli#v0.1.5|0.1.5"
   )
