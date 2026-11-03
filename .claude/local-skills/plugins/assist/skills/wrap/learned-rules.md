@@ -51,6 +51,16 @@ Skill-specific corrections that override SKILL.md. Populate as Forni corrects wr
   file was not read before triage; the SKILL.md body's inline "Learned Rules"
   section is a stale placeholder, so always read this file itself.
 
+- **A remainder that waits on a counterparty is not work and gets no ticket.**
+  When what is left under a closing issue is the other side's move (their
+  signature, their reply, their payment) with only a mechanical close out
+  behind it (countersign, file the executed PDF, move the deal), close the
+  issue and let the record that already holds the wait carry it: a HubSpot
+  deal at Contract Sent, a calendar hold, the thread itself. The rule above
+  mints tickets for work Forni does, never one to watch someone else. Forni,
+  2026-11-03 (ATE-709), after a countersign and file issue was minted at the
+  wrap: "No new task needed. Delete it."
+
 ## Hand Off
 
 - **No `/rename` in the hand off, and `/compact` is never pasted as a command block; the wrap closes with the line "Compaction ready."** Forni, 2026-09-07: "The rename doesn't actually rename it in the place that I wanted it to so we don't need it anymore. For compact just say compaction ready or something like that. I know how to run compact." The session name survives only as the one pager's H1.
