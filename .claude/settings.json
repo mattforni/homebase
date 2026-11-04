@@ -243,6 +243,11 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/sync-homebase.sh",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/refresh-plugins.sh",
+            "timeout": 10
           }
         ]
       },
