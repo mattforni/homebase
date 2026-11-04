@@ -36,8 +36,12 @@ while IFS= read -r f; do
   candidates+=("$f")
 done < <(find "$HOME/.claude/projects" -path '*/memory/*.md' -newermt "$today" -type f 2>/dev/null | sort)
 
-[[ ${#candidates[@]} -eq 0 ]] && exit 0
+list=""
+[[ ${#candidates[@]} -gt 0 ]] && { list=$(printf '%s, ' "${candidates[@]}"); list=${list%, }; }
+# One line per firing, candidates or none, so the sharpen session's Held read
+# is a fact rather than a guess about whether the hook ever ran (2026-11-04).
+printf '%s\t%s\t%s\n' "$(date '+%F %T')" "$path" "$list" >>"$HOME/.claude/.memory-strike.log" 2>/dev/null
 
-list=$(printf '%s, ' "${candidates[@]}"); list=${list%, }
+[[ ${#candidates[@]} -eq 0 ]] && exit 0
 jq -cn --arg p "$path" --arg l "$list" '{hookSpecificOutput:{hookEventName:"PostToolUse",additionalContext:("Memory strike: a rule just landed in " + $p + ". Memory written today: " + $l + ". If the rule now states what one of them says, note that memory for the strike, to be deleted with its MEMORY.md line once this rule has landed (after the merge when it rides a PR, since a strike before then loses the learning if the PR dies); a memory backs up only what no rule file holds.")}}'
 exit 0
