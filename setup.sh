@@ -280,11 +280,7 @@ install_npm_globals() {
   # page at phone width through Playwright's Chromium. Both resolve the module
   # from the global node_modules beside the node binary, on the desk as in the
   # cloud, so a session no longer installs them into a scratchpad that vanishes.
-  # @bitwarden/cli (binary `bw`) is here rather than in the Brewfile because the
-  # brew formula depends on brew's own node, a second runtime beside mise's
-  # (the 2026-08-11 decision made mise the only node manager).
   local globals=(
-    "@bitwarden/cli"
     "@doist/todoist-cli"
     "@hubspot/cli"
     "lighthouse"
