@@ -6,6 +6,7 @@ tap "supabase/tap"
 # CLI essentials
 brew "agent-browser" # Browser automation for AI agents; setup.sh fetches its Chrome for Testing
 brew "bash"
+brew "bitwarden-cli" # bw: programmatic reads of the Bitwarden vault, beside the desktop cask
 brew "coreutils"
 brew "fzf"
 brew "gh"
