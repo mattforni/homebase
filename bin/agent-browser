@@ -5,7 +5,7 @@
 # Two jobs.
 #
 # 1. `--identity <name>` attaches to one of the headless Chrome identities in
-#    bin/lib/chrome-identity.sh (atelic, personal) by rewriting the flag to
+#    bin/lib/chrome-identity.sh (atelic, personal, and the overlay) by rewriting the flag to
 #    `--cdp <port>`. Each identity is its own Chrome instance with its own user
 #    data dir, signed in once by hand, so the port is the identity. When the
 #    instance is not running, the shim starts it through

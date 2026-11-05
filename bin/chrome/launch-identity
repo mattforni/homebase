@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run one Chrome identity in the foreground, headless by default.
 #
-# Usage: launch-identity <atelic|personal> [headless|headed]
+# Usage: launch-identity <name> [headless|headed]
 #
 # Headless is for background reads nobody watches. Headed is for a task Claude
 # drives that still needs Forni's hands (a sign in, a captcha, a certification
