@@ -13,6 +13,14 @@ The names match the `.account` profiles that `gws` and `hs` use. The table
 itself lives in `bin/lib/chrome-identity.sh`, the one copy the launcher and the
 shim both read.
 
+An identity that belongs to one engagement or one machine stays out of this
+public repo: it goes in `~/.config/chrome-identities`, one per line as
+`<name> <port> <user data dir>` (the dir may start with `~`, `#` starts a
+comment), and the engagement's own repo documents the line. The library reads
+the overlay after its own table, so an overlay can add an identity but never
+redefine `atelic` or `personal`. Pick a port above 9224 that nothing else on
+the machine listens on.
+
 ## Using One
 
 ```bash

@@ -1416,8 +1416,19 @@ setup_auth() {
     # (bin/lib/vault.sh); the personal client moved out of the business project
     # in the 2026-08-14 split. GWS_BOOTSTRAP_PROJECT still forces one project
     # for every profile, which is what a recovery run wants.
-    local gws_bootstrap_project gws_profile gws_dir
-    for gws_profile in personal atelic; do
+    # The two profiles every machine has, then any gws-<profile> dir already
+    # seeded on this one (an engagement seat, documented in its own repo), so a
+    # profile that exists here is offered its login without being named in
+    # this public file.
+    local gws_bootstrap_project gws_profile gws_dir gws_profiles="personal atelic" gws_seeded
+    for gws_seeded in "$HOME"/.config/gws-*/; do
+      [[ -d "$gws_seeded" ]] || continue
+      gws_seeded="$(basename "$gws_seeded")"; gws_seeded="${gws_seeded#gws-}"
+      [[ " $gws_profiles " == *" $gws_seeded "* ]] && continue
+      [[ "$gws_seeded" =~ ^[A-Za-z0-9_-]+$ ]] || continue
+      gws_profiles="$gws_profiles $gws_seeded"
+    done
+    for gws_profile in $gws_profiles; do
       gws_bootstrap_project="${GWS_BOOTSTRAP_PROJECT:-$(vault_project_for_profile "$gws_profile")}"
       gws_dir="$HOME/.config/gws-$gws_profile"
       if [[ -f "$gws_dir/client_secret.json" ]] && [[ -f "$gws_dir/credentials.enc" ]] && [[ "$FORCE" != true ]]; then
