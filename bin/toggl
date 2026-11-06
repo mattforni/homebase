@@ -65,7 +65,7 @@ for p in "${path_parts[@]}"; do
         break
     fi
 done
-if [[ -z "$real_toggl" && -x "$HOME/.cargo/bin/toggl" ]]; then
+if [[ -z "$real_toggl" && -x "$HOME/.cargo/bin/toggl" && ! -d "$HOME/.cargo/bin/toggl" ]]; then
     real_toggl="$HOME/.cargo/bin/toggl"
 fi
 
@@ -126,10 +126,11 @@ here. Use TOGGL_FORCE_PROFILE=personal to reach it from this tree on purpose.
 EOF
 }
 
-# Fetched once per call, on the first request that needs it.
+# Read once per invocation, by the subcommand itself after its arguments
+# parse, never inside a command substitution: a value set in a $(...)
+# subshell dies with it, and every request would run gcloud again.
 toggl_token=""
 load_token() {
-    [[ -n "$toggl_token" ]] && return 0
     local fetch="$shim_dir/vault/fetch-secret"
     if [[ ! -x "$fetch" ]]; then
         echo "toggl shim: cannot run $fetch to read $token_secret" >&2
@@ -151,10 +152,15 @@ load_token() {
 # api <METHOD> <path> [json body]: prints the response body on a 2xx, and on
 # anything else prints the status and the body to stderr and returns 1. The
 # free plan answers 402 once its hourly API quota is spent, with a body that
-# names the seconds until reset, so the body is always surfaced.
+# names the seconds until reset, so the body is always surfaced. That quota is
+# small (about thirty requests an hour), which is why every subcommand below
+# counts its requests.
 api() {
     local method="$1" endpoint="$2" data="${3:-}" resp code body
-    load_token
+    if [[ -z "$toggl_token" ]]; then
+        echo "toggl shim: no token loaded before calling the API" >&2
+        return 1
+    fi
     local args=(-sS --max-time 30 -X "$method" -H "Content-Type: application/json"
         -w $'\n%{http_code}' --config -)
     [[ -n "$data" ]] && args+=(--data "$data")
@@ -177,33 +183,45 @@ api() {
 }
 
 # jq definitions shared by every renderer. Toggl returns timestamps as
-# 2026-11-06T15:04:05+00:00 (sometimes with fractional seconds), which jq's
-# fromdateiso8601 will only read in the bare Z form. The line shape follows the
-# real CLI's TimeEntry display: `[h:mm:ss]* –  description @project`, with the
-# star marking a running entry.
+# 2026-11-06T15:04:05+00:00, sometimes with fractional seconds, and jq's
+# fromdateiso8601 reads only the bare Z form, so the offset is applied by hand;
+# any offset works, not just UTC. The line shape follows the real CLI's
+# TimeEntry display: `[h:mm:ss]* –  description @project`, with the star
+# marking a running entry and a leading $ marking a billable one.
 jq_defs='
-def epoch: sub("\\.[0-9]+"; "") | sub("(\\+00:00|Z)$"; "Z") | fromdateiso8601;
-def secs: if .stop == null or .duration < 0 then (now - (.start | epoch)) | floor else .duration end;
+def epoch: sub("\\.[0-9]+"; "")
+    | if test("[+-][0-9]{2}:[0-9]{2}$") then
+        capture("^(?<b>.*)(?<s>[+-])(?<h>[0-9]{2}):(?<m>[0-9]{2})$")
+        | ((.b + "Z") | fromdateiso8601)
+          - ((if .s == "-" then -1 else 1 end) * ((.h | tonumber) * 3600 + (.m | tonumber) * 60))
+      else sub("Z$"; "") + "Z" | fromdateiso8601 end;
+def running: .stop == null or .duration < 0;
+def secs: if running then (now - (.start | epoch)) | floor else .duration end;
 def hmmss: (. / 3600 | floor | tostring) + ":"
     + ((. % 3600 / 60 | floor) | tostring | if length < 2 then "0" + . else . end) + ":"
     + ((. % 60) | tostring | if length < 2 then "0" + . else . end);
 def desc: if (.description // "") == "" then "(no description)" else (.description | gsub("\n"; " ")) end;
 def proj($name): if ($name // "") == "" then "" else " @" + $name end;
-def running: .stop == null or .duration < 0;
 def line($name): (if .billable then "$" else " " end) + " [" + (secs | hmmss) + "]"
     + (if running then "*" else " " end) + " –  " + desc + proj($name);
 '
 
-# Project name for an entry's project_id, or empty.
-project_name() {
-    local wid="$1" pid="$2"
-    [[ -n "$pid" && "$pid" != "null" ]] || return 0
-    api GET "workspaces/$wid/projects/$pid" | jq -r '.name // empty'
+# The account's active projects across its workspaces, fetched at most once
+# per invocation (one request), the same endpoint the real CLI matches project
+# names against. It serves both the --project lookup and every project name
+# printed beside an entry. Call it at function level, never inside $(...).
+projects_json=""
+load_projects() {
+    [[ -n "$projects_json" ]] && return 0
+    projects_json="$(api GET "me/projects")" || return 1
+    [[ "$projects_json" != "null" ]] || projects_json="[]"
 }
 
-running_entry() {
-    # The endpoint answers `null` when nothing runs.
-    api GET "me/time_entries/current"
+# Name of a project id from the loaded projects, or empty.
+project_name() {
+    local pid="$1"
+    [[ -n "$pid" && "$pid" != "null" && -n "$projects_json" ]] || return 0
+    jq -r --argjson pid "$pid" '[.[] | select(.id == $pid)] | first | .name // empty' <<< "$projects_json"
 }
 
 print_entry() {
@@ -211,47 +229,64 @@ print_entry() {
     jq -r --arg name "$name" "$jq_defs line(\$name)" <<< "$entry"
 }
 
-# Stop whatever runs. Prints the stopped entry like the real CLI. Returns 0
-# whether or not anything was running.
-stop_running() {
-    local origin="$1" entry wid id name stopped
-    entry="$(running_entry)" || return 1
-    if [[ -z "$entry" || "$entry" == "null" ]]; then
+# The running entry, or empty. The endpoint answers `null` when nothing runs.
+running=""
+load_running() {
+    running="$(api GET "me/time_entries/current")" || return 1
+    [[ "$running" != "null" ]] || running=""
+}
+
+# Stop the entry load_running found, if any, and print it like the real CLI.
+# Printing is best effort: once the stop has landed, a rendering hiccup must
+# not turn the command into a reported failure that a caller would retry.
+stop_loaded() {
+    local origin="$1" wid id name stopped
+    if [[ -z "$running" ]]; then
         [[ "$origin" == "cli" ]] && echo "No time entry is running at the moment"
         return 0
     fi
-    wid="$(jq -r '.workspace_id' <<< "$entry")"
-    id="$(jq -r '.id' <<< "$entry")"
-    name="$(project_name "$wid" "$(jq -r '.project_id' <<< "$entry")")" || name=""
+    wid="$(jq -r '.workspace_id' <<< "$running")"
+    id="$(jq -r '.id' <<< "$running")"
     stopped="$(api PATCH "workspaces/$wid/time_entries/$id/stop")" || return 1
+    name="$(project_name "$(jq -r '.project_id' <<< "$stopped")")" || name=""
     if [[ "$origin" == "cli" ]]; then
         echo "Time entry stopped successfully"
     else
         echo "Running time entry stopped"
     fi
-    print_entry "$stopped" "$name"
+    print_entry "$stopped" "$name" || true
 }
 
+# Two requests while an entry with a project runs, one otherwise.
 cmd_current() {
     [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
-    local entry wid name
-    entry="$(running_entry)" || exit 1
-    if [[ -z "$entry" || "$entry" == "null" ]]; then
+    load_token
+    load_running || exit 1
+    if [[ -z "$running" ]]; then
         echo "No time entry is running at the moment"
         return 0
     fi
-    wid="$(jq -r '.workspace_id' <<< "$entry")"
-    name="$(project_name "$wid" "$(jq -r '.project_id' <<< "$entry")")" || name=""
-    print_entry "$entry" "$name"
+    if [[ "$(jq -r '.project_id' <<< "$running")" != "null" ]]; then
+        load_projects || true
+    fi
+    print_entry "$running" "$(project_name "$(jq -r '.project_id' <<< "$running")")"
 }
 
+# Up to three requests: the running entry, the projects for its name, the stop.
 cmd_stop() {
     [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
-    stop_running cli || exit 1
+    load_token
+    load_running || exit 1
+    if [[ -n "$running" && "$(jq -r '.project_id' <<< "$running")" != "null" ]]; then
+        load_projects || true
+    fi
+    stop_loaded cli || exit 1
 }
 
+# One request.
 cmd_list() {
     [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
+    load_token
     local since until entries
     # The last three days through tomorrow, in local dates; tomorrow covers a
     # running entry whose UTC start already reads as the next day.
@@ -267,6 +302,9 @@ cmd_list() {
         <<< "$entries"
 }
 
+# Between two and five requests: the running entry, the projects (when one is
+# named or an entry runs), the account's default workspace (when no project
+# names one), the stop, and the create.
 cmd_start() {
     local description="" description_set="" project="" project_set=""
     while (( $# )); do
@@ -295,34 +333,41 @@ cmd_start() {
         exit 2
     fi
 
-    local me wid project_json="" pid="null" billable="false" body started
-    me="$(api GET "me")" || exit 1
-    wid="$(jq -r '.default_workspace_id // empty' <<< "$me")"
-    if [[ -z "$wid" ]]; then
-        echo "toggl shim: the Atelic Toggl account reports no default workspace" >&2
-        exit 1
-    fi
+    load_token
+    load_running || exit 1
 
-    # Resolve the project before stopping anything, so a typo leaves the
-    # running entry alone. Exact name, active projects only, as the real CLI
-    # matches.
+    # Resolve everything before stopping anything, so a typo or a failed read
+    # leaves the running entry alone. Exact name among active projects, as the
+    # real CLI matches; the project also names the workspace.
+    local wid="" project_json="" pid="null" billable="false" body started
+    if [[ -n "$project" || -n "$running" ]]; then
+        if ! load_projects; then
+            [[ -n "$project" ]] && exit 1
+        fi
+    fi
     if [[ -n "$project" ]]; then
-        local projects
-        projects="$(api GET "workspaces/$wid/projects?active=true&per_page=200")" || exit 1
-        project_json="$(jq -c --arg n "$project" '[.[] | select(.name == $n)] | first // empty' <<< "$projects")"
+        project_json="$(jq -c --arg n "$project" \
+            '[.[] | select(.name == $n and (.active != false))] | first // empty' <<< "$projects_json")"
         if [[ -z "$project_json" ]]; then
-            echo "toggl shim: no active project named \"$project\" in workspace $wid" >&2
+            echo "toggl shim: no active project named \"$project\" on the Atelic Toggl account" >&2
             exit 1
         fi
         pid="$(jq -r '.id' <<< "$project_json")"
+        wid="$(jq -r '.workspace_id' <<< "$project_json")"
         billable="$(jq -r '.billable // false' <<< "$project_json")"
+    else
+        wid="$(api GET "me" | jq -r '.default_workspace_id // empty')" || wid=""
+        if [[ -z "$wid" ]]; then
+            echo "toggl shim: could not read the Atelic Toggl account's default workspace" >&2
+            exit 1
+        fi
     fi
 
     # Toggl's API documentation does not say that creating a running entry
     # stops the one already running, and the real CLI stops it explicitly
     # before every start (StopCommand in its start command). Do the same so
     # exactly one entry runs.
-    stop_running start || exit 1
+    stop_loaded start || exit 1
 
     body="$(jq -nc \
         --arg desc "$description" \
@@ -333,9 +378,16 @@ cmd_start() {
         --argjson billable "$billable" \
         '{description: $desc, start: $start, duration: -1, workspace_id: $wid,
           project_id: $pid, billable: $billable, created_with: $cw}')"
-    started="$(api POST "workspaces/$wid/time_entries" "$body")" || exit 1
+    if ! started="$(api POST "workspaces/$wid/time_entries" "$body")"; then
+        # The stop above may already have landed. Say so plainly: a silent gap
+        # where nothing tracks is worse than a loud one.
+        if [[ -n "$running" ]]; then
+            echo "toggl shim: the previous entry was stopped but the new one did not start; nothing is running" >&2
+        fi
+        exit 1
+    fi
     echo "Time entry started"
-    print_entry "$started" "$project"
+    print_entry "$started" "$project" || true
 }
 
 case "${1:-}" in
