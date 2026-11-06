@@ -34,8 +34,12 @@
 # A profile with no Toggl account mapped falls through to the real CLI with a
 # warning, as bin/hs does for a profile with no portal.
 #
-# The atelic token is read on every call with bin/vault/fetch-secret
-# (`toggl-api-token-atelic`, routed to atelic-keys by bin/lib/vault.sh). It is
+# The atelic token (`toggl-api-token-atelic`, routed to atelic-keys by
+# bin/lib/vault.sh) is read on every call through runner_access_secret in
+# bin/runner/lib.sh, which tries each signed in gcloud identity until one can
+# read the vault. bin/vault/fetch-secret asks only the active identity, and
+# this machine's two identities cannot read each other's vault, so with the
+# personal one active every atelic call would fail. The token is
 # never printed, never written to disk or the Keychain, and never placed on a
 # command line where `ps` could read it: curl receives it through a config
 # read from a pipe.
@@ -134,13 +138,24 @@ EOF
 # subshell dies with it, and every request would run gcloud again.
 toggl_token=""
 load_token() {
-    local fetch="$shim_dir/vault/fetch-secret"
-    if [[ ! -x "$fetch" ]]; then
-        echo "toggl shim: cannot run $fetch to read $token_secret" >&2
+    local vault_lib="$shim_dir/lib/vault.sh" runner_lib="$shim_dir/runner/lib.sh" project
+    if [[ ! -r "$vault_lib" || ! -r "$runner_lib" ]]; then
+        echo "toggl shim: cannot read $vault_lib or $runner_lib to reach the vault" >&2
         exit 1
     fi
-    if ! toggl_token="$("$fetch" "$token_secret")"; then
-        echo "toggl shim: could not read $token_secret from the vault; is gcloud signed in?" >&2
+    # Both only define variables and functions when sourced.
+    # shellcheck source-path=SCRIPTDIR
+    # shellcheck source=lib/vault.sh
+    . "$vault_lib"
+    # shellcheck source=runner/lib.sh
+    . "$runner_lib"
+    if ! command -v gcloud >/dev/null 2>&1; then
+        echo "toggl shim: gcloud not found on PATH, so $token_secret cannot be read" >&2
+        exit 1
+    fi
+    project="$(vault_project_for_secret "$token_secret")"
+    if ! toggl_token="$(runner_access_secret "$project" "$token_secret")"; then
+        echo "toggl shim: no signed in gcloud identity could read $token_secret from $project" >&2
         exit 1
     fi
     # Trim surrounding whitespace, in case the secret was stored with a newline.
@@ -305,9 +320,9 @@ cmd_list() {
         <<< "$entries"
 }
 
-# Three or four requests: the running entry, the projects (when one is named),
-# the account's default workspace (when neither a project nor a running entry
-# names one), the stop (when something runs), and the create.
+# Three or four requests: the running entry, the projects (when one is named)
+# or the account's default workspace (when none is), the stop (when something
+# runs), and the create.
 cmd_start() {
     local description="" description_set="" project="" project_set=""
     while (( $# )); do
@@ -360,10 +375,9 @@ cmd_start() {
         pid="$(jq -r '.id' <<< "$project_json")"
         wid="$(jq -r '.workspace_id' <<< "$project_json")"
         billable="$(jq -r '.billable // false' <<< "$project_json")"
-    elif [[ -n "$running" ]]; then
-        wid="$(jq -r '.workspace_id // empty' <<< "$running")"
-    fi
-    if [[ -z "$wid" ]]; then
+    else
+        # No project: the account's default workspace, as the real CLI does,
+        # never the running entry's, whichever workspace that happens to be in.
         wid="$(api GET "me" | jq -r '.default_workspace_id // empty')" || wid=""
         if [[ -z "$wid" ]]; then
             echo "toggl shim: could not read the Atelic Toggl account's default workspace" >&2
