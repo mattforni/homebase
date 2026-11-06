@@ -265,6 +265,10 @@ stop_loaded() {
     fi
     wid="$(jq -r '.workspace_id' <<< "$running")"
     id="$(jq -r '.id' <<< "$running")"
+    if [[ ! "$wid" =~ ^[0-9]+$ || ! "$id" =~ ^[0-9]+$ ]]; then
+        echo "toggl shim: could not read the running entry's workspace and id from Toggl's answer" >&2
+        return 1
+    fi
     stopped="$(api PATCH "workspaces/$wid/time_entries/$id/stop")" || return 1
     name="$(project_name "$(jq -r '.project_id' <<< "$stopped")")" || name=""
     if [[ "$origin" == "cli" ]]; then
