@@ -1,0 +1,347 @@
+#!/usr/bin/env bash
+# Per profile PATH shim around the real `toggl` (Toggl Track CLI) binary.
+#
+# Walks up from $PWD finding the nearest .account marker, the same marker read
+# by bin/gws and bin/hs, and routes the call to the Toggl account for that
+# profile. Work in the Atelic subtree therefore tracks time against the
+# business account, and everything else against the personal one, with no per
+# directory setup.
+#
+# Why the shim answers the atelic profile itself: the CLI in use
+# (watercooler-labs `toggl` 0.5.1, the latest release) has no profile support.
+# It keeps exactly one API token, in the macOS Keychain under service
+# `togglcli`, account `default`, and that token belongs to the personal Toggl
+# account. There is no flag or environment variable that points it at a second
+# token, and swapping the Keychain entry per call would race any other shell
+# using the CLI at the same moment. So the personal profile execs the real CLI
+# untouched, and the atelic profile is answered here with curl against Toggl
+# API v9 and the business token from the vault, the way bin/hs answers
+# `hs api` itself. The subset is deliberately small: start, stop, current and
+# list. Anything else names that subset and stops, rather than quietly running
+# the real CLI against the personal account from inside the business tree,
+# which is the exact failure the marker exists to prevent.
+#
+# Precedence, highest first:
+#   1. TOGGL_FORCE_PROFILE=<name>: names a profile outright, for scripts and
+#      agent shells. Named like GWS_FORCE_PROFILE and for the same reason:
+#      nothing else ever sets it, so its presence is proof of intent. An
+#      unknown name fails loudly rather than falling back.
+#   2. Nearest .account marker walking up from $PWD.
+#   3. Ambient profile from ~/.config/gws-current.
+# A profile with no Toggl account mapped falls through to the real CLI with a
+# warning, as bin/hs does for a profile with no portal.
+#
+# The atelic token is read on every call with bin/vault/fetch-secret
+# (`toggl-api-token-atelic`, routed to atelic-keys by bin/lib/vault.sh). It is
+# never printed, never written to disk or the Keychain, and never placed on a
+# command line where `ps` could read it: curl receives it through a config
+# read from a pipe.
+
+set -euo pipefail
+
+ACCOUNT_LOG_PREFIX="toggl shim"
+shim_dir="$(dirname "$0")"
+account_lib="$shim_dir/lib/account-profile.sh"
+if [[ -r "$account_lib" ]]; then
+    # shellcheck source-path=SCRIPTDIR
+    # shellcheck source=lib/account-profile.sh
+    . "$account_lib"
+else
+    account_lib_missing=1
+    echo "toggl shim: cannot read $account_lib, passing through to the real CLI" >&2
+fi
+
+# Find the next `toggl` on PATH that isn't this shim. The -ef test compares by
+# device and inode so reaching this script via ~/bin -> homebase/bin still
+# matches, and the -d guard matters because a directory is also -x. cargo puts
+# the binary in ~/.cargo/bin, which a launchd job or a bare `sh -c` may not
+# have on PATH, so that is the fallback when the walk finds nothing.
+real_toggl=""
+IFS=':' read -ra path_parts <<< "$PATH"
+for p in "${path_parts[@]}"; do
+    candidate="$p/toggl"
+    if [[ -x "$candidate" && ! -d "$candidate" && ! "$candidate" -ef "$0" ]]; then
+        real_toggl="$candidate"
+        break
+    fi
+done
+if [[ -z "$real_toggl" && -x "$HOME/.cargo/bin/toggl" ]]; then
+    real_toggl="$HOME/.cargo/bin/toggl"
+fi
+
+run_real() {
+    if [[ -z "$real_toggl" ]]; then
+        echo "toggl shim: cannot find the real toggl binary on PATH or in ~/.cargo/bin" >&2
+        exit 127
+    fi
+    exec "$real_toggl" "$@"
+}
+
+# 1. TOGGL_FORCE_PROFILE wins, and is validated before anything else reads it.
+if [[ -n "${TOGGL_FORCE_PROFILE:-}" ]]; then
+    case "$TOGGL_FORCE_PROFILE" in
+        personal|atelic) profile="$TOGGL_FORCE_PROFILE" ;;
+        *)
+            echo "toggl shim: TOGGL_FORCE_PROFILE='$TOGGL_FORCE_PROFILE' is not a known profile (personal, atelic)" >&2
+            exit 78
+            ;;
+    esac
+    # Consumed here so a nested toggl call resolves on its own.
+    unset TOGGL_FORCE_PROFILE
+elif [[ -n "${account_lib_missing:-}" ]]; then
+    # A broken install cannot resolve anything. The real CLI is the personal
+    # account, which is what most of the tree resolves to anyway, and blocking
+    # the command would be worse than that.
+    run_real "$@"
+else
+    # 2 and 3. Marker first, ambient second.
+    profile="$(account_resolve_profile)"
+fi
+
+# Profile to Toggl account. An explicit table, as in bin/hs: adding a profile
+# means adding a line here and a token in the vault.
+case "$profile" in
+    personal) run_real "$@" ;;
+    atelic)   token_secret="toggl-api-token-atelic" ;;
+    *)
+        echo "toggl shim: profile '$profile' maps to no Toggl account, using the real CLI (personal)" >&2
+        run_real "$@"
+        ;;
+esac
+
+# Everything below answers the atelic profile against Toggl API v9.
+
+api_base="https://api.track.toggl.com/api/v9"
+created_with="homebase toggl shim"
+
+usage_atelic() {
+    cat >&2 <<'EOF'
+toggl shim: the atelic profile supports only these subcommands:
+  toggl start "<description>" [--project "<project name>"]
+  toggl stop
+  toggl current
+  toggl list
+The real CLI only speaks for the personal Toggl account, so nothing else runs
+here. Use TOGGL_FORCE_PROFILE=personal to reach it from this tree on purpose.
+EOF
+}
+
+# Fetched once per call, on the first request that needs it.
+toggl_token=""
+load_token() {
+    [[ -n "$toggl_token" ]] && return 0
+    local fetch="$shim_dir/vault/fetch-secret"
+    if [[ ! -x "$fetch" ]]; then
+        echo "toggl shim: cannot run $fetch to read $token_secret" >&2
+        exit 1
+    fi
+    if ! toggl_token="$("$fetch" "$token_secret")"; then
+        echo "toggl shim: could not read $token_secret from the vault; is gcloud signed in?" >&2
+        exit 1
+    fi
+    # Trim surrounding whitespace, in case the secret was stored with a newline.
+    toggl_token="${toggl_token#"${toggl_token%%[![:space:]]*}"}"
+    toggl_token="${toggl_token%"${toggl_token##*[![:space:]]}"}"
+    if [[ -z "$toggl_token" ]]; then
+        echo "toggl shim: $token_secret is empty in the vault" >&2
+        exit 1
+    fi
+}
+
+# api <METHOD> <path> [json body]: prints the response body on a 2xx, and on
+# anything else prints the status and the body to stderr and returns 1. The
+# free plan answers 402 once its hourly API quota is spent, with a body that
+# names the seconds until reset, so the body is always surfaced.
+api() {
+    local method="$1" endpoint="$2" data="${3:-}" resp code body
+    load_token
+    local args=(-sS --max-time 30 -X "$method" -H "Content-Type: application/json"
+        -w $'\n%{http_code}' --config -)
+    [[ -n "$data" ]] && args+=(--data "$data")
+    if ! resp="$(printf 'user = "%s:api_token"\n' "$toggl_token" \
+        | curl "${args[@]}" "$api_base/$endpoint")"; then
+        echo "toggl shim: request to ${endpoint%%\?*} failed" >&2
+        return 1
+    fi
+    code="${resp##*$'\n'}"
+    body="${resp%$'\n'*}"
+    if [[ ! "$code" =~ ^2 ]]; then
+        if [[ "$code" == "402" ]]; then
+            echo "toggl shim: Toggl hourly API quota spent (HTTP 402): ${body:-no detail given}" >&2
+        else
+            echo "toggl shim: HTTP $code from ${endpoint%%\?*}: ${body:-no body}" >&2
+        fi
+        return 1
+    fi
+    printf '%s' "$body"
+}
+
+# jq definitions shared by every renderer. Toggl returns timestamps as
+# 2026-11-06T15:04:05+00:00 (sometimes with fractional seconds), which jq's
+# fromdateiso8601 will only read in the bare Z form. The line shape follows the
+# real CLI's TimeEntry display: `[h:mm:ss]* –  description @project`, with the
+# star marking a running entry.
+jq_defs='
+def epoch: sub("\\.[0-9]+"; "") | sub("(\\+00:00|Z)$"; "Z") | fromdateiso8601;
+def secs: if .stop == null or .duration < 0 then (now - (.start | epoch)) | floor else .duration end;
+def hmmss: (. / 3600 | floor | tostring) + ":"
+    + ((. % 3600 / 60 | floor) | tostring | if length < 2 then "0" + . else . end) + ":"
+    + ((. % 60) | tostring | if length < 2 then "0" + . else . end);
+def desc: if (.description // "") == "" then "(no description)" else (.description | gsub("\n"; " ")) end;
+def proj($name): if ($name // "") == "" then "" else " @" + $name end;
+def running: .stop == null or .duration < 0;
+def line($name): (if .billable then "$" else " " end) + " [" + (secs | hmmss) + "]"
+    + (if running then "*" else " " end) + " –  " + desc + proj($name);
+'
+
+# Project name for an entry's project_id, or empty.
+project_name() {
+    local wid="$1" pid="$2"
+    [[ -n "$pid" && "$pid" != "null" ]] || return 0
+    api GET "workspaces/$wid/projects/$pid" | jq -r '.name // empty'
+}
+
+running_entry() {
+    # The endpoint answers `null` when nothing runs.
+    api GET "me/time_entries/current"
+}
+
+print_entry() {
+    local entry="$1" name="$2"
+    jq -r --arg name "$name" "$jq_defs line(\$name)" <<< "$entry"
+}
+
+# Stop whatever runs. Prints the stopped entry like the real CLI. Returns 0
+# whether or not anything was running.
+stop_running() {
+    local origin="$1" entry wid id name stopped
+    entry="$(running_entry)" || return 1
+    if [[ -z "$entry" || "$entry" == "null" ]]; then
+        [[ "$origin" == "cli" ]] && echo "No time entry is running at the moment"
+        return 0
+    fi
+    wid="$(jq -r '.workspace_id' <<< "$entry")"
+    id="$(jq -r '.id' <<< "$entry")"
+    name="$(project_name "$wid" "$(jq -r '.project_id' <<< "$entry")")" || name=""
+    stopped="$(api PATCH "workspaces/$wid/time_entries/$id/stop")" || return 1
+    if [[ "$origin" == "cli" ]]; then
+        echo "Time entry stopped successfully"
+    else
+        echo "Running time entry stopped"
+    fi
+    print_entry "$stopped" "$name"
+}
+
+cmd_current() {
+    [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
+    local entry wid name
+    entry="$(running_entry)" || exit 1
+    if [[ -z "$entry" || "$entry" == "null" ]]; then
+        echo "No time entry is running at the moment"
+        return 0
+    fi
+    wid="$(jq -r '.workspace_id' <<< "$entry")"
+    name="$(project_name "$wid" "$(jq -r '.project_id' <<< "$entry")")" || name=""
+    print_entry "$entry" "$name"
+}
+
+cmd_stop() {
+    [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
+    stop_running cli || exit 1
+}
+
+cmd_list() {
+    [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
+    local since until entries
+    # The last three days through tomorrow, in local dates; tomorrow covers a
+    # running entry whose UTC start already reads as the next day.
+    since="$(date -v-3d +%Y-%m-%d)"
+    until="$(date -v+1d +%Y-%m-%d)"
+    entries="$(api GET "me/time_entries?start_date=$since&end_date=$until&meta=true")" || exit 1
+    if [[ "$(jq 'length' <<< "$entries")" == "0" ]]; then
+        echo "No time entries since $since"
+        return 0
+    fi
+    # Newest first, as the API returns them, with the local start time leading.
+    jq -r "$jq_defs .[] | ((.start | epoch | strflocaltime(\"%Y-%m-%d %H:%M\")) + \" \" + line(.project_name))" \
+        <<< "$entries"
+}
+
+cmd_start() {
+    local description="" description_set="" project="" project_set=""
+    while (( $# )); do
+        case "$1" in
+            -p|--project)
+                [[ $# -ge 2 ]] || { echo "toggl shim: $1 needs a project name" >&2; exit 2; }
+                project="$2"; project_set=1; shift 2 ;;
+            -p=*|--project=*) project="${1#*=}"; project_set=1; shift ;;
+            --) shift; [[ $# -eq 1 && -z "$description_set" ]] || { usage_atelic; exit 2; }
+                description="$1"; description_set=1; shift ;;
+            -*) echo "toggl shim: start supports only --project on the atelic profile, not $1" >&2; exit 2 ;;
+            *)
+                if [[ -n "$description_set" ]]; then
+                    echo "toggl shim: start takes one description; quote it" >&2
+                    exit 2
+                fi
+                description="$1"; description_set=1; shift ;;
+        esac
+    done
+    if [[ -z "$description_set" ]]; then
+        echo "toggl shim: start needs a description on the atelic profile (no interactive mode)" >&2
+        exit 2
+    fi
+    if [[ -n "$project_set" && -z "$project" ]]; then
+        echo "toggl shim: --project needs a project name" >&2
+        exit 2
+    fi
+
+    local me wid project_json="" pid="null" billable="false" body started
+    me="$(api GET "me")" || exit 1
+    wid="$(jq -r '.default_workspace_id // empty' <<< "$me")"
+    if [[ -z "$wid" ]]; then
+        echo "toggl shim: the Atelic Toggl account reports no default workspace" >&2
+        exit 1
+    fi
+
+    # Resolve the project before stopping anything, so a typo leaves the
+    # running entry alone. Exact name, active projects only, as the real CLI
+    # matches.
+    if [[ -n "$project" ]]; then
+        local projects
+        projects="$(api GET "workspaces/$wid/projects?active=true&per_page=200")" || exit 1
+        project_json="$(jq -c --arg n "$project" '[.[] | select(.name == $n)] | first // empty' <<< "$projects")"
+        if [[ -z "$project_json" ]]; then
+            echo "toggl shim: no active project named \"$project\" in workspace $wid" >&2
+            exit 1
+        fi
+        pid="$(jq -r '.id' <<< "$project_json")"
+        billable="$(jq -r '.billable // false' <<< "$project_json")"
+    fi
+
+    # Toggl's API documentation does not say that creating a running entry
+    # stops the one already running, and the real CLI stops it explicitly
+    # before every start (StopCommand in its start command). Do the same so
+    # exactly one entry runs.
+    stop_running start || exit 1
+
+    body="$(jq -nc \
+        --arg desc "$description" \
+        --arg start "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --arg cw "$created_with" \
+        --argjson wid "$wid" \
+        --argjson pid "$pid" \
+        --argjson billable "$billable" \
+        '{description: $desc, start: $start, duration: -1, workspace_id: $wid,
+          project_id: $pid, billable: $billable, created_with: $cw}')"
+    started="$(api POST "workspaces/$wid/time_entries" "$body")" || exit 1
+    echo "Time entry started"
+    print_entry "$started" "$project"
+}
+
+case "${1:-}" in
+    start)   shift; cmd_start "$@" ;;
+    stop)    shift; cmd_stop "$@" ;;
+    current) shift; cmd_current "$@" ;;
+    list)    shift; cmd_list "$@" ;;
+    *)       usage_atelic; exit 2 ;;
+esac

@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # Shared .account profile resolution.
 #
-# Sourced by ~/bin/gws, ~/bin/hs and .functions, which read the same `.account`
+# Sourced by ~/bin/gws, ~/bin/hs, ~/bin/toggl and .functions, which read the same `.account`
 # marker convention and would otherwise each carry their own copy of this logic.
 # That duplication was not theoretical: a path traversal fix on 2026-08-07 had to
 # be applied three separate times, and the copy in the since retired ~/bin/claude

@@ -73,7 +73,7 @@ export PATH="$HOME/.cargo/bin:$PATH"
 # PATH precedence finalization. Place LAST so it wins over every earlier
 # prepend in this file. `typeset -U path` keeps PATH unique on each
 # re-source of .zshrc; the explicit prepend ensures $HOME/bin (where the
-# homebase shims `gws` and `hs` live) resolves before installers that
-# dropped binaries into $HOME/.local/bin or $HOME/.bun/bin.
+# homebase shims `gws`, `hs` and `toggl` live) resolves before installers that
+# dropped binaries into $HOME/.local/bin, $HOME/.bun/bin or $HOME/.cargo/bin.
 typeset -U path
 export PATH="$HOME/bin:$PATH"

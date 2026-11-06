@@ -48,7 +48,7 @@ vault_project_for_profile() {
 # Atelic is the default, so a new business credential needs no edit here.
 vault_project_for_secret() {
     case "$1" in
-        ynab-token|reclaim-api-key|todoist-api-token|strava-client-id|strava-client-secret|strava-refresh-token|gws-oauth-token-personal|gws-oauth-client-personal)
+        ynab-token|reclaim-api-key|todoist-api-token|toggl-api-token-personal|strava-client-id|strava-client-secret|strava-refresh-token|gws-oauth-token-personal|gws-oauth-client-personal)
             printf '%s' "$VAULT_PROJECT_PERSONAL" ;;
         *)
             printf '%s' "$VAULT_PROJECT_ATELIC" ;;
