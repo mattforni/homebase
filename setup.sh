@@ -426,6 +426,35 @@ update_claude_code() {
   fi
 }
 
+install_cargo_globals() {
+  header "cargo globals"
+
+  # The Toggl Track CLI (watercooler-labs/toggl-cli, binary `toggl`) ships only
+  # as a crate. bin/toggl, the per profile shim, execs it for the personal
+  # account, so a fresh machine without it has a shim with nothing behind it.
+  # rust comes from the Brewfile. Authenticating stays a one time `toggl auth`
+  # by hand: the CLI keeps its token in the Keychain, and the vault copy
+  # (toggl-api-token-personal in forni-keys) is what that step reads from.
+  if ! command -v cargo &>/dev/null; then
+    warn "cargo not found, skipping"
+    return 0
+  fi
+
+  local crates=(
+    "toggl"
+  )
+
+  for crate in "${crates[@]}"; do
+    if [[ "$FORCE" != true ]] && cargo install --list 2>/dev/null | grep -q "^$crate "; then
+      info "$crate already installed"
+    else
+      info "Installing $crate..."
+      cargo install "$crate" || return 1
+      SUMMARY+=("$crate installed")
+    fi
+  done
+}
+
 install_bun_globals() {
   header "bun globals"
 
@@ -1583,6 +1612,7 @@ if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     run_phase install_python_packages
     run_phase update_claude_code
     run_phase install_bun_globals
+    run_phase install_cargo_globals
     run_phase setup_agent_browser
     run_phase install_launchagents
     run_phase retire_brave_launcher
