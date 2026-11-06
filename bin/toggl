@@ -290,10 +290,11 @@ cmd_list() {
     [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
     load_token
     local since until entries
-    # The last three days through tomorrow, in local dates; tomorrow covers a
-    # running entry whose UTC start already reads as the next day.
+    # The last three days through two days ahead, in local dates. The end is
+    # generous because a date alone may be read as UTC midnight, and an entry
+    # started in the local evening already carries the next UTC date.
     since="$(jq -rn 'now - 3 * 86400 | strflocaltime("%Y-%m-%d")')"
-    until="$(jq -rn 'now + 86400 | strflocaltime("%Y-%m-%d")')"
+    until="$(jq -rn 'now + 2 * 86400 | strflocaltime("%Y-%m-%d")')"
     entries="$(api GET "me/time_entries?start_date=$since&end_date=$until&meta=true")" || exit 1
     if [[ "$(jq 'length' <<< "$entries")" == "0" ]]; then
         echo "No time entries since $since"
@@ -344,12 +345,18 @@ cmd_start() {
     local wid="" project_json="" pid="null" billable="false" body started
     if [[ -n "$project" ]]; then
         load_projects || exit 1
-        project_json="$(jq -c --arg n "$project" \
-            '[.[] | select(.name == $n and (.active != false))] | first // empty' <<< "$projects_json")"
-        if [[ -z "$project_json" ]]; then
-            echo "toggl shim: no active project named \"$project\" on the Atelic Toggl account" >&2
-            exit 1
-        fi
+        local matches
+        matches="$(jq -c --arg n "$project" \
+            '[.[] | select(.name == $n and (.active != false))]' <<< "$projects_json")"
+        case "$(jq 'length' <<< "$matches")" in
+            0)
+                echo "toggl shim: no active project named \"$project\" on the Atelic Toggl account" >&2
+                exit 1 ;;
+            1) project_json="$(jq -c '.[0]' <<< "$matches")" ;;
+            *)
+                echo "toggl shim: more than one active project is named \"$project\" across workspaces; refusing to guess" >&2
+                exit 1 ;;
+        esac
         pid="$(jq -r '.id' <<< "$project_json")"
         wid="$(jq -r '.workspace_id' <<< "$project_json")"
         billable="$(jq -r '.billable // false' <<< "$project_json")"
