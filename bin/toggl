@@ -11,12 +11,15 @@
 # (watercooler-labs `toggl` 0.5.1, the latest release) has no profile support.
 # It keeps exactly one API token, in the macOS Keychain under service
 # `togglcli`, account `default`, and that token belongs to the personal Toggl
-# account. There is no flag or environment variable that points it at a second
-# token, and swapping the Keychain entry per call would race any other shell
-# using the CLI at the same moment. So the personal profile execs the real CLI
-# untouched, and the atelic profile is answered here with curl against Toggl
-# API v9 and the business token from the vault, the way bin/hs answers
-# `hs api` itself. The subset is deliberately small: start, stop, current and
+# account. It does honor a TOGGL_API_TOKEN environment override, which would
+# give the atelic profile full parity in a few lines, but the CLI loads every
+# entity (time entries, projects, tasks, clients, workspaces: five requests)
+# before almost any command, so a start costs it a dozen requests or more
+# against the free plan's quota of about thirty an hour, and a session's
+# start, check and stop would spend most of an hour's budget. So the personal
+# profile execs the real CLI untouched, and the atelic profile is answered
+# here with curl against Toggl API v9 and the business token from the vault,
+# at one to four requests a command, the way bin/hs answers `hs api` itself. The subset is deliberately small: start, stop, current and
 # list. Anything else names that subset and stops, rather than quietly running
 # the real CLI against the personal account from inside the business tree,
 # which is the exact failure the marker exists to prevent.
@@ -272,14 +275,13 @@ cmd_current() {
     print_entry "$running" "$(project_name "$(jq -r '.project_id' <<< "$running")")"
 }
 
-# Up to three requests: the running entry, the projects for its name, the stop.
+# Two requests: the running entry and the stop. The stopped line goes without
+# its project name, which would cost a third request on the call most likely
+# to meet the quota at the end of a session.
 cmd_stop() {
     [[ $# -eq 0 ]] || { usage_atelic; exit 2; }
     load_token
     load_running || exit 1
-    if [[ -n "$running" && "$(jq -r '.project_id' <<< "$running")" != "null" ]]; then
-        load_projects || true
-    fi
     stop_loaded cli || exit 1
 }
 
@@ -290,8 +292,8 @@ cmd_list() {
     local since until entries
     # The last three days through tomorrow, in local dates; tomorrow covers a
     # running entry whose UTC start already reads as the next day.
-    since="$(date -v-3d +%Y-%m-%d)"
-    until="$(date -v+1d +%Y-%m-%d)"
+    since="$(jq -rn 'now - 3 * 86400 | strflocaltime("%Y-%m-%d")')"
+    until="$(jq -rn 'now + 86400 | strflocaltime("%Y-%m-%d")')"
     entries="$(api GET "me/time_entries?start_date=$since&end_date=$until&meta=true")" || exit 1
     if [[ "$(jq 'length' <<< "$entries")" == "0" ]]; then
         echo "No time entries since $since"
@@ -302,9 +304,9 @@ cmd_list() {
         <<< "$entries"
 }
 
-# Between two and five requests: the running entry, the projects (when one is
-# named or an entry runs), the account's default workspace (when no project
-# names one), the stop, and the create.
+# Three or four requests: the running entry, the projects (when one is named),
+# the account's default workspace (when neither a project nor a running entry
+# names one), the stop (when something runs), and the create.
 cmd_start() {
     local description="" description_set="" project="" project_set=""
     while (( $# )); do
@@ -340,12 +342,8 @@ cmd_start() {
     # leaves the running entry alone. Exact name among active projects, as the
     # real CLI matches; the project also names the workspace.
     local wid="" project_json="" pid="null" billable="false" body started
-    if [[ -n "$project" || -n "$running" ]]; then
-        if ! load_projects; then
-            [[ -n "$project" ]] && exit 1
-        fi
-    fi
     if [[ -n "$project" ]]; then
+        load_projects || exit 1
         project_json="$(jq -c --arg n "$project" \
             '[.[] | select(.name == $n and (.active != false))] | first // empty' <<< "$projects_json")"
         if [[ -z "$project_json" ]]; then
@@ -355,7 +353,10 @@ cmd_start() {
         pid="$(jq -r '.id' <<< "$project_json")"
         wid="$(jq -r '.workspace_id' <<< "$project_json")"
         billable="$(jq -r '.billable // false' <<< "$project_json")"
-    else
+    elif [[ -n "$running" ]]; then
+        wid="$(jq -r '.workspace_id // empty' <<< "$running")"
+    fi
+    if [[ -z "$wid" ]]; then
         wid="$(api GET "me" | jq -r '.default_workspace_id // empty')" || wid=""
         if [[ -z "$wid" ]]; then
             echo "toggl shim: could not read the Atelic Toggl account's default workspace" >&2
