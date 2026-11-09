@@ -625,19 +625,20 @@ else
     echo "apply: writes are off (BRIEF_WRITE=$BRIEF_WRITE, DRY_RUN=$DRY_RUN); every row stays proposed"
 fi
 
-# The YNAB plan rides as an attachment for the Monday session: every row the
-# model proposed with its band, the deletes and the trips, grouped by budget,
-# plus the skips (the unapproved transfers and card payments the model was
-# told not to list), so the session approves those uncategorized and applies
-# the corrected rows without recomputing anything.
+# The plan rides as an attachment for the Monday session and holds every row
+# the mail counts: the money rows with their bands, grouped by budget, the
+# deletes and the trips, the skips (the unapproved transfers and card payments
+# the model was told not to list), every inbox row with its link, the work,
+# calendar and task rows, the rules the week proposes, and what was applied,
+# so the session makes the rest without recomputing anything.
 skips() {
     local f="$WORK/ynab-$1.json"
     if [[ -s "$f" ]]; then jq -c '[.queue[] | select(.transferAccountId != null) | {id, date, amount, payee: .payeeName, account: .accountName}]' "$f"; else echo '[]'; fi
 }
 jq --argjson ps "$(skips personal)" --argjson atelicSkips "$(skips atelic)" --slurpfile applied "$APPLIED" \
     '{personal: [.money.rows[] | select((.budget // "" | ascii_downcase) == "personal")], atelic: [.money.rows[] | select((.budget // "" | ascii_downcase) == "atelic")], deletes: (.money.deletes // []), trips: (.money.trips // []), skips: {personal: $ps, atelic: $atelicSkips},
-      inbox: [.inbox.rows[] | select((.band // "" | ascii_downcase) != "decision") | {mailbox, id, threadId, from, subject, action, labels: (.labels // []), star, band, rule}],
-      work: (.work // {}), calendar: (.calendar // {}), tasks: (.tasks // {}), board: (.board // []),
+      inbox: [.inbox.rows[] | {mailbox, id, threadId, from, subject, what, action, labels: (.labels // []), star, band, rule, link}],
+      work: (.work // {}), calendar: (.calendar // {}), tasks: (.tasks // {}), rules: (.rules // []),
       applied: $applied[0]}' \
     "$DRAFT_JSON" > "$WORK/plan.json" && ATTACHMENT="$WORK/plan.json"
 

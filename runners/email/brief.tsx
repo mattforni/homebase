@@ -962,8 +962,11 @@ function ledger(draft: BriefDraft): Ledger[] {
 	const tasks = emailTasks(draft);
 	const kept = emailKept(draft).length;
 	// A star or a reply has no apply path; the sitting makes it, so say so.
+	// A label or keep row that also sets a star counts here too: its label was
+	// applied and the star still waits for the sitting.
 	const acts = list(draft.inbox?.rows).filter(
-		(row) => isApplied(bandOf(row, "decision")) && ["star", "reply"].includes(str(row.action)),
+		(row) =>
+			isApplied(bandOf(row, "decision")) && (["star", "reply"].includes(str(row.action)) || str(row.star) !== ""),
 	).length;
 	lines.push({
 		source: "Email",
