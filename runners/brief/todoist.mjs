@@ -6,7 +6,8 @@
 //       unscheduled and due before next Monday, and Scheduled with no time),
 //       plus the tasks due on <landing-monday> (YYYY-MM-DD), where deferrals
 //       accumulate. Each task carries its project and section names, labels,
-//       priority, and due. Writes <out-dir>/todoist.json. No dependencies,
+//       priority, and due, and the tasks completed in the seven days before
+//       <landing-monday>. Writes <out-dir>/todoist.json. No dependencies,
 //       node 20 or later. Read only.
 //
 // The filter query is the one plan-week's SKILL.md names and is read from
@@ -82,6 +83,52 @@ export const scheduleFilter = (before) => (before
     ? SCHEDULE_FILTER.replace(/due before:\s*next monday/i, `due before: ${filterDate(before)}`)
     : SCHEDULE_FILTER);
 
+/** The ISO date `days` before `iso`. */
+const shiftDays = (iso, days) => {
+    const d = new Date(`${iso}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+};
+
+/** Midnight Denver on `iso`, with its UTC offset, so the window is the local week. */
+const denverMidnight = (iso) => {
+    const zone = new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", timeZoneName: "longOffset" })
+        .formatToParts(new Date(`${iso}T12:00:00Z`)).find((p) => p.type === "timeZoneName")?.value || "GMT-07:00";
+    return `${iso}T00:00:00${zone.replace("GMT", "") || "+00:00"}`;
+};
+
+/**
+ * The tasks completed in the closed week, the seven days before the landing
+ * Monday, for the retro's "what I ended up doing" summary (Forni,
+ * 2026-11-09). A recurring task completed twice is two rows. The endpoint is
+ * the v1 completed by completion date listing; a failure here costs the
+ * summary and never the pull.
+ */
+async function completed(monday, projectNames) {
+    const since = shiftDays(monday, -7);
+    const out = [];
+    let cursor = null;
+    do {
+        const page = await get("tasks/completed/by_completion_date", {
+            since: denverMidnight(since),
+            until: denverMidnight(monday),
+            cursor,
+            limit: 200,
+        });
+        out.push(...(page.items || page.results || []));
+        cursor = page.next_cursor || null;
+    } while (cursor);
+    return out.map((t) => ({
+        id: t.id || t.task_id || "",
+        content: t.content || "",
+        project: projectNames.get(t.project_id) || "",
+        labels: t.labels || [],
+        priority: priorityWord(t.priority),
+        completedAt: t.completed_at || "",
+        recurring: Boolean(t.due?.is_recurring),
+    }));
+}
+
 async function pull(outDir, monday, before) {
     mkdirSync(outDir, { recursive: true });
     const [projects, sections] = await Promise.all([all("projects"), all("sections")]);
@@ -90,6 +137,14 @@ async function pull(outDir, monday, before) {
     const filter = scheduleFilter(before);
     const schedule = await all("tasks/filter", { query: filter });
     const landing = await all("tasks/filter", { query: `due: ${filterDate(monday)}` });
+    let done = [];
+    let completedNote = "";
+    try {
+        done = await completed(monday, projectNames);
+    } catch (e) {
+        completedNote = e.message;
+        log(`completed tasks not read: ${e.message}`);
+    }
     const seen = new Set();
     const shape = (list) => list.filter((t) => !seen.has(t.id) && seen.add(t.id)).map((t) => shapeTask(t, projectNames, sectionNames));
     const out = {
@@ -98,9 +153,11 @@ async function pull(outDir, monday, before) {
         landingMonday: monday,
         schedule: shape(schedule),
         landing: shape(landing),
+        completed: done,
+        completedNote,
     };
     writeFileSync(join(outDir, "todoist.json"), JSON.stringify(out, null, 1));
-    log(`${out.schedule.length} in the Schedule filter, ${out.landing.length} more due ${monday}`);
+    log(`${out.schedule.length} in the Schedule filter, ${out.landing.length} more due ${monday}, ${done.length} completed in the week before`);
 }
 
 async function main() {

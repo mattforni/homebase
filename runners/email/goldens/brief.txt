@@ -1,13 +1,9 @@
-ATELIC · BRIEF · WEEK 5
-Mon, 2026-01-26 to Sun, 2026-02-01
-
-THREE OF SIX TARGETS HIT.
-
-An invented week, written so every branch of the renderer has
-something to render.
+ATELIC · BRIEF · WEEK 6
 
 
-SCOREBOARD
+================================================================
+LAST WEEK · WEEK 5
+================================================================
 
 Movement
   Lifts          3 / 3   ###    Mon Push · Wed Pull
@@ -15,55 +11,6 @@ Movement
   Yoga           0 / 0          
   PT             2 / 4   ##..   Tue PT Achilles · Thu PT
   Takeout        2              Tue 01-27 Crosstown Noodle · Sat 01-31 Ember Pizza
-
-Atelic
-  First Sends    5 / 5   #####  Target met
-  Bumps          3 / 5   ###..  Two short
-
-What Moved
-  Pinewood Cabinetry sits at Proposal, $12,000 cash.
-  Harbor Line Plumbing closed won at $4,500.
-  Everything else held its stage.
-
-
-================================================================
-NEEDED FROM YOU
-================================================================
-
-  1. Venmo $85.00 to Juniper Hale on Fri 01-30, no rule names it
-  [Money]
-    Default: 🍽️ Dining Out, the Thursday supper club
-
-  2. Delete the Personal Venmo of $60.00 on Wed 01-28, the same
-  charge sits on Atelic [Money]
-    Default: delete it from Personal
-
-  3. The county assessor wants the property questionnaire back by
-  Fri 02-06 [Inbox]
-    Default: keep, label 📑 Admin, green star, and a Todoist task for
-    Tuesday
-
-  4. ATE-901 Rebuild the proposal template has no estimate and no
-  load label [Work]
-    Default: 4 points, 🧠 Sharp
-
-  5. Read the long essay on attention someone sent, a note rather
-  than a task [Tasks]
-    Default: delete and file in Eudy
-
-  6. Thursday's lift at 07:00 overlaps the dentist hold that runs to
-  07:30 [Calendar]
-    Default: move the lift to 08:00
-
-
-================================================================
-MOVEMENT
-================================================================
-
-The Read
-  Three lifts landed and one social run did, which is the shape of a
-  week that trained alone. The long walk on Sunday is the only thing
-  outside the plan, and it earned its place.
 
 By Day
   Mon  Run · Lift
@@ -74,266 +21,96 @@ By Day
   Sat  Workout
   Sun  Walk · Rowing
 
-Sessions · 14
-  Day  Session                              Type     Min     Mi
-  Mon  Solo shakeout                        Run       18   2.02
-  Mon  Push day                             Lift      55
-  Tue  Kestrel Loop with the club           Run (S)   47   5.08
-  Tue  2026 PT Achilles                     PT        25
-  Wed  Pull day                             Lift      61
-  Wed  Ride to the studio                   Ride      21   4.93
-  Wed  Slow flow                            Yoga      40
-  Thu  Easy miles with Diego                Run (S)   33   3.50
-  Thu  2026 PT                              PT        22
-  Fri  Legs                                 Lift      48
-  Fri  Bouldering session                   Climb     75
-  Sat  Track drills                         Workout   15   0.16
-  Sun  Long walk to the reservoir           Walk      82   4.37
-  Sun  Rowing intervals                     Rowing    24
-       Total: runs, rides, workouts, walks           566  20.06
-       Runs only                                      98  10.60
-
-
-================================================================
-TAKEOUT
-================================================================
-
-The Read
-  Two confirmed orders, both late in the evening, both on days with
-  a session earlier.
-
-
-================================================================
-ATELIC
-================================================================
-
-The Read
-  Five first sends went out against a target of five and three bumps
-  against five. Pinewood Cabinetry is the name worth attention on
-  Monday.
-
-The Funnel
-  Lead      2
-  MQL       1
-  SQL       1
-  Oppty     3
-  Customer  1
-  Closed    3
-
-Lead · 2
-  Sable Creek Landscaping [New]
-    1 open
-    Last touch: Walk in
-
-  Ridgeline Glass [Unqualified]
-    1 touch · no opens yet
-    Last touch: Email Send · half applied close: UNQUALIFIED with no
-    Disqualification Reason on the company; set the reason or reopen
-    the contact
-
-MQL · 1
-  Harbor Line Plumbing [Contacted]
-    2 touches · untracked
-    Last touch: Drop off
-
-SQL · 1
-  Pinewood Cabinetry [In Conversation]
-    4 touches · 7 opens · replied Wed 01-28
-    Last touch: Email Send
-
-Opportunity · 3
-  Alder Court Dental [Replied]
-    Proposal · $12,000
-    Replied Thu 01-29
-
-  Fernwood Bakery
-    no stage set
-
-  Birchwood Tile
-    Closed Lost
-    deal lost with no Disqualification Reason on the company; close
-    the company so the reason mirrors
-
-Customer · 1
-  Copper Kettle Catering
-    Closed Won · $4,500
-
-Closed · 3
-  Quarry Road Auto [Closed Lost]
-
-  Lantern Hill Roofing [Unqualified]
-    Not a Fit
-
-  Thistle Lane Florist [Unqualified]
-
-
-================================================================
-MONEY
-================================================================
-
-The Read
-  The month so far sits a little over the pace on Personal, mostly
-  the one dental bill, and Atelic is well under it. The checking
-  connection on Personal is in error, so its numbers are a floor
-  until it is repaired.
-
-Month So Far · Day 30 of 31
-  Budget    Spent so far       Pace  Monthly avg
-  Personal     $4,012.37  $3,871.29    $4,000.00
-  Atelic         $318.40    $512.90      $530.00
-
-Accounts in Error
-  Personal: Front Range Checking. Every number there is a floor
-  until the connection is repaired.
-
-How It Splits
-  Typical is every charge under $500 that is not on a trip; outliers
-  are the rest, so one large bill never moves the pace.
+Money · ⚠️
+  Budget          Out         In       Pace     Delta
+  Personal  $4,012.37  $3,612.00  $3,871.29  +$141.08
+  Atelic      $318.40               $512.90  −$194.50
 
 Outliers · Personal · 1
   Date       Payee                 Amount  Category
   Wed 01-14  Clearwater Dental  $1,850.00  🏥 Healthcare
 
-Trips · Personal · 1
-  Trip            Total  Charges
-  🏔️ Leadville  $412.60        3
+⚠️ Accounts in Error
+  Personal: Front Range Checking. Every number above is a floor
+  until the connection is repaired in the YNAB app.
 
-Handled · Proposed, Writes Were Off
-  Budget    Category     Count   Total
-  Personal  🍽️ Cafés         2  $14.00
-  Personal  🛒 Groceries      1  $84.12
-  Atelic    💻 Software       1  $12.00
+  3 tasks completed last week.
 
-Spot Check · 2
-  Little Owl Espresso [Personal]
-    Fri 01-30 · 🍽️ Cafés · $5.50
-    learned-rules Spend Categorization: coffee shops go to 🍽️ Cafés
-    · a coffee shop not in the map
 
-  Paperline Design Tools [Atelic]
-    Thu 01-29 · 💻 Software · $49.00
-    ynab Payee Corrections: a vendor's second invoice follows the
-    first · same category as December's invoice
+================================================================
+THIS WEEK
+================================================================
 
-Decisions · 2
-  On the board at the top, with their numbers.
+The Read
+  Writes were off this run, so every row below is applied in the
+  Monday sitting.
 
-Proposed Deletes · 1
-  Venmo [Personal]
-    Wed 01-28 · $60.00
-    the same date and amount sits on Atelic as Granite Print Shop
-
-Proposed Trip Memos · 1
-  🏔️ Leadville
-    3 charges
+The Ledger
+  Source    Did
+  Money     6 rows categorized
+  Email     5 messages filed
+  Work      2 issues to place, about 2.5 hours; 2 fields to set
+  Calendar  1 fix to make
+  Tasks     Not read this run: the read timed out
 
 Dropped · 1
   Sundown Grocery $84.12
     category 🛒 Grocery not found in the Personal budget
 
+Money Rules · 3
+  Budget    Payee                   Category
+  Personal  Little Owl Espresso     ☕️ Cafés
+  Personal  State Refund Office     Inflow: Ready to Assign
+  Atelic    Paperline Design Tools  🧰 Productivity
 
-================================================================
-INBOX
-================================================================
-
-Handled · Proposed, Writes Were Off
-    2  email-rules Sender Rules: Bluebird Cleaning to Personal Care,
-       mark read, archive
-    1  email-rules Sender Rules: claude@atelic.me weekly report to
-       Reports, archive
-
-Spot Check · 2
-  Seven essays on slowing down, and one on the opposite [personal]
-    The Long Read Weekly · Fri 01-30 · archive · label 📰 Reading
-    a newsletter issue with nothing time bound in it
-
-  Your January invoice [atelic]
-    Fieldnote Hosting · Tue 01-27 · label 🧾 Receipts
-    the monthly hosting invoice, already paid by card
-
-Decisions · 2
-  On the board at the top, with their numbers.
+Email Rules · 2
+  Mailbox   Sender                      Label                       Star   Read  Archive
+  personal  digest@slowletters.example  🧠 Contemplation/📚 Reading   ✗      ✓     ✓
+  atelic    billing.example             💵 Pipeline/Invented Client  green  ✗     ✗
 
 
 ================================================================
-WORK
+WHAT I NEED FROM YOU
 ================================================================
 
-The Read
-  Nineteen points sit in the cycle against about 24 usable hours, so
-  there is room for one more piece. The proposal template is the one
-  without a shape yet.
 
-Flags · 2
-  ATE-901 Rebuild the proposal template [no estimate]
-    Default: 4 points
-    a cleaner proposal for the small business sites
+Money · 4
+  1. Venmo, $85.00 on Fri 01-30 [Personal]
+    Default: hold it
+    every Venmo row is a decision
 
-  ATE-904 Audit the outreach list [no load label]
-    Default: 🍃 Light
-    a pass over the list for closed and moved businesses
+  2. Pinewood Cabinetry, +$1,750.00 on Sat 01-31 [Atelic]
+    Default: Inflow: Ready to Assign
+    a new payee with no rule
 
-Unplaced · 2
-  ATE-902 Write the case study for Harbor Line Plumbing
-    4 points · 🧠 Sharp
-    the first case study, from the finished site
+  3. Delete Venmo, $60.00 on Wed 01-28 [Personal]
+    Default: delete it
+    the same date and amount sits on Atelic as Granite Print Shop
 
-  ATE-905 Renew the domain and the mail plan
-    1 point · 🍃 Light
-    two renewals that lapse in February
+  4. Memo 3 charges as 🏔️ Leadville
+    Default: write the memo
 
+Email · 2
+  1. Property questionnaire due February 6 [personal]
+    County Assessor · Thu 01-29 · Default: task · label 📑 Admin ·
+    green star
+    a questionnaire about the property that needs an answer by Fri
+    02-06
 
-================================================================
-CALENDAR
-================================================================
+  2. Re: proposal and next steps for the showroom site [atelic]
+    Pinewood Cabinetry · Sat 01-31 · Default: reply
+    the owner asks whether the second phase can start in March
 
-The Read
-  The week ahead holds its skeleton, with one overlap on Thursday
-  and one flank missing before the Saturday run.
-
-Findings · 2
-  Thursday's lift at 07:00 overlaps the dentist hold that runs to
+Calendar · 1
+  1. Thursday's lift at 07:00 overlaps the dentist hold that runs to
   07:30 [overlap]
     Thu 07:00
     Default: move the lift to 08:00
 
-  The Saturday club run at 08:00 has no transition before it
-  [missing flank]
-    Sat 07:30
-    Default: add a 30 minute ↔️ Transition at 07:30
-
-
-================================================================
-TASKS
-================================================================
-
-  Not read this run: the read timed out
-
-The Read
-  Three tasks came back from the Schedule filter: one note, one to
-  slot, and one to defer.
-
-To Place · 3
-  Read the long essay on attention someone sent [note]
+Tasks · 1
+  1. Read the long essay on attention someone sent [note]
     p4
     Default: delete and file in Eudy
-
-  Call the insurance agent about the renewal [task]
-    due Tue 02-03 · p2 · ⚖️ Medium
-    Default: slot
-
-  Sort the winter gear bin [task]
-    due Mon 02-02 · p4 · 🍃 Light
-    Default: defer to the next planning Monday
-
-
-================================================================
-BLIND SPOTS
-================================================================
-
-The Read
-  This draft cannot see how the body felt, or anything the sources
-  do not carry.
 
 
 ================================================================
@@ -344,6 +121,10 @@ THIS RUN
   YNAB Applied    0
   Mail Applied    0
   Dropped         1
+
+Blind Spots
+  This draft cannot see how the body felt, or anything the sources
+  do not carry.
 
 Not Read · 1
   todoist

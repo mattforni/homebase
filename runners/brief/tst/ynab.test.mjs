@@ -42,7 +42,7 @@ test("a trip memo opens with an emoji and a name; the practice's memo convention
     assert.equal(isTripMemo(""), false);
 });
 
-test("typical spend is the recurring rows; the pace is the three month average prorated", () => {
+test("typical spend is the recurring rows; the pace counts housing whole and prorates the rest", () => {
     const rows = [
         // Three full months of the mortgage and groceries, one big recurring payee.
         ...["2026-07", "2026-08", "2026-09"].flatMap((m) => [
@@ -65,8 +65,15 @@ test("typical spend is the recurring rows; the pace is the three month average p
     assert.equal(s.daysInMonth, 31);
     assert.deepEqual(s.typical.months.map((m) => m.total), [-2300, -2300, -2300]);
     assert.equal(s.typical.monthlyAverage, -2300);
-    assert.equal(s.typical.pace, Math.round(-2300 * 19 / 31 * 100) / 100);
+    // The mortgage is owed the day the month opens, so the pace carries the
+    // whole 2000 and prorates only the 300 of groceries (Forni, 2026-11-09).
+    const pace = Math.round((-2000 + -300 * 19 / 31) * 100) / 100;
+    assert.equal(s.typical.pace, pace);
+    assert.equal(s.typical.delta, Math.round((-2150 - pace) * 100) / 100);
+    assert.deepEqual(s.typical.fixed, { spent: -2000, average: -2000 });
     assert.equal(s.typical.spent, -2150);
+    // The inflow is on the page as a row, the transfer never is.
+    assert.deepEqual(s.inflows.map((i) => [i.payee, i.amount]), [["Employer", 3000]]);
     assert.deepEqual(s.outliers.map((o) => o.payee), ["Dr. Lowy"]);
     assert.deepEqual(s.trips, [{ memo: "🇹🇭 Thailand", total: -120, count: 1 }]);
 });

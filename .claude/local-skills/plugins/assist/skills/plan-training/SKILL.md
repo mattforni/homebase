@@ -71,7 +71,7 @@ Fetch the week's calendar events (Monday through Sunday). Do not overwrite or du
 
 | Cadence | Items | Action |
 |---------|-------|--------|
-| Recurring (assumed on calendar) | Mon/Wed/Fri lift 15:30, Tue Diego 08:00, Tue DRC 18:00, Thu SPRC 06:00, Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Hatha 09:30, Sun Yin 16:15 | Skip if present; surface if missing (may be intentional) |
+| Recurring (assumed on calendar) | Mon/Wed/Fri lift 15:30, Tue DRC 18:00, Thu SPRC 06:00 (Tue Diego retired 2026-11-09), Tue Align and Flow 16:30, Thu Alignment 16:30, Sun Hatha 09:30, Sun Yin 16:15 | Skip if present; surface if missing (may be intentional) |
 | Opportunistic / optional | A fourth lift, extra mobility, an added social run | Surface as options, never auto create |
 
 ### Phase 3: Week Shape
@@ -113,7 +113,7 @@ Default: the most recently completed ISO week. Natural cadence is Monday morning
 
 ### Phase 3: Build the Coverage Table
 
-One row per planned session: Mon lift, Tue Diego, Tue DRC, Tue Align and Flow, Wed lift, Thu SPRC, Thu Alignment, Fri lift, Sun Hatha, Sun Yin. Mark `✅` (hit), `❌` (missed), `↪️` (shifted), `n/a` (not applicable). Sessions skipped while travelling are `n/a`, never misses, and Alignment Yoga is `n/a` on the last Thursday of the month, when Liz replaces it. A session that moved days but happened is a hit; the skeleton is a default.
+One row per planned session: Mon lift, Tue DRC, Tue Align and Flow, Wed lift, Thu SPRC, Thu Alignment, Fri lift, Sun Hatha, Sun Yin. Mark `✅` (hit), `❌` (missed), `↪️` (shifted), `n/a` (not applicable). Sessions skipped while travelling are `n/a`, never misses, and Alignment Yoga is `n/a` on the last Thursday of the month, when Liz replaces it. A session that moved days but happened is a hit; the skeleton is a default.
 
 ### Phase 4: The Numbers
 

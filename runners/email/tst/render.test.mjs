@@ -132,66 +132,8 @@ test("a render that throws fails loudly rather than writing half a page", () => 
 	assert.equal(result.stdout, "");
 });
 
-/*
- * The brief prints the stage the pull put on each row. A draft from before
- * the pull carried one still renders, with every company on the page under
- * No Stage and the week's stages at zero, rather than throwing or guessing.
- */
-test("a brief row with no stage is listed under No Stage, never dropped", () => {
-	const draft = JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
-	const tables = ["openLeads", "opportunities", "closedLeads"];
-	const companies = [];
-	for (const table of tables) {
-		for (const row of draft.atelic[table]) {
-			delete row.funnel;
-			companies.push(row.company);
-		}
-	}
-	draft.atelic.openLeads[0].funnel = "A Stage Nobody Knows";
-	assert.equal(companies.length, 11);
+/* ---------- the brief ---------- */
 
-	const text = renderRaw("brief", "text", JSON.stringify(draft));
-	assert.equal(text.status, 0, text.stderr);
-	assert.ok(text.stdout.includes("\nNo Stage · 11\n"), "the group is headed with its count");
-	assert.match(text.stdout, /\n  No stage  11\n/);
-	assert.match(text.stdout, /\n  Lead      0\n/);
-	const listed = text.stdout.slice(text.stdout.indexOf("\nNo Stage · 11\n"));
-	for (const company of companies) assert.ok(listed.includes(company), `${company} is listed`);
-
-	const html = renderRaw("brief", "html", JSON.stringify(draft));
-	assert.equal(html.status, 0, html.stderr);
-	assert.ok(html.stdout.includes("No Stage · 11"));
-	for (const company of companies) assert.ok(html.stdout.includes(company), `${company} is on the page`);
-});
-
-/*
- * The stages and their order are the pull's, read from `stages` on the week;
- * the page keeps no list of its own. A week that names them in another order
- * prints them in that order, and a stage the week does not name is no stage.
- */
-test("the brief's funnel reads its stages and their order from the week", () => {
-	const draft = JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
-	draft.atelic.stages = ["Closed", "Customer", "Opportunity", "SQL", "MQL"];
-	const text = renderRaw("brief", "text", JSON.stringify(draft));
-	assert.equal(text.status, 0, text.stderr);
-	const funnel = text.stdout.slice(text.stdout.indexOf("\nThe Funnel\n"));
-	const order = ["Closed", "Customer", "Oppty", "SQL", "MQL", "No stage"].map((label) =>
-		funnel.indexOf(`\n  ${label} `),
-	);
-	assert.ok(
-		order.every((at) => at >= 0),
-		"every stage the week names, and No stage, is on the funnel",
-	);
-	assert.deepEqual([...order].sort((a, b) => a - b), order, "in the week's order");
-	assert.match(funnel, /\n {2}No stage {2}2\n/, "the two Lead rows fall to No stage");
-	assert.ok(!/\n {2}Lead {6}/.test(funnel), "a stage the week does not name is not printed");
-});
-
-/*
- * The planning pass. The board is what Forni answers by number, so its
- * numbers are positions, one to n in the order the model ranked, whatever
- * the draft's own n says.
- */
 const sectionOf = (text, name) => {
 	const start = text.indexOf(`\n${name.toUpperCase()}\n`);
 	assert.ok(start >= 0, `${name} is on the page`);
@@ -199,84 +141,147 @@ const sectionOf = (text, name) => {
 	return text.slice(start, next < 0 ? undefined : next);
 };
 
-test("the board numbers its rows in order", () => {
-	const draft = JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
-	for (const row of draft.board) row.n = 9;
-	const text = renderRaw("brief", "text", JSON.stringify(draft));
-	assert.equal(text.status, 0, text.stderr);
-	const board = sectionOf(text.stdout, "Needed From You");
-	const at = draft.board.map((row, index) => board.indexOf(`  ${index + 1}. ${row.item.split(" ").slice(0, 3).join(" ")}`));
-	assert.ok(at.every((position) => position >= 0), "every entry is numbered by its position");
-	assert.deepEqual([...at].sort((a, b) => a - b), at, "in the order the draft ranked them");
-	assert.ok(!board.includes("  9. "), "the draft's own n is not what is printed");
+const briefDraft = () => JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
 
-	const html = renderRaw("brief", "html", JSON.stringify(draft));
+/*
+ * The mail is named for the week it plans, the one that opens after the closed
+ * week's Sunday (ATE-675), while every date on the page stays the closed
+ * week's. The fixtures render for 2026-W05, so the mail is the W06 brief.
+ */
+test("the brief is named for the planning week and dated by the closed one", () => {
+	const html = render("brief", "html", "brief");
 	assert.equal(html.status, 0, html.stderr);
-	const order = draft.board.map((_, index) => html.stdout.indexOf(`>${index + 1}. `));
-	assert.ok(order.every((position) => position >= 0));
-	assert.deepEqual([...order].sort((a, b) => a - b), order);
+	assert.ok(html.stdout.includes("2026-W06 Brief"), "the title is the planning week");
+	assert.ok(html.stdout.includes("Brief · Week 6"), "and so is the masthead");
+	const text = render("brief", "text", "brief").stdout;
+	assert.ok(text.startsWith("ATELIC · BRIEF · WEEK 6\n"), "the text twin leads with the planning week");
+	assert.ok(text.includes("\nLAST WEEK · WEEK 5\n"), "and names the closed week under it");
+	assert.ok(text.includes("\n  3 tasks completed last week.\n"), "the completed tasks are one line, not a table");
 });
 
-test("a high money row is tallied under Handled and a medium one listed under Spot Check", () => {
-	const draft = JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
+/*
+ * What I Need From You holds the decision rows alone, grouped by source and
+ * numbered within the group, so a reply can say "Money 2, no". A source with
+ * nothing to decide is not drawn.
+ */
+test("what I need from you groups the decision rows by source and numbers within each", () => {
+	const text = render("brief", "text", "brief");
+	assert.equal(text.status, 0, text.stderr);
+	const needs = sectionOf(text.stdout, "What I Need From You");
+	// Two decision rows, one delete and one trip memo on the fixture's money.
+	assert.ok(needs.includes("\nMoney · 4\n"), "money counts its decisions, deletes and memos");
+	for (const n of [1, 2, 3, 4]) assert.ok(needs.includes(`\n  ${n}. `), `money row ${n} is numbered`);
+	assert.ok(!needs.includes("\n  5. "), "and the numbering restarts with the next group");
+	assert.ok(needs.includes("\nEmail · 2\n"), "the two decision messages");
+	assert.ok(needs.includes("\nCalendar · 1\n"), "the one decision finding");
+	assert.ok(needs.includes("\nTasks · 1\n"), "the one note");
+	assert.ok(!needs.includes("\nWork · "), "a source with nothing to decide is not drawn");
+	assert.ok(needs.indexOf("Money · 4") < needs.indexOf("Email · 2"), "in source order");
+
+	const html = render("brief", "html", "brief");
+	assert.equal(html.status, 0, html.stderr);
+	assert.ok(html.stdout.includes(">1. Venmo, $85.00 on Fri 01-30<"), "a decision row names the thing itself");
+});
+
+/*
+ * What I Did is a ledger: the rows categorized are a count, and only a big
+ * row is listed. A high row never earns a line; a medium one does only at
+ * $500 or more; an inflow of that size does whatever its band.
+ */
+test("the ledger counts the rows categorized and lists only the big ones", () => {
+	const draft = briefDraft();
 	draft.money.rows = [
 		{ budget: "Personal", id: "t-1", date: "2026-01-27", amount: "-9.00", payee: "Tally Only Bakery", category: "🥐 Bakery Test", memo: "", band: "high", rule: "an invented rule", reason: "" },
 		{ budget: "Personal", id: "t-2", date: "2026-01-28", amount: "-11.00", payee: "Spot Check Diner", category: "🍽️ Diner Test", memo: "", band: "medium", rule: "an invented family", reason: "" },
+		{ budget: "Personal", id: "t-3", date: "2026-01-29", amount: "-650.00", payee: "Big Spender Antiques", category: "🏡 Home Test", memo: "", band: "medium", rule: "an invented family", reason: "a first visit" },
+		{ budget: "Personal", id: "t-4", date: "2026-01-30", amount: "1200.00", payee: "Refund Office", category: "Inflow: Ready to Assign", memo: "", band: "high", rule: "an invented inflow rule", reason: "" },
+		{ budget: "Personal", id: "t-5", date: "2026-01-30", amount: "-42.00", payee: "Nobody Knows LLC", category: "", memo: "", band: "decision", rule: "", reason: "a bare descriptor" },
 	];
 	const text = renderRaw("brief", "text", JSON.stringify(draft));
 	assert.equal(text.status, 0, text.stderr);
-	const money = sectionOf(text.stdout, "Money");
-	const handled = money.slice(money.indexOf("\nHandled · "), money.indexOf("\nSpot Check · "));
-	const spot = money.slice(money.indexOf("\nSpot Check · "), money.indexOf("\nDecisions · "));
-	assert.match(handled, /🥐 Bakery Test +1 +\$9\.00/, "the high row is counted under its category");
-	assert.ok(!handled.includes("Spot Check Diner"), "the medium row is not tallied");
-	assert.ok(spot.includes("Spot Check Diner"), "the medium row is listed for a spot check");
-	assert.ok(!spot.includes("Tally Only Bakery"), "the high row is not");
-	assert.ok(money.includes("\nHandled · Proposed, Writes Were Off\n"), "writes off reads as proposed");
+	const did = sectionOf(text.stdout, "This Week");
+	assert.match(did, /Money +4 rows categorized/, "the decision row is not counted as done");
+	const big = did.slice(did.indexOf("\nBig Rows · "));
+	assert.ok(big.startsWith("\nBig Rows · 2\n"), "two rows are big");
+	assert.ok(big.includes("Big Spender Antiques"), "a medium row of $500 or more is listed");
+	assert.ok(big.includes("Refund Office"), "and so is a large inflow");
+	assert.ok(!big.includes("Tally Only Bakery") && !big.includes("Spot Check Diner"), "small rows are counts only");
+	assert.ok(did.includes("Writes were off this run"), "writes off reads as the session's to apply");
+	assert.ok(did.includes("\nMoney Rules · "), "the money rules are a table");
+	assert.ok(did.includes("\nEmail Rules · "), "and so are the email rules");
+	assert.match(did, /Mailbox +Sender +Label +Star +Read +Archive/, "as a table of checks");
 
 	draft.applied.writes = true;
+	draft.applied.ynab = [{ budget: "Personal", id: "t-1", payee: "Tally Only Bakery", amount: "-9.00", category: "🥐 Bakery Test" }];
 	const on = renderRaw("brief", "text", JSON.stringify(draft));
-	assert.ok(sectionOf(on.stdout, "Money").includes("\nHandled · Applied\n"), "writes on reads as applied");
+	assert.equal(on.status, 0, on.stderr);
+	assert.ok(sectionOf(on.stdout, "This Week").includes("applied overnight"), "writes on reads as applied");
 });
 
-test("a pull that was not read opens its section with a notice and is listed in This Run", () => {
-	const draft = JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
+test("the money table carries what went out and in, the pace, and the delta against it", () => {
+	const text = render("brief", "text", "brief").stdout;
+	const last = sectionOf(text, "Last Week · Week 5");
+	assert.match(last, /Budget +Out +In +Pace +Delta/, "one table, five columns");
+	assert.match(last, /Personal +\$4,012\.37 +\$3,612\.00 +\$3,871\.29 +\+\$141\.08/, "out, the inflows as one total, pace, and the signed difference");
+	assert.ok(!last.includes("Invented Payroll"), "no inflow is listed on its own");
+	assert.ok(!last.includes("Trips"), "trips are gone");
+	assert.ok(!last.includes("Month So Far"), "and so is the day count title");
+	assert.ok(last.includes("Money · ⚠️"), "the fixture's account in error puts the sign on the eyebrow");
+	assert.ok(last.includes("Front Range Checking"), "and the warning itself sits under the table");
+	assert.ok(!text.includes("\nSessions · "), "the sessions table is gone; the day strip is the movement detail");
+});
+
+test("a pull that was not read is a line in the ledger and is listed in This Run", () => {
+	const draft = briefDraft();
 	draft.pulls = draft.pulls.map((pull) =>
 		pull.name === "linear" ? { ...pull, ok: false, note: "the cycle read failed" } : { ...pull, ok: true, note: "" },
 	);
 	const text = renderRaw("brief", "text", JSON.stringify(draft));
 	assert.equal(text.status, 0, text.stderr);
-	const work = sectionOf(text.stdout, "Work");
-	assert.ok(work.includes("\n  Not read this run: the cycle read failed\n"), "the notice opens Work");
-	assert.ok(work.indexOf("Not read this run") < work.indexOf("The Read"), "before the read");
-	assert.ok(!sectionOf(text.stdout, "Tasks").includes("Not read this run"), "and no other section");
+	const did = sectionOf(text.stdout, "This Week");
+	assert.match(did, /Work +Not read this run: the cycle read failed/, "the ledger line carries the notice");
+	assert.ok(!/Tasks +Not read/.test(did), "and no other line does");
 	const run = sectionOf(text.stdout, "This Run");
 	assert.ok(run.includes("\nNot Read · 1\n  linear\n    the cycle read failed"), "This Run names it");
 
 	const html = renderRaw("brief", "html", JSON.stringify(draft));
 	assert.equal(html.status, 0, html.stderr);
-	assert.ok(html.stdout.includes(">Not read this run: the cycle read failed<"));
+	assert.ok(html.stdout.includes("Not read this run: the cycle read failed"));
 });
 
-test("a planning half that did not validate is a notice in every section and on the board, never an all clear", () => {
-	const draft = JSON.parse(readFileSync(fixturePath("brief"), "utf8"));
-	draft.board = [];
+test("a planning half that did not validate is a notice on every ledger line and never an all clear", () => {
+	const draft = briefDraft();
 	draft.money = { read: "", rows: [], deletes: [], trips: [] };
 	draft.inbox = { rows: [] };
 	draft.work = { read: "", flags: [], unplaced: [] };
 	draft.calendar = { read: "", findings: [] };
 	draft.tasks = { read: "", rows: [] };
+	draft.rules = [];
 	draft.pulls = [{ name: "planning", ok: false, note: "the planning half of the answer did not validate" }];
 	const text = renderRaw("brief", "text", JSON.stringify(draft));
 	assert.equal(text.status, 0, text.stderr);
-	assert.ok(!text.stdout.includes("Nothing needs you this week"), "no all clear on the board");
-	assert.ok(sectionOf(text.stdout, "Needed From You").includes("The planning half was not read this run"), "the board says so");
-	for (const name of ["Money", "Inbox", "Work", "Calendar", "Tasks"]) {
-		assert.ok(sectionOf(text.stdout, name).includes("Not read this run"), `${name} opens on the notice`);
+	assert.ok(!text.stdout.includes("Nothing needs you this week"), "no all clear");
+	assert.ok(sectionOf(text.stdout, "What I Need From You").includes("The planning half was not read this run"), "the board says so");
+	const did = sectionOf(text.stdout, "This Week");
+	for (const name of ["Money", "Email", "Work", "Calendar", "Tasks"]) {
+		assert.ok(new RegExp(`${name} +Not read this run`).test(did), `${name} carries the notice`);
 	}
 	const html = renderRaw("brief", "html", JSON.stringify(draft));
 	assert.equal(html.status, 0, html.stderr);
 	assert.ok(!html.stdout.includes("Nothing needs you this week"));
+});
+
+test("a draft from before the rows carried bands still renders the way it was written", () => {
+	const draft = briefDraft();
+	for (const row of draft.calendar.findings) delete row.band;
+	for (const row of draft.tasks.rows) delete row.band;
+	for (const row of draft.work.flags) delete row.band;
+	const text = renderRaw("brief", "text", JSON.stringify(draft));
+	assert.equal(text.status, 0, text.stderr);
+	const needs = sectionOf(text.stdout, "What I Need From You");
+	assert.ok(needs.includes("\nCalendar · 2\n"), "every unbanded finding was a decision");
+	assert.ok(needs.includes("\nTasks · 1\n"), "a note was a decision and a plain task was not");
+	assert.ok(!needs.includes("\nWork · "), "a flag was the session's");
 });
 
 test("the parity canonicalizer ignores what only the markup differs on", () => {
