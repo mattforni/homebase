@@ -427,6 +427,11 @@ function isApplied(band: string): boolean {
 	return band === "high" || band === "medium";
 }
 
+/** A band matches a named band, or "applied" for either of the two the runner acts on. */
+function inBand(band: string, which: string): boolean {
+	return which === "applied" ? isApplied(band) : band === which;
+}
+
 function writesOn(draft: BriefDraft): boolean {
 	return draft.applied?.writes === true;
 }
@@ -535,7 +540,7 @@ function moneyDecision(row: MoneyRow): RecordStackItem {
 }
 
 function moneyRows(draft: BriefDraft, which: string): MoneyRow[] {
-	return list(draft.money?.rows).filter((row) => bandOf(row, "decision") === which);
+	return list(draft.money?.rows).filter((row) => inBand(bandOf(row, "decision"), which));
 }
 
 function deleteRecords(draft: BriefDraft): RecordStackItem[] {
@@ -582,7 +587,7 @@ function accountsInError(draft: BriefDraft): string {
 /* ---------- email ---------- */
 
 function inboxRows(draft: BriefDraft, which: string): InboxRow[] {
-	return list(draft.inbox?.rows).filter((row) => bandOf(row, "decision") === which);
+	return list(draft.inbox?.rows).filter((row) => inBand(bandOf(row, "decision"), which));
 }
 
 /** The messages filed: labeled or archived by the runner, or by the session when writes were off. */
@@ -682,7 +687,7 @@ function flagRecord(row: FlagRow): RecordStackItem {
 }
 
 function flags(draft: BriefDraft, which: string): FlagRow[] {
-	return list(draft.work?.flags).filter((row) => bandOf(row, "medium") === which);
+	return list(draft.work?.flags).filter((row) => inBand(bandOf(row, "medium"), which));
 }
 
 function findingRecord(row: Finding): RecordStackItem {
@@ -695,7 +700,7 @@ function findingRecord(row: Finding): RecordStackItem {
 }
 
 function findings(draft: BriefDraft, which: string): Finding[] {
-	return list(draft.calendar?.findings).filter((row) => bandOf(row, "decision") === which);
+	return list(draft.calendar?.findings).filter((row) => inBand(bandOf(row, "decision"), which));
 }
 
 function taskRecord(row: TaskRow): RecordStackItem {
@@ -714,7 +719,7 @@ function taskFallback(row: TaskRow): string {
 }
 
 function taskRows(draft: BriefDraft, which: string): TaskRow[] {
-	return list(draft.tasks?.rows).filter((row) => bandOf(row, taskFallback(row)) === which);
+	return list(draft.tasks?.rows).filter((row) => inBand(bandOf(row, taskFallback(row)), which));
 }
 
 /* ---------- the parts of a card ---------- */
@@ -956,6 +961,10 @@ function ledger(draft: BriefDraft): Ledger[] {
 	const filed = emailDone(draft);
 	const tasks = emailTasks(draft);
 	const kept = emailKept(draft).length;
+	// A star or a reply has no apply path; the sitting makes it, so say so.
+	const acts = list(draft.inbox?.rows).filter(
+		(row) => isApplied(bandOf(row, "decision")) && ["star", "reply"].includes(str(row.action)),
+	).length;
 	lines.push({
 		source: "Email",
 		did:
@@ -968,11 +977,12 @@ function ledger(draft: BriefDraft): Ledger[] {
 					? ""
 					: `${plural(tasks.length, "task", "tasks")} to create${tasks.length <= 3 ? ` (${named(tasks.map(taskName))})` : ""}`,
 				kept === 0 ? "" : `${numberString(kept)} kept`,
+				acts === 0 ? "" : `${plural(acts, "message", "messages")} to star or reply to`,
 			]
 				.filter((part) => part !== "")
 				.join("; "),
 	});
-	const set = flags(draft, "medium").length;
+	const set = flags(draft, "applied").length;
 	const unplaced = list(draft.work?.unplaced);
 	lines.push({
 		source: "Work",
@@ -987,9 +997,9 @@ function ledger(draft: BriefDraft): Ledger[] {
 				.filter((part) => part !== "")
 				.join("; "),
 	});
-	const fixes = findings(draft, "medium").length;
+	const fixes = findings(draft, "applied").length;
 	lines.push({ source: "Calendar", did: notice("Calendar") ?? `${plural(fixes, "fix", "fixes")} to make` });
-	const placed = taskRows(draft, "medium").length;
+	const placed = taskRows(draft, "applied").length;
 	lines.push({ source: "Tasks", did: notice("Tasks") ?? `${plural(placed, "task", "tasks")} to place` });
 	return lines;
 }
@@ -1165,7 +1175,7 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 
 	return renderEmail({
 		title: `${planning} Brief`,
-		preheader: `Week ${weekNumber(context.week)} closed; ${groups.length === 0 ? "nothing needs you" : plural(groups.reduce((sum, group) => sum + group.records.length, 0), "decision", "decisions")} for week ${weekNumber(planning)}.`,
+		preheader: `Week ${weekNumber(context.week)} closed; ${groups.length === 0 ? (planningMissed(draft) === undefined ? "nothing needs you" : "the planning half was not read") : plural(groups.reduce((sum, group) => sum + group.records.length, 0), "decision", "decisions")} for week ${weekNumber(planning)}.`,
 		children: (
 			<>
 				<Masthead title={`Brief · Week ${weekNumber(planning)}`} />
