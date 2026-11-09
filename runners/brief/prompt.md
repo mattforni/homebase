@@ -20,7 +20,8 @@ This half is the first pass of the Monday planning session, done before the sess
 
 Rules, in reading order:
 
-- {{HOMEBASE}}/.claude/local-skills/plugins/assist/learned-rules.md: the whole file, especially "## Spend Categorization" (payee corrections that override the map) and "## Slotting Rules".
+- {{HOMEBASE}}/.claude/local-skills/plugins/assist/learned-rules.md: the whole file, especially "## Slotting Rules".
+- {{HOMEBASE}}/.claude/local-skills/plugins/assist/skills/handle-budget/learned-rules.md: "## Spend Categorization" (payee corrections that override the map).
 - {{HOMEBASE}}/.claude/local-skills/plugins/assist/reference/payee-map.md: the Personal budget's payee to category map (skips, inflows, auto categorize, always confirm).
 - {{HOMEBASE}}/.claude/local-skills/plugins/assist/skills/handle-budget/SKILL.md, "## Phase 2: Partition": how a queue row is partitioned.
 - {{ATELIC}}/Tools/ynab.md: the Atelic budget's whole policy and its payee corrections. The Personal map never governs Atelic and the Atelic policy never governs Personal.
@@ -47,7 +48,7 @@ A pulled file that is missing was not read this run; the caller says so in the m
 
 Every row you propose carries a band, and the band is what decides whether the caller acts on it:
 
-- **high**: an exact codified rule names this payee (Personal map auto categorize list, a learned rule payee correction, an Atelic payee correction or the Atelic business coffee default) or this sender or subject (a sender rule, a created filter, a subject rule) and states the disposition. Cite the rule in the row's rule field: the file's short name and the rule's own words, trimmed ("learned-rules Spend Categorization: Arc Thrift -> 🧥 Clothing"). The caller applies high rows when writes are on. Only two actions are ever high: approving a YNAB row at its category, and labeling, marking read, and archiving a message. Anything else is medium at best.
+- **high**: an exact codified rule names this payee (Personal map auto categorize list, a learned rule payee correction, an Atelic payee correction or the Atelic business coffee default) or this sender or subject (a sender rule, a created filter, a subject rule) and states the disposition. Cite the rule in the row's rule field: the file's short name and the rule's own words, trimmed ("handle-budget learned-rules Spend Categorization: Arc Thrift -> 🧥 Clothing"). The caller applies high rows when writes are on. Only two actions are ever high: approving a YNAB row at its category, and labeling, marking read, and archiving a message. Anything else is medium at best.
 - **medium**: a rule family applied with interpretation (a coffee shop not in the map going to 🍽️ Cafés, a vendor's second invoice matching the first's category, a newsletter under the topic rules). The caller never applies a medium row; it is listed in its section for Forni to spot check and the session applies it on his nod.
 - **decision**: anything else, and always: a new payee with no rule, every always confirm payee, every Venmo row a learned rule does not settle (York Street Club and a friend's food receipt are settled), every delete, every trip memo, every star, every trash, every unsubscribe, every reply or outbound mail, every task to create, every Linear change, every calendar change, every Todoist change, a charge far off its payee's usual, two charges from one payee on one day, and any row where two rules disagree. Every decision row also appears in the board, with a proposed default.
 
@@ -106,7 +107,7 @@ Return exactly this shape, every key present, arrays empty when there is nothing
   "money": {
     "read": "two or three sentences in Forni's words on the month so far, accounts in error first when there are any",
     "rows": [
-      {"budget": "Personal", "id": "the transaction id", "date": "2026-10-17", "amount": "-42.10", "payee": "Arc Thrift", "category": "🧥 Clothing", "memo": "", "band": "high", "rule": "learned-rules Spend Categorization: Arc Thrift -> 🧥 Clothing", "reason": "mapped payee"}
+      {"budget": "Personal", "id": "the transaction id", "date": "2026-10-17", "amount": "-42.10", "payee": "Arc Thrift", "category": "🧥 Clothing", "memo": "", "band": "high", "rule": "handle-budget learned-rules Spend Categorization: Arc Thrift -> 🧥 Clothing", "reason": "mapped payee"}
     ],
     "deletes": [
       {"budget": "Personal", "id": "the transaction id", "date": "2026-10-16", "amount": "-60.00", "payee": "Venmo", "reason": "the same date and amount sits on Atelic as Improper City"}

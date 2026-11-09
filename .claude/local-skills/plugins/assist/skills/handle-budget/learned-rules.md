@@ -9,7 +9,7 @@ Corrections and calibration for how `assist:handle-budget` should reason about p
 
 ## Spend Categorization
 
-Rules for `assist:handle-budget`. The payee map is [reference/payee-map.md](reference/payee-map.md); these corrections override it.
+Rules for `assist:handle-budget`. The payee map is [reference/payee-map.md](../../reference/payee-map.md); these corrections override it.
 
 Mechanics (hard-won, do not rediscover):
 

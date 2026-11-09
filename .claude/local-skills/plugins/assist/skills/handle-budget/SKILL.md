@@ -34,7 +34,7 @@ Two mechanics that bite:
 
 - **Write `ynab` output to a file before running `jq` on it.** Piping a large `transactions list` or `payees list` straight into `jq` truncates and fails with `Unfinished JSON term at EOF`. Redirect to the scratchpad, then query the file.
 - **The shim refuses `--help` on write verbs** (it sees a mutating subcommand and stops). Read help from the underlying binary: `~/.bun/bin/ynab transactions batch-update --help`.
-- `categories update <id> --name --category-group-id` renames and moves a category with its history intact; `payees update <id> --name` renames a payee. Renaming a payee to an existing name does not merge them (see the plugin learned rules).
+- `categories update <id> --name --category-group-id` renames and moves a category with its history intact; `payees update <id> --name` renames a payee. Renaming a payee to an existing name does not merge them (see this skill's learned rules).
 
 ## Phase 1: Pull the Queue
 
