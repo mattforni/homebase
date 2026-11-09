@@ -76,7 +76,7 @@ For each load bearing process gate, ask "what actually makes me follow this?" A 
 
 ### Step 7: Size
 
-Last, and only after the steps above. Measure the always loaded files (`wc -lc`) against the ratchet caps and Anthropic's 200 line target, and every project's `MEMORY.md` against the 140 line target. Recommend one bounded cut per file at most, and lower the cap in `bin/lint/context-size` when a homebase owned file shrinks so the reduction locks in. The 200 line figure is a target with no published measurement behind it; do not cut a compatible, load bearing line to reach it.
+Last, and only after the steps above. Measure the always loaded files (`wc -lc`) against the ratchet caps and Anthropic's 200 line target, and every project's `MEMORY.md` against the 140 line target. Recommend one bounded cut per file at most, and lower the file's cap in its repo's `.context-caps` when it shrinks so the reduction locks in (homebase's `bin/lint/context-size` is the one ratchet; Eudaimonia and Atelic carry their own caps files). The 200 line figure is a target with no published measurement behind it; do not cut a compatible, load bearing line to reach it.
 
 ### Step 8: Present a Diff for Approval
 

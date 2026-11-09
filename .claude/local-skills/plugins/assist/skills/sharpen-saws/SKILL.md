@@ -52,7 +52,7 @@ The main session gives Forni the five answers in the overview format the learned
 
 ### Phase 4: Cut
 
-One bounded reduction of the always loaded context, every session. A section that only matters when a particular file is being edited moves into a path scoped rule (`.claude/rules/<topic>.md` with `paths:` frontmatter), a narrative moves into its tool doc under `~/Eudaimonia/Admin/Tools/`, or a derivable inventory is deleted. Measure before and after; when the file is one homebase owns, lower its cap in `bin/lint/context-size`. One cut, never a restructure; a restructure is `assist:groom-context`.
+One bounded reduction of the always loaded context, every session. A section that only matters when a particular file is being edited moves into a path scoped rule (`.claude/rules/<topic>.md` with `paths:` frontmatter), a narrative moves into its tool doc under `~/Eudaimonia/Admin/Tools/`, or a derivable inventory is deleted. Measure before and after; lower the file's cap in its repo's `.context-caps` (homebase, Eudaimonia, and Atelic each carry one, checked by homebase's `bin/lint/context-size`). One cut, never a restructure; a restructure is `assist:groom-context`.
 
 ### Phase 5: Groom
 
