@@ -2,7 +2,7 @@
 
 Rules added from triage corrections. Read on every invocation. These override default rules in reference/triage-rules.md.
 
-Rules for a single skill live in that skill's own `learned-rules.md`; this file holds only what applies across skills.
+Rules for a single skill belong in that skill's own `learned-rules.md`.
 
 The email routing rule sets (Sender Rules, Topic Rules, Subject Rules, Star Semantics, Domain Rules, Created Filters) live in [reference/email-rules.md](reference/email-rules.md).
 
@@ -57,3 +57,7 @@ The email routing rule sets (Sender Rules, Topic Rules, Subject Rules, Star Sema
   **Why:** Surfaced 2026-05-18 when adding an interrogation phase to `assist:plan-training` retro mode. Initial draft used `Phase 4.5` for the new step. Forni redirected: "let's not codify things in general as half steps. So phase four and a half or phase three and a half, let's just go with moving the other phases backwards."
 
   **How to apply:** New phase goes at its integer position. Every phase after it shifts up by one. Update body cross references (e.g., "continue to Phase 5") and any references in learned-rules.md or other skills that point at numbered phases. Worth a final grep for `Phase [0-9]\.[0-9]` to catch stragglers.
+
+## Spend Categorization
+
+Moved to [skills/handle-budget/learned-rules.md](skills/handle-budget/learned-rules.md), the one place the payee corrections and YNAB mechanics live.
