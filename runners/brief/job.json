@@ -11,7 +11,7 @@
     "max_retries": 0,
     "tasks": 1,
     "env": {
-      "BRIEF_WRITE": "0",
+      "BRIEF_WRITE": "1",
       "REPORT_RECIPIENT": "@recipient",
       "TZ": "America/Denver"
     },

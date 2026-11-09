@@ -1,30 +1,12 @@
-ATELIC · BRIEF · WEEK 5
-Mon, 2026-01-26 to Sun, 2026-02-01
-
-NO TARGETS GRADED.
+ATELIC · BRIEF · WEEK 6
 
 
-
-
-SCOREBOARD
+================================================================
+LAST WEEK · WEEK 5
+================================================================
 
 Movement
   Takeout        0              No confirmed orders
-
-
-================================================================
-NEEDED FROM YOU
-================================================================
-
-  Nothing needs you this week.
-
-
-================================================================
-MOVEMENT
-================================================================
-
-The Read
-  
 
 By Day
   Mon  Rest
@@ -35,76 +17,40 @@ By Day
   Sat  Rest
   Sun  Rest
 
-Sessions · 0
-  Nothing logged in Strava this week.
+Money
+  Spend was not read this run.
+
+  0 tasks completed last week.
 
 
 ================================================================
-TAKEOUT
-================================================================
-
-The Read
-  
-
-
-================================================================
-ATELIC
+THIS WEEK
 ================================================================
 
 The Read
-  
+  Writes were off this run, so every row below is applied in the
+  Monday sitting.
 
-The Funnel
-  Lead      0
-  MQL       0
-  SQL       0
-  Oppty     0
-  Customer  0
-  Closed    0
+The Ledger
+  Source    Did
+  Money     0 rows categorized
+  Email     nothing filed
+  Work      every issue has a block
+  Calendar  0 fixes made
+  Tasks     0 tasks placed
 
+Money Rules · 0
+  Every money row sat on a rule already written.
 
-================================================================
-MONEY
-================================================================
-
-  Spend was not read this run, and nothing in either budget needs
-  you.
-
-
-================================================================
-INBOX
-================================================================
-
-  Nothing in either inbox this week.
+Email Rules · 0
+  Every message sat on a rule already written.
 
 
 ================================================================
-WORK
+WHAT I NEED FROM YOU
 ================================================================
 
-  Nothing in the cycle to flag or place.
-
-
-================================================================
-CALENDAR
-================================================================
-
-  Nothing on the calendar to fix this week.
-
-
-================================================================
-TASKS
-================================================================
-
-  No tasks came back from the Schedule filter.
-
-
-================================================================
-BLIND SPOTS
-================================================================
-
-The Read
-  
+  Nothing needs you this week.
 
 
 ================================================================

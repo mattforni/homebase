@@ -92,6 +92,10 @@ NEXT_NEXT_MONDAY="$(shift_days "$NEXT_MONDAY" 7)"
 NEXT_WEEK="$(node -e 'const d=new Date(process.argv[1]+"T12:00:00Z");const t=new Date(d);t.setUTCDate(t.getUTCDate()+3-((t.getUTCDay()+6)%7));const y=t.getUTCFullYear();const w=Math.ceil(((t-new Date(Date.UTC(y,0,4)))/864e5+((new Date(Date.UTC(y,0,4)).getUTCDay()+6)%7)+1)/7);console.log(`${y}-W${String(w).padStart(2,"0")}`)' "$NEXT_MONDAY")"
 TODAY="$(date +%F)"
 echo "planning: $NEXT_WEEK ($NEXT_MONDAY to $NEXT_SUNDAY)"
+# The mail is named for the week it plans, not the week it closes: it is read
+# Monday morning as the planning week opens, and the plan-week skill looks it
+# up by that subject (ATE-675, 2026-11-09). Every pull window stays on WEEK.
+SUBJECT="$NEXT_WEEK $RUNNER_TITLE"
 
 BRIEF_WRITE="${BRIEF_WRITE:-0}"
 RUNNER_MODEL="${RUNNER_MODEL:-opus}"
@@ -542,26 +546,28 @@ runner_claude "$(fill_prompt "$PROMPT_FILE")" --model "$RUNNER_MODEL" --allowedT
 # planning keys degrade: an answer that carries the retro but a malformed
 # planning half still mails the retro, with every planning section empty and
 # the ledger saying why, the same way a failed pull costs its section.
-runner_draft '(.headline | type == "string") and (.coverage | type == "array") and (.whatMoved | type == "array")
-    and (.movementRead | type == "string") and (.takeout | type == "array") and (.takeoutRead | type == "string")
-    and (.atelicRead | type == "string") and (.blindSpots | type == "string")' || exit 1
-if ! jq -e '(.board | type == "array") and (.money | type == "object") and (.money.rows | type == "array")
+runner_draft '(.coverage | type == "array") and (.takeout | type == "array") and (.blindSpots | type == "string")' || exit 1
+# The board is no longer the model's to write (ATE-675): the renderer builds
+# What I Need From You from the rows banded decision across every section.
+if ! jq -e '(.money | type == "object") and (.money.rows | type == "array")
     and (.inbox | type == "object") and (.inbox.rows | type == "array")
     and (.work | type == "object") and (.calendar | type == "object") and (.tasks | type == "object")' "$DRAFT_JSON" >/dev/null 2>&1; then
     echo "planning: the model's planning half did not validate; the retro goes out alone and every planning section is empty"
-    jq '. + {board: [], money: {read: "", rows: [], deletes: [], trips: []}, inbox: {rows: []}, work: {read: "", flags: [], unplaced: []}, calendar: {read: "", findings: []}, tasks: {read: "", rows: []}}' "$DRAFT_JSON" > "$DRAFT_JSON.fixed" \
+    jq '. + {money: {read: "", rows: [], deletes: [], trips: []}, inbox: {rows: []}, work: {read: "", flags: [], unplaced: []}, calendar: {read: "", findings: []}, tasks: {read: "", rows: []}}' "$DRAFT_JSON" > "$DRAFT_JSON.fixed" \
         && mv "$DRAFT_JSON.fixed" "$DRAFT_JSON"
     jq '. + [{name: "planning", ok: false, note: "the planning half of the answer did not validate, so every planning section is empty this run"}]' "$PULLS_JSON" > "$PULLS_JSON.next" && mv "$PULLS_JSON.next" "$PULLS_JSON"
 fi
 
 # ---------- the apply step ----------
 # Only when writes are on and this is not a dry run, and only the rows the
-# model banded high: YNAB rows approved at their category, inbox rows labeled
-# (and archived when the rule says archive, never otherwise)
-# and archived. The scripts resolve every name to an id through their own
-# pulls and drop a row whose name does not resolve, so a misspelled category
-# or label is a line in the mail, never a guess in the books. What was done
-# and what was dropped goes into applied.json for the Handled rollups.
+# model banded high or medium (trust but verify, Forni 2026-11-09: a row with
+# a plain read is applied and listed for correction, and only a decision row
+# waits for him): YNAB rows approved at their category, inbox rows labeled
+# (and archived when the rule says archive, never otherwise). The scripts
+# resolve every name to an id through their own pulls and drop a row whose
+# name does not resolve, so a misspelled category or label is a line in the
+# mail, never a guess in the books. What was done and what was dropped goes
+# into applied.json for the What I Did rollups.
 APPLIED="$WORK/applied.json"
 echo '{"writes": false, "ynab": [], "gmail": [], "dropped": []}' > "$APPLIED"
 # Writes need this run's own pulls: a reused queue or inbox is a night old at
@@ -572,29 +578,31 @@ if [[ "$BRIEF_WRITE" == "1" && "$DRY_RUN" != "1" && "$SKIP_PULLS" != "1" ]]; the
     # again here; a failure costs the inbox moves, never the mail.
     TOKENS_FOR_APPLY=1
     google_tokens || { echo "apply: $fail_reason; the inbox moves stay proposed"; TOKEN_FAILURE="$fail_reason"; fail_reason=""; PERSONAL_TOKEN=""; ATELIC_TOKEN=""; TOKENS_FOR_APPLY=0; }
-    # High with a rule cited, or it is not high: the rule is what the band
-    # rests on, and a row without one goes to dropped below.
-    jq '[.money.rows[] | select((.band // "" | ascii_downcase) == "high" and ((.rule // "") != "")) | {budget, id, category}]' "$DRAFT_JSON" > "$WORK/apply-ynab.json"
-    jq '[.inbox.rows[] | select((.band // "" | ascii_downcase) == "high" and ((.rule // "") != "") and (.action == "label" or .action == "archive")) | {mailbox, id, labels: (.labels // []), archive: (.action == "archive")}]' "$DRAFT_JSON" > "$WORK/apply-gmail.json"
-    # A high row the apply never tries is still accounted for: an action the
-    # runner never performs (a star, a trash, a task) and, with no YNAB key,
-    # every money row. Each lands in dropped with its reason, so the mail
-    # never shows a high row as handled that nothing touched.
+    # High or medium with a rule cited, or it is not applied: the rule is
+    # what the band rests on, and a row without one goes to dropped below.
+    jq '[.money.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "")) | {budget, id, category, rename: (.rename // "")}]' "$DRAFT_JSON" > "$WORK/apply-ynab.json"
+    jq '[.inbox.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "") and (.action == "label" or .action == "archive")) | {mailbox, id, labels: (.labels // []), archive: (.action == "archive")}]' "$DRAFT_JSON" > "$WORK/apply-gmail.json"
+    # An applied band the apply never tries is still accounted for: an action
+    # the runner never performs (a star, a trash, a task) and, with no YNAB
+    # key, every money row. Each lands in dropped with its reason, so the mail
+    # never shows a row as done that nothing touched. A keep is not a write,
+    # so it is never dropped: there was nothing to do.
     jq --arg nokey "$([[ -n "${YNAB_API_KEY:-}" ]] && echo 0 || echo 1)" '
-        [.inbox.rows[] | select((.band // "" | ascii_downcase) == "high" and ((.rule // "") != "") and (.action != "label" and .action != "archive"))
+        def applied: (.band // "" | ascii_downcase) as $b | ($b == "high" or $b == "medium");
+        [.inbox.rows[] | select(applied and ((.rule // "") != "") and (.action != "label" and .action != "archive" and .action != "keep"))
             | {kind: "gmail", id, reason: ("the runner never performs \(.action); the Monday session does")}]
-        + [.inbox.rows[] | select((.band // "" | ascii_downcase) == "high" and ((.rule // "") == ""))
-            | {kind: "gmail", id, reason: "banded high with no rule cited, so it stays proposed"}]
-        + [.money.rows[] | select((.band // "" | ascii_downcase) == "high" and ((.rule // "") == ""))
-            | {kind: "ynab", id, reason: "banded high with no rule cited, so it stays proposed"}]
-        + (if $nokey == "1" then [.money.rows[] | select((.band // "" | ascii_downcase) == "high") | {kind: "ynab", id, reason: "no YNAB key in the environment, so the row stays proposed"}] else [] end)' \
+        + [.inbox.rows[] | select(applied and ((.rule // "") == ""))
+            | {kind: "gmail", id, reason: "banded for applying with no rule cited, so it stays proposed"}]
+        + [.money.rows[] | select(applied and ((.rule // "") == ""))
+            | {kind: "ynab", id, reason: "banded for applying with no rule cited, so it stays proposed"}]
+        + (if $nokey == "1" then [.money.rows[] | select(applied) | {kind: "ynab", id, reason: "no YNAB key in the environment, so the row stays proposed"}] else [] end)' \
         "$DRAFT_JSON" | jq 'unique_by(.kind + .id)' > "$WORK/apply-skipped.json"
     echo '{"ynab": [], "dropped": []}' > "$WORK/ynab-applied.json"
     echo '{"gmail": [], "dropped": []}' > "$WORK/gmail-applied.json"
     if [[ "$(jq length "$WORK/apply-ynab.json")" != "0" ]]; then
         if [[ -n "${YNAB_API_KEY:-}" ]]; then
             YNAB_API_KEY="$YNAB_API_KEY" timeout 5m node "$SELF_DIR/ynab.mjs" apply "$WORK" "$WORK/apply-ynab.json" > "$WORK/ynab-applied.json" 2>"$WORK/ynab-apply-stderr.txt" \
-                || { echo "apply: the YNAB batch failed: $(tail -n 1 "$WORK/ynab-apply-stderr.txt" | head -c 200)"; echo '{"ynab": [], "dropped": [{"kind": "ynab", "id": "every high row", "reason": "the apply script failed or timed out, so whether the books hold these rows is unknown; check the queue"}]}' > "$WORK/ynab-applied.json"; }
+                || { echo "apply: the YNAB batch failed: $(tail -n 1 "$WORK/ynab-apply-stderr.txt" | head -c 200)"; echo '{"ynab": [], "dropped": [{"kind": "ynab", "id": "every applied row", "reason": "the apply script failed or timed out, so whether the books hold these rows is unknown; check the queue"}]}' > "$WORK/ynab-applied.json"; }
         else
             echo "apply: no YNAB_API_KEY, the YNAB rows stay proposed"
         fi
@@ -602,7 +610,7 @@ if [[ "$BRIEF_WRITE" == "1" && "$DRY_RUN" != "1" && "$SKIP_PULLS" != "1" ]]; the
     if [[ "$(jq length "$WORK/apply-gmail.json")" != "0" ]]; then
         if [[ "$TOKENS_FOR_APPLY" == 1 ]]; then
             GMAIL_TOKEN_PERSONAL="$PERSONAL_TOKEN" GMAIL_TOKEN_ATELIC="$ATELIC_TOKEN" timeout 5m node "$SELF_DIR/inbox.mjs" apply "$WORK" "$WORK/apply-gmail.json" > "$WORK/gmail-applied.json" 2>"$WORK/gmail-apply-stderr.txt" \
-                || { echo "apply: the inbox moves failed: $(tail -n 1 "$WORK/gmail-apply-stderr.txt" | head -c 200)"; echo '{"gmail": [], "dropped": [{"kind": "gmail", "id": "every high row", "reason": "the apply script failed or timed out, so whether the moves landed is unknown; check the inbox"}]}' > "$WORK/gmail-applied.json"; }
+                || { echo "apply: the inbox moves failed: $(tail -n 1 "$WORK/gmail-apply-stderr.txt" | head -c 200)"; echo '{"gmail": [], "dropped": [{"kind": "gmail", "id": "every applied row", "reason": "the apply script failed or timed out, so whether the moves landed is unknown; check the inbox"}]}' > "$WORK/gmail-applied.json"; }
         else
             # No token, so nothing is tried, and the reason is the real one.
             jq --arg why "the Google token could not be minted again at apply time: ${TOKEN_FAILURE:-unknown}" '{gmail: [], dropped: [.[] | {kind: "gmail", id, reason: $why}]}' "$WORK/apply-gmail.json" > "$WORK/gmail-applied.json"
@@ -634,8 +642,12 @@ jq --argjson ps "$(skips personal)" --argjson atelicSkips "$(skips atelic)" --sl
 # and the apply record are data, not draft: they go in after the model, so
 # nothing it writes can move a number, and the renderer builds its tables
 # from them directly.
-if ! jq -s '.[0] * {atelic: .[1], strava: .[2], spend: .[3], applied: .[4], pulls: .[5]}' \
-        "$DRAFT_JSON" "$WORK/atelic.json" "$WORK/strava.json" "$WORK/spend.json" "$APPLIED" "$PULLS_JSON" > "$DRAFT_JSON.merged" 2>"$WORK/merge-stderr.txt"; then
+# The tasks completed in the closed week ride in from the Todoist pull when
+# it ran; a run without it carries an empty list and the Done card says so.
+COMPLETED_SRC="$WORK/todoist.json"
+[[ -s "$COMPLETED_SRC" ]] || { echo '{}' > "$WORK/todoist-empty.json"; COMPLETED_SRC="$WORK/todoist-empty.json"; }
+if ! jq -s '.[0] * {atelic: .[1], strava: .[2], spend: .[3], applied: .[4], pulls: .[5], completed: (.[6].completed // [])}' \
+        "$DRAFT_JSON" "$WORK/atelic.json" "$WORK/strava.json" "$WORK/spend.json" "$APPLIED" "$PULLS_JSON" "$COMPLETED_SRC" > "$DRAFT_JSON.merged" 2>"$WORK/merge-stderr.txt"; then
     fail_reason="could not merge the data into the brief: $(head -c 300 "$WORK/merge-stderr.txt")"
     exit 1
 fi

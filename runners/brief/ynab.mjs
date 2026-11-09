@@ -54,7 +54,14 @@ export const EXCLUDED_WORDS = (process.env.YNAB_EXCLUDED_CATEGORIES || "Adventur
 export const NON_TRIP_MEMOS = (process.env.YNAB_NON_TRIP_MEMOS || "Business Coffee,Client Coffee,Sold ,HSA ,w/ ")
     .split(",").filter(Boolean);
 
-export const RULE = `Typical spend is every categorized row this month except outliers and trips; the pace is the average of the three full months before it, prorated to today. An outlier is a single charge of $${OUTLIER_DOLLARS} or more from a payee seen in fewer than ${RECURRING_MONTHS} months of the window, so the mortgage and the HOA stay typical. A trip is any row whose memo opens with an emoji and a name. ${EXCLUDED_WORDS.join(", ")} never count as typical on Personal.`;
+// The first of the month charges (the mortgage and the HOA, both 🏡 Housing)
+// are owed whole the day the month opens, so the pace counts them in full and
+// prorates only the rest (Forni, 2026-11-09: "pace should not be spreading the
+// mortgage across the month").
+const FIXED_WORDS = ["Housing"];
+const isFixed = (t) => FIXED_WORDS.some((w) => t.categoryName.includes(w));
+
+export const RULE = `Typical spend is every categorized row this month except outliers and trips; the pace is the average of the three full months before it, with ${FIXED_WORDS.join(", ")} counted whole and the rest prorated to today. An outlier is a single charge of $${OUTLIER_DOLLARS} or more from a payee seen in fewer than ${RECURRING_MONTHS} months of the window, so the mortgage and the HOA stay typical. A trip is any row whose memo opens with an emoji and a name. ${EXCLUDED_WORDS.join(", ")} never count as typical on Personal.`;
 
 /* ---------- http ---------- */
 
@@ -238,15 +245,23 @@ export function spendFor(file, today, personal) {
         return "typical";
     };
     const totals = new Map(windowMonths.map((m) => [m, 0]));
+    const fixedTotals = new Map(windowMonths.map((m) => [m, 0]));
     let spent = 0;
+    let fixedSpent = 0;
     const outliers = [];
     const trips = new Map();
     for (const t of rows) {
         const kind = classify(t);
         const m = monthOf(t.date);
         if (kind === "typical") {
-            if (m === month) spent += t.amount;
-            else if (totals.has(m)) totals.set(m, totals.get(m) + t.amount);
+            const fixed = isFixed(t);
+            if (m === month) {
+                spent += t.amount;
+                if (fixed) fixedSpent += t.amount;
+            } else if (totals.has(m)) {
+                totals.set(m, totals.get(m) + t.amount);
+                if (fixed) fixedTotals.set(m, fixedTotals.get(m) + t.amount);
+            }
         } else if (m === month && kind === "outlier") {
             outliers.push({ date: t.date, payee: t.payeeName, amount: t.amount, category: t.categoryName, memo: t.memo });
         } else if (m === month && kind === "trip") {
@@ -259,14 +274,33 @@ export function spendFor(file, today, personal) {
     }
     const months = windowMonths.map((m) => ({ month: m, total: round(totals.get(m)) }));
     const monthlyAverage = months.reduce((a, b) => a + b.total, 0) / months.length;
+    const fixedAverage = [...fixedTotals.values()].reduce((a, b) => a + b, 0) / months.length;
     const { day } = parts(today);
     const dim = daysInMonth(today);
+    // The fixed charges count whole once the month has opened; everything
+    // else is prorated to today. A month whose fixed charge has not posted
+    // yet still carries it in the pace, which is the point.
+    const pace = fixedAverage + (monthlyAverage - fixedAverage) * day / dim;
+    // Every inflow this month, so a refund or a paycheck is on the page as a
+    // row rather than hidden inside a category tally (Forni, 2026-11-09).
+    const inflows = file.transactions.flatMap(spendRows)
+        .filter((t) => !t.transferAccountId && !t.deleted && t.amount > 0 && monthOf(t.date) === month)
+        .map((t) => ({ date: t.date, payee: t.payeeName, amount: round(t.amount), category: t.categoryName || "" }))
+        .sort((a, b) => b.amount - a.amount);
     outliers.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
     return {
         month,
         dayOfMonth: day,
         daysInMonth: dim,
-        typical: { spent: round(spent), pace: round(monthlyAverage * day / dim), monthlyAverage: round(monthlyAverage), months },
+        typical: {
+            spent: round(spent),
+            pace: round(pace),
+            delta: round(spent - pace),
+            monthlyAverage: round(monthlyAverage),
+            fixed: { spent: round(fixedSpent), average: round(fixedAverage) },
+            months,
+        },
+        inflows,
         outliers: outliers.map((o) => ({ ...o, amount: round(o.amount) })),
         trips: [...trips.values()].map((t) => ({ ...t, total: round(t.total) })),
         accountsInError: file.accounts.filter((a) => a.directImportLinked && a.directImportInError && !a.closed).map((a) => a.name),
@@ -349,6 +383,9 @@ async function apply(outDir, rowsPath) {
                 continue;
             }
             const row = { id: r.id, category_id: categoryId, approved: true };
+            // A bank descriptor gets its plain name before it is categorized
+            // (Forni, 2026-11-09): YNAB creates or reuses the payee by name.
+            if (typeof r.rename === "string" && r.rename.trim() !== "") row.payee_name = r.rename.trim().slice(0, 200);
             // A high row is an approval at a category and nothing more: a memo
             // (a trip, a note) is a decision in the prompt's own terms and is
             // written by the Monday session on Forni's nod, never here.

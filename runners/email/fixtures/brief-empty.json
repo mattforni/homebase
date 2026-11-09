@@ -1,35 +1,82 @@
 {
-  "headline": "",
   "coverage": [],
-  "whatMoved": [],
-  "whatMovedNote": "",
-  "movementRead": "",
   "takeout": [],
-  "takeoutRead": "",
-  "atelicRead": "",
   "blindSpots": "",
   "strava": [],
   "atelic": {
-    "stages": ["Lead", "MQL", "SQL", "Opportunity", "Customer", "Closed"],
+    "stages": [
+      "Lead",
+      "MQL",
+      "SQL",
+      "Opportunity",
+      "Customer",
+      "Closed"
+    ],
     "coverage": [],
     "openLeads": [],
     "opportunities": [],
     "closedLeads": [],
     "totals": {}
   },
-  "board": [],
-  "money": { "read": "", "rows": [], "deletes": [], "trips": [] },
-  "inbox": { "rows": [] },
-  "work": { "read": "", "flags": [], "unplaced": [] },
-  "calendar": { "read": "", "findings": [] },
-  "tasks": { "read": "", "rows": [] },
-  "spend": { "personal": null, "atelic": null },
-  "applied": { "writes": false, "ynab": [], "gmail": [], "dropped": [] },
+  "money": {
+    "read": "",
+    "rows": [],
+    "deletes": [],
+    "trips": []
+  },
+  "inbox": {
+    "rows": []
+  },
+  "work": {
+    "read": "",
+    "flags": [],
+    "unplaced": []
+  },
+  "calendar": {
+    "read": "",
+    "findings": []
+  },
+  "tasks": {
+    "read": "",
+    "rows": []
+  },
+  "spend": {
+    "personal": null,
+    "atelic": null
+  },
+  "applied": {
+    "writes": false,
+    "ynab": [],
+    "gmail": [],
+    "dropped": []
+  },
   "pulls": [
-    {"name": "ynab", "ok": true, "note": ""},
-    {"name": "inbox", "ok": true, "note": ""},
-    {"name": "linear", "ok": true, "note": ""},
-    {"name": "calendar", "ok": true, "note": ""},
-    {"name": "todoist", "ok": true, "note": ""}
-  ]
+    {
+      "name": "ynab",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "inbox",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "linear",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "calendar",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "todoist",
+      "ok": true,
+      "note": ""
+    }
+  ],
+  "rules": [],
+  "completed": []
 }

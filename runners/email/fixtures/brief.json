@@ -1,5 +1,4 @@
 {
-  "headline": "An invented week, written so every branch of the renderer has something to render.",
   "coverage": [
     {
       "modality": "Lifts",
@@ -26,18 +25,6 @@
       "note": "Tue PT Achilles · Thu PT"
     }
   ],
-  "whatMoved": [
-    {
-      "subject": "Pinewood Cabinetry",
-      "event": "sits at Proposal, $12,000 cash."
-    },
-    {
-      "subject": "Harbor Line Plumbing",
-      "event": "closed won at $4,500."
-    }
-  ],
-  "whatMovedNote": "Everything else held its stage.",
-  "movementRead": "Three lifts landed and one social run did, which is the shape of a week that trained alone. The long walk on Sunday is the only thing outside the plan, and it earned its place.",
   "takeout": [
     {
       "day": "Tue 01-27",
@@ -48,8 +35,6 @@
       "vehicle": "Ember Pizza"
     }
   ],
-  "takeoutRead": "Two confirmed orders, both late in the evening, both on days with a session earlier.",
-  "atelicRead": "Five first sends went out against a target of five and three bumps against five. Pinewood Cabinetry is the name worth attention on Monday.",
   "blindSpots": "This draft cannot see how the body felt, or anything the sources do not carry.",
   "strava": [
     {
@@ -311,50 +296,6 @@
       "bumps": 3
     }
   },
-  "board": [
-    {
-      "n": 1,
-      "area": "Money",
-      "item": "Venmo $85.00 to Juniper Hale on Fri 01-30, no rule names it",
-      "default": "🍽️ Dining Out, the Thursday supper club",
-      "link": ""
-    },
-    {
-      "n": 2,
-      "area": "Money",
-      "item": "Delete the Personal Venmo of $60.00 on Wed 01-28, the same charge sits on Atelic",
-      "default": "delete it from Personal",
-      "link": ""
-    },
-    {
-      "n": 3,
-      "area": "Inbox",
-      "item": "The county assessor wants the property questionnaire back by Fri 02-06",
-      "default": "keep, label 📑 Admin, green star, and a Todoist task for Tuesday",
-      "link": "https://mail.google.com/mail/u/0/#inbox/invented0003"
-    },
-    {
-      "n": 4,
-      "area": "Work",
-      "item": "ATE-901 Rebuild the proposal template has no estimate and no load label",
-      "default": "4 points, 🧠 Sharp",
-      "link": "https://linear.app/atelic/issue/ATE-901"
-    },
-    {
-      "n": 5,
-      "area": "Tasks",
-      "item": "Read the long essay on attention someone sent, a note rather than a task",
-      "default": "delete and file in Eudy",
-      "link": ""
-    },
-    {
-      "n": 6,
-      "area": "Calendar",
-      "item": "Thursday's lift at 07:00 overlaps the dentist hold that runs to 07:30",
-      "default": "move the lift to 08:00",
-      "link": ""
-    }
-  ],
   "money": {
     "read": "The month so far sits a little over the pace on Personal, mostly the one dental bill, and Atelic is well under it. The checking connection on Personal is in error, so its numbers are a floor until it is repaired.",
     "rows": [
@@ -368,7 +309,8 @@
         "memo": "",
         "band": "high",
         "rule": "learned-rules Spend Categorization: Copper Kettle Coffee to 🍽️ Cafés",
-        "reason": "mapped payee"
+        "reason": "mapped payee",
+        "rename": ""
       },
       {
         "budget": "Personal",
@@ -380,7 +322,8 @@
         "memo": "",
         "band": "high",
         "rule": "learned-rules Spend Categorization: Copper Kettle Coffee to 🍽️ Cafés",
-        "reason": "mapped payee"
+        "reason": "mapped payee",
+        "rename": ""
       },
       {
         "budget": "Personal",
@@ -392,7 +335,8 @@
         "memo": "",
         "band": "high",
         "rule": "payee-map Auto Categorize: Sundown Grocery to 🛒 Groceries",
-        "reason": "mapped payee"
+        "reason": "mapped payee",
+        "rename": ""
       },
       {
         "budget": "Atelic",
@@ -404,7 +348,8 @@
         "memo": "",
         "band": "high",
         "rule": "ynab Payee Corrections: Fieldnote Hosting to 💻 Software",
-        "reason": "mapped payee"
+        "reason": "mapped payee",
+        "rename": ""
       },
       {
         "budget": "Personal",
@@ -416,7 +361,8 @@
         "memo": "",
         "band": "medium",
         "rule": "learned-rules Spend Categorization: coffee shops go to 🍽️ Cafés",
-        "reason": "a coffee shop not in the map"
+        "reason": "a coffee shop not in the map",
+        "rename": ""
       },
       {
         "budget": "Atelic",
@@ -428,7 +374,8 @@
         "memo": "",
         "band": "medium",
         "rule": "ynab Payee Corrections: a vendor's second invoice follows the first",
-        "reason": "same category as December's invoice"
+        "reason": "same category as December's invoice",
+        "rename": ""
       },
       {
         "budget": "Personal",
@@ -440,7 +387,8 @@
         "memo": "supper club",
         "band": "decision",
         "rule": "",
-        "reason": "every Venmo row is a decision"
+        "reason": "every Venmo row is a decision",
+        "rename": ""
       },
       {
         "budget": "Atelic",
@@ -452,7 +400,8 @@
         "memo": "",
         "band": "decision",
         "rule": "",
-        "reason": "a new payee with no rule"
+        "reason": "a new payee with no rule",
+        "rename": ""
       }
     ],
     "deletes": [
@@ -605,14 +554,16 @@
         "title": "Rebuild the proposal template",
         "what": "a cleaner proposal for the small business sites",
         "flag": "no estimate",
-        "default": "4 points"
+        "default": "4 points",
+        "band": "medium"
       },
       {
         "key": "ATE-904",
         "title": "Audit the outreach list",
         "what": "a pass over the list for closed and moved businesses",
         "flag": "no load label",
-        "default": "🍃 Light"
+        "default": "🍃 Light",
+        "band": "medium"
       }
     ],
     "unplaced": [
@@ -639,13 +590,15 @@
         "kind": "overlap",
         "what": "Thursday's lift at 07:00 overlaps the dentist hold that runs to 07:30",
         "when": "Thu 07:00",
-        "default": "move the lift to 08:00"
+        "default": "move the lift to 08:00",
+        "band": "decision"
       },
       {
         "kind": "missing flank",
         "what": "The Saturday club run at 08:00 has no transition before it",
         "when": "Sat 07:30",
-        "default": "add a 30 minute ↔️ Transition at 07:30"
+        "default": "add a 30 minute ↔️ Transition at 07:30",
+        "band": "medium"
       }
     ]
   },
@@ -659,7 +612,8 @@
         "priority": "p4",
         "kind": "note",
         "default": "delete and file in Eudy",
-        "load": ""
+        "load": "",
+        "band": "decision"
       },
       {
         "id": "inv-k-002",
@@ -668,7 +622,8 @@
         "priority": "p2",
         "kind": "task",
         "default": "slot",
-        "load": "⚖️ Medium"
+        "load": "⚖️ Medium",
+        "band": "medium"
       },
       {
         "id": "inv-k-003",
@@ -677,7 +632,8 @@
         "priority": "p4",
         "kind": "task",
         "default": "defer to the next planning Monday",
-        "load": "🍃 Light"
+        "load": "🍃 Light",
+        "band": "medium"
       }
     ]
   },
@@ -703,13 +659,18 @@
             "month": "2025-12",
             "total": -4076.55
           }
-        ]
+        ],
+        "delta": -141.08,
+        "fixed": {
+          "spent": -1850.0,
+          "average": -1850.0
+        }
       },
       "outliers": [
         {
           "date": "2026-01-14",
           "payee": "Clearwater Dental",
-          "amount": -1850.00,
+          "amount": -1850.0,
           "category": "🏥 Healthcare",
           "memo": ""
         }
@@ -717,14 +678,28 @@
       "trips": [
         {
           "memo": "🏔️ Leadville",
-          "total": -412.60,
+          "total": -412.6,
           "count": 3
         }
       ],
       "accountsInError": [
         "Front Range Checking"
       ],
-      "rule": "Typical is every charge under $500 that is not on a trip; outliers are the rest, so one large bill never moves the pace."
+      "rule": "Typical is every charge under $500 that is not on a trip; outliers are the rest, so one large bill never moves the pace.",
+      "inflows": [
+        {
+          "date": "2026-01-15",
+          "payee": "Invented Payroll",
+          "amount": 3200.0,
+          "category": "Inflow: Ready to Assign"
+        },
+        {
+          "date": "2026-01-22",
+          "payee": "State Refund Office",
+          "amount": 412.0,
+          "category": "Inflow: Ready to Assign"
+        }
+      ]
     },
     "atelic": {
       "month": "2026-01",
@@ -747,12 +722,18 @@
             "month": "2025-12",
             "total": -546.75
           }
-        ]
+        ],
+        "delta": 194.5,
+        "fixed": {
+          "spent": 0,
+          "average": 0
+        }
       },
       "outliers": [],
       "trips": [],
       "accountsInError": [],
-      "rule": "Typical is every charge under $500 that is not on a trip; outliers are the rest, so one large bill never moves the pace."
+      "rule": "Typical is every charge under $500 that is not on a trip; outliers are the rest, so one large bill never moves the pace.",
+      "inflows": []
     }
   },
   "applied": {
@@ -792,6 +773,80 @@
       "name": "todoist",
       "ok": false,
       "note": "the read timed out"
+    }
+  ],
+  "rules": [
+    {
+      "area": "Money",
+      "budget": "Personal",
+      "payee": "Little Owl Espresso",
+      "rename": "",
+      "category": "☕️ Cafés"
+    },
+    {
+      "area": "Money",
+      "budget": "Personal",
+      "payee": "ACH Deposit: STATE REFUND OFC - TAXRFD",
+      "rename": "State Refund Office",
+      "category": "Inflow: Ready to Assign"
+    },
+    {
+      "area": "Money",
+      "budget": "Atelic",
+      "payee": "Paperline Design Tools",
+      "rename": "",
+      "category": "🧰 Productivity"
+    },
+    {
+      "area": "Email",
+      "mailbox": "personal",
+      "sender": "digest@slowletters.example",
+      "labels": [
+        "🧠 Contemplation/📚 Reading"
+      ],
+      "star": "",
+      "markRead": true,
+      "archive": true
+    },
+    {
+      "area": "Email",
+      "mailbox": "atelic",
+      "sender": "billing.example",
+      "labels": [
+        "💵 Pipeline/Invented Client"
+      ],
+      "star": "green",
+      "markRead": false,
+      "archive": false
+    }
+  ],
+  "completed": [
+    {
+      "id": "inv-c-001",
+      "content": "Renew the library card",
+      "project": "🍏 Constitution",
+      "labels": [],
+      "priority": "p3",
+      "completedAt": "2026-01-26T15:10:00Z",
+      "recurring": false
+    },
+    {
+      "id": "inv-c-002",
+      "content": "Send the January invoice",
+      "project": "🛠️ Craft",
+      "labels": [],
+      "priority": "p2",
+      "completedAt": "2026-01-28T09:40:00Z",
+      "recurring": false
+    },
+    {
+      "id": "inv-c-003",
+      "content": "Water the plants",
+      "project": "🍏 Constitution",
+      "labels": [],
+      "priority": "p4",
+      "completedAt": "2026-01-31T08:00:00Z",
+      "recurring": true
     }
   ]
 }
