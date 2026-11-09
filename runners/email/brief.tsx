@@ -487,7 +487,11 @@ const BUDGETS: { key: "personal" | "atelic"; label: string }[] = [
 
 /** A row the runner (or the session) categorized: banded high or medium. */
 function moneyDone(draft: BriefDraft): MoneyRow[] {
-	return list(draft.money?.rows).filter((row) => isApplied(bandOf(row, "decision")));
+	const rows = list(draft.money?.rows).filter((row) => isApplied(bandOf(row, "decision")));
+	if (!writesOn(draft)) return rows;
+	// Writes on: only the rows the apply actually approved count as done.
+	const done = new Set(list(draft.applied?.ynab).map((a) => str(a.id)));
+	return rows.filter((row) => done.has(str(row.id)));
 }
 
 /**

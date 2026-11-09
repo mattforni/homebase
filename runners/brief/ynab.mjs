@@ -284,7 +284,7 @@ export function spendFor(file, today, personal) {
     // Every inflow this month, so a refund or a paycheck is on the page as a
     // row rather than hidden inside a category tally (Forni, 2026-11-09).
     const inflows = file.transactions.flatMap(spendRows)
-        .filter((t) => !t.transferAccountId && !t.deleted && t.amount > 0 && monthOf(t.date) === month)
+        .filter((t) => !t.transferAccountId && !t.deleted && t.amount > 0 && (!t.categoryId || /^Inflow/.test(t.categoryName)) && monthOf(t.date) === month)
         .map((t) => ({ date: t.date, payee: t.payeeName, amount: round(t.amount), category: t.categoryName || "" }))
         .sort((a, b) => b.amount - a.amount);
     outliers.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
@@ -385,7 +385,7 @@ async function apply(outDir, rowsPath) {
             const row = { id: r.id, category_id: categoryId, approved: true };
             // A bank descriptor gets its plain name before it is categorized
             // (Forni, 2026-11-09): YNAB creates or reuses the payee by name.
-            if (typeof r.rename === "string" && r.rename.trim() !== "") row.payee_name = r.rename.trim().slice(0, 200);
+            if (typeof r.rename === "string" && r.rename.trim() !== "") { row.payee_id = null; row.payee_name = r.rename.trim().slice(0, 200); }
             // A high row is an approval at a category and nothing more: a memo
             // (a trip, a note) is a decision in the prompt's own terms and is
             // written by the Monday session on Forni's nod, never here.

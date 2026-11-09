@@ -581,7 +581,7 @@ if [[ "$BRIEF_WRITE" == "1" && "$DRY_RUN" != "1" && "$SKIP_PULLS" != "1" ]]; the
     # High or medium with a rule cited, or it is not applied: the rule is
     # what the band rests on, and a row without one goes to dropped below.
     jq '[.money.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "")) | {budget, id, category, rename: (.rename // "")}]' "$DRAFT_JSON" > "$WORK/apply-ynab.json"
-    jq '[.inbox.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "") and (.action == "label" or .action == "archive")) | {mailbox, id, labels: (.labels // []), archive: (.action == "archive")}]' "$DRAFT_JSON" > "$WORK/apply-gmail.json"
+    jq '[.inbox.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "") and (.action == "label" or .action == "archive" or (.action == "keep" and ((.labels // []) | length) > 0))) | {mailbox, id, labels: (.labels // []), archive: (.action == "archive")}]' "$DRAFT_JSON" > "$WORK/apply-gmail.json"
     # An applied band the apply never tries is still accounted for: an action
     # the runner never performs (a star, a trash, a task) and, with no YNAB
     # key, every money row. Each lands in dropped with its reason, so the mail

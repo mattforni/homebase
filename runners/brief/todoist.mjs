@@ -90,6 +90,13 @@ const shiftDays = (iso, days) => {
     return d.toISOString().slice(0, 10);
 };
 
+/** Midnight Denver on `iso`, with its UTC offset, so the window is the local week. */
+const denverMidnight = (iso) => {
+    const zone = new Intl.DateTimeFormat("en-US", { timeZone: "America/Denver", timeZoneName: "longOffset" })
+        .formatToParts(new Date(`${iso}T12:00:00Z`)).find((p) => p.type === "timeZoneName")?.value || "GMT-07:00";
+    return `${iso}T00:00:00${zone.replace("GMT", "") || "+00:00"}`;
+};
+
 /**
  * The tasks completed in the closed week, the seven days before the landing
  * Monday, for the retro's "what I ended up doing" summary (Forni,
@@ -103,8 +110,8 @@ async function completed(monday, projectNames) {
     let cursor = null;
     do {
         const page = await get("tasks/completed/by_completion_date", {
-            since: `${since}T00:00:00`,
-            until: `${monday}T00:00:00`,
+            since: denverMidnight(since),
+            until: denverMidnight(monday),
             cursor,
             limit: 200,
         });
