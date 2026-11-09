@@ -133,7 +133,7 @@ Return exactly this shape, every key present, arrays empty when there is nothing
   "calendar": {
     "read": "one or two sentences",
     "findings": [
-      {"kind": "missing flank", "what": "Diego at 10:00 Tuesday has no transition before it", "when": "Tue 09:30", "default": "add a 30 minute ↔️ Transition at 09:30", "band": "medium"}
+      {"kind": "missing flank", "what": "DRC at 18:00 Tuesday has no transition before it", "when": "Tue 17:30", "default": "add a 30 minute ↔️ Transition at 17:30", "band": "medium"}
     ]
   },
   "tasks": {

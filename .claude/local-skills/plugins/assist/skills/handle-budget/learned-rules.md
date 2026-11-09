@@ -101,6 +101,16 @@ Payee corrections (session 2026-11-02):
 - **A Venmo receipt from a person is a friend's share of a group spend** and nets into that spend's category, `🍽️ Dining Out` when the note reads as food, and that case is auto decided. Any other note is asked, since the repaid category cannot be inferred.
 - `York Street Club` -> `🍾 Sobriety` on every row, Venmo included, auto decided; it no longer asks (a Venmo payment still gets the Atelic duplicate check first).
 
+Payee corrections (session 2026-11-09, the first brief with writes on):
+
+- `Stowaway Coffee & Kitchen` -> `🍽️ Dining Out` for a meal sized tab (a group brunch, with the friends' Venmo shares netting in); a coffee sized charge there is `☕️ Cafés`.
+- `Palma Cigar Company` -> `🚬 Nicotine`, so it lands in the growth edge total.
+- `Majestic Cleaners` (dry cleaning) -> `🧥 Clothing`, never the house `🧽 Cleaning` line.
+- `Redeemer Pizza` -> `🍽️ Dining Out`. `Home Away Coffee` -> `☕️ Cafés`.
+- `ACH Deposit: CO DEPT REVENUE - COSTTAXRFD` is the Colorado state tax refund: payee renamed `Colorado Department of Revenue`, `Inflow: Ready to Assign`. The IRS refund (`ACH Deposit: IRS TREAS 310 - TAX REF ...`) reads the same way under `Internal Revenue Service`.
+- `PHILADELPHIA REPR` is the Philadelphia City Archives, Italian citizenship documents: payee renamed `Philadelphia City Archives`, `⚖️ Legal`, memo `🇮🇹 Citizenship documents` (Forni, 2026-11-09).
+- A bank descriptor is renamed to its plain payee before it is categorized; the brief runner's apply does this through `payee_name` with `payee_id` cleared.
+
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
 - **Renaming a payee to an existing name does NOT merge them via the API.** It just creates a second payee with the same display name (verified: renamed `Illegalpetes` -> `Illegal Pete's` and ended with two `Illegal Pete's` records). The app merges on rename; the public API does not.
