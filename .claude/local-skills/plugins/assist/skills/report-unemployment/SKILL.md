@@ -11,7 +11,7 @@ The weekly motion that turns the activities ledger into a filed MyUI+ payment re
 
 - **The activities ledger**: the Pinole work API through the `pinole` CLI. The slate is `pinole work activities list --week <YYYY-Www> --table` for the claim week; the confirmation goes back with `pinole work activities report --confirmation <code> <id> [<id>...]` on every included activity id, and an activity left off the slate gets `pinole work activities exclude <id> --reason <text>` so the ledger records why. The table renders Id, Date, Kind, Employer, Position, Channel, Reported, and Notes; the report and exclude verbs take the Id. `--reported false` narrows a listing to what has not been stamped yet.
 - **The claim**: `~/Eudaimonia/Constitution/Financial/FY27-unemployment.md`. Claimant ID, effective date, benefit year end.
-- **The task**: Todoist "💰 Request UI Payment in MyUI+", recurring every Monday at 17:00. Completing it after submission is the last step.
+- **The task**: the recurring "💰 Request UI Payment" task retired with the claim. The last request is the Todoist close task, "💰 Close the UI Claim in MyUI+", due 2026-11-16.
 - **The site**: the [MyUI+ claimant portal](https://myui.clouduim.cdle.state.co.us/Claimant/Core/Login.ASPX), sign in via ID.me. System hours 04:00 to 19:00 MT, nightly processing 22:00 to 03:00 MT.
 
 ## The Slate
@@ -55,12 +55,12 @@ If ID.me's Cloudflare check spins, stop and tell Forni rather than reaching for 
 Drive every control by DOM id, and read the section and error state rather than trusting a reported success. Snapshot ref clicks do fire on this site, but refs shift on every postback, so a stable id is the safer target. Ids and the entry path are in [learned-rules.md](learned-rules.md).
 
 1. **Confirm the week.** Start from My Claim Status and open the specific week row whose dates match the slate, not a generic start button. Only one week is ever certifiable, and the next week's row shows the date it opens.
-2. **Basic Questions take Forni's standing answers** (see [learned-rules.md](learned-rules.md)). He volunteers billable work or income when it happens; never ask. Read each question's wording on the page before answering, and stop only if the wording has changed. A background run still bails to the main session the moment the section is not already Complete, per the agent contract.
+2. **Basic Questions take Forni's standing answers** (see [learned-rules.md](learned-rules.md)). Before answering the work question, read the Atelic Toggl account for the claim week: any hours there make the answer Yes, and the hours and earnings go to Forni as a question. Read each question's wording on the page before answering, and stop only if the wording has changed. A background run still bails to the main session the moment the section is not already Complete, per the agent contract.
 3. **Activity count**: select the radio matching the slate size (Five or More at cadence).
 4. **One form per activity**, saved individually. Field ids, dropdown mapping, and the ASPX gotchas live in [learned-rules.md](learned-rules.md). Verify each save by the numbered activity list growing.
 5. **Work Search Plan** checkboxes describe the coming week's intent: inquire online, apply online, interview online and by phone, other activities.
 6. **GATE: the certifications are Forni's hands.** Stop at the work search certification with everything filled, and read back the Basic Questions answers, every activity, and the plan. Forni checks the box, enters his initials (MGF), clicks FINISH, reviews the Summary, certifies under penalty of perjury, and submits. Claude never checks a certification box or clicks Submit.
-7. **Capture and close.** Once Forni reports the submit, read the confirmation number, submitted week, and timestamp off the confirmation page. Inline, stamp every included activity with `pinole work activities report --confirmation <code> <id> [<id>...]` (one call, every id from the slate); a background run reports the number and the ids and leaves the stamp to the main session. Complete the Todoist task and report the number.
+7. **Capture and close.** Once Forni reports the submit, read the confirmation number, submitted week, and timestamp off the confirmation page. Inline, stamp every included activity with `pinole work activities report --confirmation <code> <id> [<id>...]` (one call, every id from the slate); a background run reports the number and the ids and leaves the stamp to the main session. Complete or reschedule the close task and report the number.
 
 ## Activity Type Mapping
 
