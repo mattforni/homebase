@@ -11,12 +11,12 @@ allowed-tools:
 
 # Handle Budget
 
-Pull uncategorized YNAB transactions, file them into the right category, tag trips, and approve. The rules engine is [reference/payee-map.md](../../reference/payee-map.md) (payee to category, mined from history) plus the `## Spend Categorization` section of [learned-rules.md](../../learned-rules.md) (corrections that override the map). Every new decision feeds back into learned-rules so the next run asks less.
+Pull uncategorized YNAB transactions, file them into the right category, tag trips, and approve. The rules engine is [reference/payee-map.md](../../reference/payee-map.md) (payee to category, mined from history) plus the `## Spend Categorization` section of this skill's [learned-rules.md](learned-rules.md) (corrections that override the map). Every new decision feeds back into learned-rules so the next run asks less.
 
 ## Before Every Invocation
 
 1. Read this skill's local [learned-rules.md](learned-rules.md) for prior corrections about how Forni wants the budget pass to run.
-2. Read [reference/payee-map.md](../../reference/payee-map.md) and the `## Spend Categorization` section of the plugin-wide [learned-rules.md](../../learned-rules.md). Learned rules override the map.
+2. Read [reference/payee-map.md](../../reference/payee-map.md) and the `## Spend Categorization` section of this skill's [learned-rules.md](learned-rules.md). Learned rules override the map.
 3. Confirm access: `ynab auth status` should report `"authenticated": true`.
 4. Budget IDs: Personal `a55b71e6-76e4-46d9-a5c6-336b36ddd14c`. The Atelic budget's id, with every rule that governs that budget, lives in the Atelic repo at `~/Eudaimonia/Craft/Vocation/Atelic/Tools/ynab.md`; read that file before grooming the Atelic budget. Personal is the CLI's configured default, so **anything touching Atelic needs an explicit `--budget`**.
 
@@ -33,8 +33,7 @@ ynab categories list | jq -r '.[].categories[] | "\(.name) => \(.id)"'
 Two mechanics that bite:
 
 - **Write `ynab` output to a file before running `jq` on it.** Piping a large `transactions list` or `payees list` straight into `jq` truncates and fails with `Unfinished JSON term at EOF`. Redirect to the scratchpad, then query the file.
-- **The shim refuses `--help` on write verbs** (it sees a mutating subcommand and stops). Read help from the underlying binary: `~/.bun/bin/ynab transactions batch-update --help`.
-- `categories update <id> --name --category-group-id` renames and moves a category with its history intact; `payees update <id> --name` renames a payee. Renaming a payee to an existing name does not merge them (see the plugin learned rules).
+- `categories update <id> --name --category-group-id` renames and moves a category with its history intact; `payees update <id> --name` renames a payee. Renaming a payee to an existing name does not merge them (see this skill's learned rules).
 
 ## Phase 1: Pull the Queue
 
@@ -113,7 +112,7 @@ Then remind the user to hard-refresh the YNAB app or web tab, since an already-o
 
 ## Phase 6: Learn
 
-When the user corrects a proposed category, or decides a brand-new payee, append the rule to the `## Spend Categorization` section of [learned-rules.md](../../learned-rules.md) so it sticks. One line: `Payee -> Category (note)`. A correction on the Atelic budget goes to `~/Eudaimonia/Craft/Vocation/Atelic/Tools/ynab.md` instead, in the Atelic repo, never here.
+When the user corrects a proposed category, or decides a brand-new payee, append the rule to the `## Spend Categorization` section of this skill's [learned-rules.md](learned-rules.md) so it sticks. One line: `Payee -> Category (note)`. A correction on the Atelic budget goes to `~/Eudaimonia/Craft/Vocation/Atelic/Tools/ynab.md` instead, in the Atelic repo, never here.
 
 ## Phase 7: Report
 

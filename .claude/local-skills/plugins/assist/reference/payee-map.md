@@ -1,6 +1,6 @@
 # Payee Map (Spend Categorization Rules Engine)
 
-Read on every `assist:handle-budget` run. Generated from YNAB transaction history (payee -> dominant category), refreshed by re mining with the recipe in the skill's Refreshing the Map section. Last mined 2026-09-07 from the trailing year against the restructured category tree. Corrections live in [learned-rules.md](../learned-rules.md) under `## Spend Categorization` and OVERRIDE this file.
+Read on every `assist:handle-budget` run. Generated from YNAB transaction history (payee -> dominant category), refreshed by re mining with the recipe in the skill's Refreshing the Map section. Last mined 2026-09-07 from the trailing year against the restructured category tree. Corrections live in [learned-rules.md](../skills/handle-budget/learned-rules.md) under `## Spend Categorization` and OVERRIDE this file.
 
 How to use it:
 
@@ -8,7 +8,7 @@ How to use it:
 - **Inflows** (income, route to `Inflow: Ready to Assign`, not a spend category): see the Inflows list below.
 - **Auto categorize**: payees below with a clear historical category (at least 80% of two or more transactions). Apply silently.
 - **Always confirm**: payees whose history is split. Ask before applying; do not auto default.
-- **New payees** (not listed): ask the user one by one, then append the decision to learned-rules.md so it sticks.
+- **New payees** (not listed): ask the user one by one, then append the decision to the handle-budget learned-rules.md so it sticks.
 
 Trip handling: itemize each trip charge into its real category (coffee to Cafés, meals to Dining Out) AND set the transaction memo to `<emoji> <Trip Name>` (e.g. `🏔️ Crested Butte`, `⛰️ Four Pass Loop`). Forni's own convention, NOT a YNAB flag. This keeps everyday categories clean while letting a trip be totaled by its memo.
 
@@ -65,4 +65,4 @@ Housing: `Matthew Bigelow` was Rent through May 2026 (the category is now hidden
 
 Bank of America (2), CDLE UI Benefits (4), Chase (5), Credit Dividend (12), Fidelity (8), First Tech Federal Credit Union (5), RYLLC Income (5), Standard transfer (4), Zero Homes (9)
 
-`Venmo` is not an inflow, whatever YNAB's payee memory suggests. A bank leg to Venmo is a transfer to the Venmo account, and a Venmo receipt from a person is a friend's share that nets into the spend it repays (learned rules, Spend Categorization).
+`Venmo` is not an inflow, whatever YNAB's payee memory suggests. A bank leg to Venmo is a transfer to the Venmo account, and a Venmo receipt from a person is a friend's share that nets into the spend it repays (handle-budget learned rules, Spend Categorization).

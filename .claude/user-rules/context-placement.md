@@ -47,6 +47,7 @@ Conflict, not count. Two rules that cannot both be satisfied let Claude pick eit
 - One emphasized line per file at most. Emphasize many and none stands out.
 - Block level HTML comments are stripped before injection, so maintainer notes cost nothing.
 - Nested CLAUDE.md files and path scoped rules drop out of context after a compaction until a matching file is read again; anything that must survive compaction belongs in a root CLAUDE.md or an unscoped rule. Auto memory backs up only what no rule file holds: once a rule lands, the memory that carried it is struck (the memory strike hook names the day's memories at every rule write).
+- Every CLAUDE.md on the path from the working directory up to `$HOME` loads, so a nested CLAUDE.md is ambient for every subtree beneath it, nested repos included: an Atelic session loads `~/CLAUDE.md`, the Eudaimonia root, `Craft/`, `Craft/Vocation/`, and Atelic's own. A nested CLAUDE.md therefore passes the same admission tests as a root file for everything below it, opens with one line naming what loads it and what it may hold, and sends depth to the README beside it. A sibling repo's description belongs in that repo's CLAUDE.md once, never in each ancestor.
 
 ## Principles
 

@@ -20,7 +20,8 @@ This half is the first pass of the Monday planning session, done before the sess
 
 Rules, in reading order:
 
-- {{HOMEBASE}}/.claude/local-skills/plugins/assist/learned-rules.md: the whole file, especially "## Spend Categorization" (payee corrections that override the map) and "## Slotting Rules".
+- {{HOMEBASE}}/.claude/local-skills/plugins/assist/learned-rules.md: the whole file, especially "## Slotting Rules".
+- {{HOMEBASE}}/.claude/local-skills/plugins/assist/skills/handle-budget/learned-rules.md: the whole file, calibration bullets first and then "## Spend Categorization" (payee corrections that override the map).
 - {{HOMEBASE}}/.claude/local-skills/plugins/assist/reference/payee-map.md: the Personal budget's payee to category map (skips, inflows, auto categorize, always confirm).
 - {{HOMEBASE}}/.claude/local-skills/plugins/assist/skills/handle-budget/SKILL.md, "## Phase 2: Partition": how a queue row is partitioned.
 - {{ATELIC}}/Tools/ynab.md: the Atelic budget's whole policy and its payee corrections. The Personal map never governs Atelic and the Atelic policy never governs Personal.
