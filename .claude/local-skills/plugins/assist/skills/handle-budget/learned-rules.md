@@ -13,7 +13,7 @@ Rules for `assist:handle-budget`. The payee map is [reference/payee-map.md](../.
 
 Mechanics (hard-won, do not rediscover):
 
-- Everything goes through the `ynab` CLI behind the `~/bin/ynab` dry run shim (since 2026-08-13; the REST recipes and the MCP are retired). The CLI's own gotchas (file before `jq`, help on write verbs) are in the skill's Access section.
+- Everything goes through the `ynab` CLI run from PATH (the `~/bin/ynab` shim retired 2026-10-06, and the REST recipes and the MCP are retired too). The CLI's own gotchas (file before `jq`) are in the skill's Access section.
 - Imported transactions land **unapproved**, and categorizing does NOT approve them. Approve as the final step (`approved: true`) or the changes never flow into budget views. This is the usual cause of "my changes aren't showing up."
 - YNAB clients use delta sync. After API writes, an open app or web session needs a hard refresh to display them.
 - Payee names carry HTML entities (`&amp;`). Decode before matching.
