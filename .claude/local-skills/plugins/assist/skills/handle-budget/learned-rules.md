@@ -108,7 +108,7 @@ Payee corrections (session 2026-11-09, the first brief with writes on):
 - `Majestic Cleaners` (dry cleaning) -> `🧥 Clothing`, never the house `🧽 Cleaning` line.
 - `Redeemer Pizza` -> `🍽️ Dining Out`. `Home Away Coffee` -> `☕️ Cafés`.
 - `ACH Deposit: CO DEPT REVENUE - COSTTAXRFD` is the Colorado state tax refund: payee renamed `Colorado Department of Revenue`, `Inflow: Ready to Assign`. The IRS refund (`ACH Deposit: IRS TREAS 310 - TAX REF ...`) reads the same way under `Internal Revenue Service`.
-- `PHILADELPHIA REPR` is the Philadelphia City Archives, Italian citizenship documents: payee renamed `Philadelphia City Archives`, `📑 Admin / ⚖️ Legal`; the brief applies the rename and category only, so the memo `🇮🇹 Citizenship documents` is set by hand in the Monday session (Forni, 2026-11-09).
+- `PHILADELPHIA REPR` is the Philadelphia City Archives, Italian citizenship documents: payee renamed `Philadelphia City Archives`, `⚖️ Legal` (Forni, 2026-11-09). The one charge so far carries the memo `🇮🇹 Citizenship documents`, written by hand; the rule is the rename and the category.
 - A bank descriptor is renamed to its plain payee before it is categorized; the brief runner's apply does this through `payee_name` with `payee_id` cleared.
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
