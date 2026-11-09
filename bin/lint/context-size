@@ -1,57 +1,74 @@
 #!/usr/bin/env bash
-# The ratchet on the two always loaded context files this repo owns.
+# The byte ratchet on always loaded context files, for every repo.
 #
-# CLAUDE.md deploys to ~/CLAUDE.md and .claude/CLAUDE.md to ~/.claude/CLAUDE.md,
-# so both load into every Claude Code session on the machine, Eudaimonia
-# included, and every byte in them is paid on every session and read past on
-# every turn. Adherence falls as they grow. Each file has a byte cap set at its
-# last deliberate reduction; this check fails when a file grows past its cap.
-# Lowering a cap is how a reduction locks in, and raising one is a decision to
-# make out loud in a review, never a side effect of an edit.
+# Every CLAUDE.md on the path from the working directory up to $HOME loads
+# into the session, so each one is paid for on every turn of every session
+# beneath it. A repo lists the files it caps in a .context-caps at its root,
+# one path|bytes line per file, each cap set at the file's last deliberate
+# reduction; this check fails when a file grows past its cap. Lowering a cap
+# is how a reduction locks in, and raising one is a decision made out loud in
+# a review, never a side effect of an edit.
 #
-# Run by .githooks/pre-commit when either file is staged, and by CI on every
-# push. With no arguments it checks both files; with arguments it checks only
-# the named paths, which is how the hook passes staged files.
+# One implementation, here, deployed to ~/bin with the rest of bin/. Homebase's
+# own hook and CI call it in place; other repos call ~/bin/lint/context-size
+# from their pre-commit hooks and check homebase out in CI to run it. The root
+# is the git toplevel of the working directory unless --root names one. With
+# no paths it checks every capped file; with paths (how a hook passes its
+# staged files) it checks only those among them that carry a cap.
+#
+# Written for bash 3.2, the version macOS ships.
 set -uo pipefail
 
-ROOT=$(env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE \
-  git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null) || ROOT=""
-if [[ -z "$ROOT" || ! -f "$ROOT/setup.sh" ]]; then
-  ROOT="$(cd -P "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+ROOT=""
+if [ "${1:-}" = "--root" ]; then
+  ROOT="${2:?--root needs a directory}"
+  shift 2
 fi
-
-# Path, then cap in bytes. Set 2026-08-27 at the first prune (CLAUDE.md went
-# from 35,658 bytes to 11,355) with a little slack for a one line edit.
-CAPS=(
-  "CLAUDE.md|12288"
-  ".claude/CLAUDE.md|18158"
-)
+if [ -z "$ROOT" ]; then
+  ROOT=$(env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git rev-parse --show-toplevel 2>/dev/null) || ROOT="$PWD"
+fi
+CAPS_FILE="$ROOT/.context-caps"
+if [ ! -f "$CAPS_FILE" ]; then
+  printf 'context-size: no .context-caps in %s, nothing to check\n' "$ROOT"
+  exit 0
+fi
 
 want=("$@")
 status=0
 checked=0
-for entry in "${CAPS[@]}"; do
-  rel="${entry%%|*}"
-  cap="${entry##*|}"
-  if [[ ${#want[@]} -gt 0 ]]; then
+while IFS= read -r line || [ -n "$line" ]; do
+  line="${line%%#*}"
+  line="${line#"${line%%[![:space:]]*}"}"
+  line="${line%"${line##*[![:space:]]}"}"
+  [ -n "$line" ] || continue
+  rel="${line%%|*}"
+  cap="${line##*|}"
+  case "$cap" in
+    ''|*[!0-9]*)
+      printf 'context-size: bad line in .context-caps (want path|bytes): %s\n' "$line" >&2
+      status=1
+      continue
+      ;;
+  esac
+  if [ ${#want[@]} -gt 0 ]; then
     hit=0
-    for w in "${want[@]}"; do [[ "$w" == "$rel" ]] && hit=1; done
-    [[ $hit -eq 1 ]] || continue
+    for w in "${want[@]}"; do [ "$w" = "$rel" ] && hit=1; done
+    [ $hit -eq 1 ] || continue
   fi
   file="$ROOT/$rel"
-  [[ -f "$file" ]] || continue
+  [ -f "$file" ] || continue
   checked=$((checked + 1))
   size=$(wc -c < "$file" | tr -d ' ')
-  if (( size > cap )); then
-    printf 'context-size: %s is %s bytes, over its %s byte cap by %s. Move depth into a path scoped rule (.claude/rules/) or a tool doc rather than raising the cap.\n' \
+  if [ "$size" -gt "$cap" ]; then
+    printf 'context-size: %s is %s bytes, over its %s byte cap by %s. Move depth one hop down (a path scoped rule, the README beside it, a tool doc) rather than raising the cap.\n' \
       "$rel" "$size" "$cap" "$((size - cap))" >&2
     status=1
   else
     printf 'context-size: %s %s/%s bytes\n' "$rel" "$size" "$cap"
   fi
-done
+done < "$CAPS_FILE"
 
-if (( checked == 0 )); then
+if [ $checked -eq 0 ] && [ ${#want[@]} -eq 0 ]; then
   printf 'context-size: nothing to check\n'
 fi
 exit $status

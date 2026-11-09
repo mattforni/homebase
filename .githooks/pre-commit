@@ -138,16 +138,10 @@ if [[ ${#land[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runner-land-test" ]]; then
   fi
 fi
 
-# Context size ratchet, only when an always loaded file is staged
-ctx=()
-for f in "${staged[@]}"; do
-  case "$f" in
-    CLAUDE.md|.claude/CLAUDE.md) ctx+=("$f") ;;
-  esac
-done
-
-if [[ ${#ctx[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/context-size" ]]; then
-  if ! "$ROOT/bin/lint/context-size" "${ctx[@]}"; then
+# Context size ratchet. The script reads the caps from .context-caps and
+# checks only the staged files that carry one, so every staged path goes in.
+if [[ ${#staged[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/context-size" ]]; then
+  if ! "$ROOT/bin/lint/context-size" "${staged[@]}"; then
     printf "${RED}[x]${NC} context size cap exceeded. Move depth into .claude/rules/ or a tool doc, or run again with --no-verify.\n" >&2
     status=1
   fi
