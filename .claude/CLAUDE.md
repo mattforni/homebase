@@ -47,7 +47,7 @@ Three standing questions (what genuinely feels like reward; die in the morning s
 
 ## Workflow Conventions
 
-- **Work in worktrees, not primary checkouts.** The first action in any session that will touch a tracked repo is to cut a dedicated worktree (EnterWorktree), before the first edit, for every tracked repo, Eudy included, with no exception for small or "just notes" edits. The only work on a primary checkout is a deliberate landing step (merging, pulling main, deleting a merged branch). The worktree gate hook (`~/.claude/hooks/worktree-gate.sh`) denies mutating git on a primary outright; its carve outs, the worktree mechanics, and the squash merge and stacked PR gotchas live in `~/Eudaimonia/Admin/Tools/github.md`.
+- **Work in worktrees, not primary checkouts.** The first action in any session that will touch a tracked repo is to cut a dedicated worktree for every repo it touches, with no exception for "just notes" edits: `git -C <repo> worktree add` for the other repos first, EnterWorktree on the session's own repo last, since a pinned session, agents included, is refused git everywhere else (`claude-code.md`). The only work on a primary checkout is a deliberate landing step. The worktree gate hook denies mutating git on a primary; its carve outs and the squash merge gotchas live in `~/Eudaimonia/Admin/Tools/github.md`.
 - Present plans and documents meant for Forni or an outside reader before writing them to a file; never write a plan to a file unasked. Auto memory and log entries are outside this.
 - Outside version control (Google Docs, Drive files, delivered PDFs), never overwrite an original without explicit permission; save a new version instead. Tracked files are edited in place under the worktree gate.
 
