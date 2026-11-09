@@ -49,8 +49,8 @@ The Ledger
   Source    Did
   Money     6 rows categorized
   Email     5 messages filed
-  Work      2 issues to place, about 2.5 hours; 2 fields set
-  Calendar  1 fix made
+  Work      2 issues to place, about 2.5 hours; 2 fields to set
+  Calendar  1 fix to make
   Tasks     Not read this run: the read timed out
 
 Dropped · 1

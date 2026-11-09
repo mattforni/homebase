@@ -100,6 +100,8 @@ export type BriefDraft = {
 	/* The entrypoint's keys, merged in after the model runs: data, never prose. */
 	spend?: { personal?: BudgetSpend | null; atelic?: BudgetSpend | null } | null;
 	completed?: CompletedRow[] | null;
+	/** The Todoist pull's reason when the completed tasks could not be read; "" when they were. */
+	completedNote?: unknown;
 	applied?: Applied | null;
 	pulls?: Pull[] | null;
 };
@@ -570,15 +572,6 @@ function spendBudgets(draft: BriefDraft): { label: string; spend: BudgetSpend | 
 	});
 }
 
-/** "Month So Far · Day 19 of 31", from the first budget that was read. */
-function spendTitle(draft: BriefDraft): string {
-	const read = spendBudgets(draft).find((budget) => budget.spend !== null)?.spend;
-	if (!read) return "Month So Far";
-	const day = str(read.dayOfMonth);
-	const days = str(read.daysInMonth);
-	return day === "" || days === "" ? "Month So Far" : `Month So Far · Day ${day} of ${days}`;
-}
-
 function accountsInError(draft: BriefDraft): string {
 	return spendBudgets(draft)
 		.filter(({ spend }) => spend && list(spend.accountsInError).length > 0)
@@ -601,7 +594,23 @@ function emailDone(draft: BriefDraft): InboxRow[] {
 			return row ? [row] : [];
 		});
 	}
-	return rows.filter((row) => isApplied(bandOf(row, "decision")) && ["label", "archive"].includes(str(row.action)));
+	// A keep that adds a label is filed too; a bare keep is kept, below.
+	return rows.filter(
+		(row) =>
+			isApplied(bandOf(row, "decision")) &&
+			(["label", "archive"].includes(str(row.action)) || (str(row.action) === "keep" && hasLabels(row))),
+	);
+}
+
+function hasLabels(row: InboxRow): boolean {
+	return list(row.labels).some((label) => str(label) !== "");
+}
+
+/** The messages left exactly as they are: a keep with no label to add, so nothing was filed. */
+function emailKept(draft: BriefDraft): InboxRow[] {
+	return list(draft.inbox?.rows).filter(
+		(row) => isApplied(bandOf(row, "decision")) && str(row.action) === "keep" && !hasLabels(row),
+	);
 }
 
 /** The tasks the mail asks the session to create, each a row the reader can check. */
@@ -888,7 +897,9 @@ function spendParts(draft: BriefDraft): Part[] {
  * Todoist pull did not include them says so rather than saying zero.
  */
 function completedLine(draft: BriefDraft): string {
-	if (!Array.isArray(draft.completed)) return "The tasks completed last week were not read this run.";
+	if (!Array.isArray(draft.completed) || str(draft.completedNote) !== "") {
+		return "The tasks completed last week were not read this run.";
+	}
 	const count = draft.completed.length;
 	return `${numberString(count)} ${count === 1 ? "task" : "tasks"} completed last week.`;
 }
@@ -939,9 +950,12 @@ function ledger(draft: BriefDraft): Ledger[] {
 	const notice = (source: string) => notices(draft, source)[0];
 	const money = moneyDone(draft).length;
 	lines.push({ source: "Money", did: notice("Money") ?? `${plural(money, "row", "rows")} categorized` });
+	// Money and email have an apply path, so their lines say what was done;
+	// the work, calendar and task rows have none yet, so their lines say what
+	// the Monday sitting has to do (review of PR #410).
 	const filed = emailDone(draft);
 	const tasks = emailTasks(draft);
-	const kept = inboxRows(draft, "medium").filter((row) => str(row.action) === "keep").length;
+	const kept = emailKept(draft).length;
 	lines.push({
 		source: "Email",
 		did:
@@ -952,7 +966,7 @@ function ledger(draft: BriefDraft): Ledger[] {
 					: `${plural(filed.length, "message", "messages")} filed${filed.length <= 3 ? ` (${named(filed.map((row) => str(row.subject)))})` : ""}`,
 				tasks.length === 0
 					? ""
-					: `${plural(tasks.length, "task", "tasks")} created${tasks.length <= 3 ? ` (${named(tasks.map(taskName))})` : ""}`,
+					: `${plural(tasks.length, "task", "tasks")} to create${tasks.length <= 3 ? ` (${named(tasks.map(taskName))})` : ""}`,
 				kept === 0 ? "" : `${numberString(kept)} kept`,
 			]
 				.filter((part) => part !== "")
@@ -968,15 +982,15 @@ function ledger(draft: BriefDraft): Ledger[] {
 				unplaced.length === 0
 					? "every issue has a block"
 					: `${plural(unplaced.length, "issue", "issues")} to place, about ${hoursOf(unplaced)}`,
-				set === 0 ? "" : `${plural(set, "field", "fields")} set`,
+				set === 0 ? "" : `${plural(set, "field", "fields")} to set`,
 			]
 				.filter((part) => part !== "")
 				.join("; "),
 	});
 	const fixes = findings(draft, "medium").length;
-	lines.push({ source: "Calendar", did: notice("Calendar") ?? `${plural(fixes, "fix", "fixes")} made` });
+	lines.push({ source: "Calendar", did: notice("Calendar") ?? `${plural(fixes, "fix", "fixes")} to make` });
 	const placed = taskRows(draft, "medium").length;
-	lines.push({ source: "Tasks", did: notice("Tasks") ?? `${plural(placed, "task", "tasks")} placed` });
+	lines.push({ source: "Tasks", did: notice("Tasks") ?? `${plural(placed, "task", "tasks")} to place` });
 	return lines;
 }
 
@@ -1151,7 +1165,7 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 
 	return renderEmail({
 		title: `${planning} Brief`,
-		preheader: `Week ${weekNumber(context.week)} closed; ${groups.length === 0 ? "nothing needs you" : `${numberString(groups.reduce((sum, group) => sum + group.records.length, 0))} decisions`} for week ${weekNumber(planning)}.`,
+		preheader: `Week ${weekNumber(context.week)} closed; ${groups.length === 0 ? "nothing needs you" : plural(groups.reduce((sum, group) => sum + group.records.length, 0), "decision", "decisions")} for week ${weekNumber(planning)}.`,
 		children: (
 			<>
 				<Masthead title={`Brief · Week ${weekNumber(planning)}`} />

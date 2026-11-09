@@ -583,13 +583,16 @@ if [[ "$BRIEF_WRITE" == "1" && "$DRY_RUN" != "1" && "$SKIP_PULLS" != "1" ]]; the
     jq '[.money.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "")) | {budget, id, category, rename: (.rename // "")}]' "$DRAFT_JSON" > "$WORK/apply-ynab.json"
     jq '[.inbox.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "") and (.action == "label" or .action == "archive" or (.action == "keep" and ((.labels // []) | length) > 0))) | {mailbox, id, labels: (.labels // []), archive: (.action == "archive")}]' "$DRAFT_JSON" > "$WORK/apply-gmail.json"
     # An applied band the apply never tries is still accounted for: an action
-    # the runner never performs (a star, a trash, a task) and, with no YNAB
-    # key, every money row. Each lands in dropped with its reason, so the mail
-    # never shows a row as done that nothing touched. A keep is not a write,
-    # so it is never dropped: there was nothing to do.
+    # the runner has an apply path for but could not perform here, and, with
+    # no YNAB key, every money row. Each lands in dropped with its reason, so
+    # the mail never shows a row as done that nothing touched. A keep, a task,
+    # a star and a reply are never dropped: the runner has no path for them by
+    # design, the ledger says the session makes them, and listing them as
+    # dropped would contradict it (review of PR #410).
     jq --arg nokey "$([[ -n "${YNAB_API_KEY:-}" ]] && echo 0 || echo 1)" '
         def applied: (.band // "" | ascii_downcase) as $b | ($b == "high" or $b == "medium");
-        [.inbox.rows[] | select(applied and ((.rule // "") != "") and (.action != "label" and .action != "archive" and .action != "keep"))
+        def sessions: .action == "keep" or .action == "task" or .action == "star" or .action == "reply";
+        [.inbox.rows[] | select(applied and ((.rule // "") != "") and (.action != "label" and .action != "archive") and (sessions | not))
             | {kind: "gmail", id, reason: ("the runner never performs \(.action); the Monday session does")}]
         + [.inbox.rows[] | select(applied and ((.rule // "") == ""))
             | {kind: "gmail", id, reason: "banded for applying with no rule cited, so it stays proposed"}]
@@ -646,7 +649,7 @@ jq --argjson ps "$(skips personal)" --argjson atelicSkips "$(skips atelic)" --sl
 # it ran; a run without it carries an empty list and the Done card says so.
 COMPLETED_SRC="$WORK/todoist.json"
 [[ -s "$COMPLETED_SRC" ]] || { echo '{}' > "$WORK/todoist-empty.json"; COMPLETED_SRC="$WORK/todoist-empty.json"; }
-if ! jq -s '.[0] * {atelic: .[1], strava: .[2], spend: .[3], applied: .[4], pulls: .[5], completed: (.[6].completed // [])}' \
+if ! jq -s '.[0] * {atelic: .[1], strava: .[2], spend: .[3], applied: .[4], pulls: .[5], completed: (.[6].completed // null), completedNote: (.[6].completedNote // "")}' \
         "$DRAFT_JSON" "$WORK/atelic.json" "$WORK/strava.json" "$WORK/spend.json" "$APPLIED" "$PULLS_JSON" "$COMPLETED_SRC" > "$DRAFT_JSON.merged" 2>"$WORK/merge-stderr.txt"; then
     fail_reason="could not merge the data into the brief: $(head -c 300 "$WORK/merge-stderr.txt")"
     exit 1

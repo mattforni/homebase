@@ -36,8 +36,8 @@ The Ledger
   Money     0 rows categorized
   Email     nothing filed
   Work      every issue has a block
-  Calendar  0 fixes made
-  Tasks     0 tasks placed
+  Calendar  0 fixes to make
+  Tasks     0 tasks to place
 
 Money Rules · 0
   Every money row sat on a rule already written.
