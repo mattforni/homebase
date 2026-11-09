@@ -16,7 +16,7 @@ The weekly motion that turns the activities ledger into a filed MyUI+ payment re
 
 ## The Slate
 
-Claim weeks run Sunday through Saturday; the Monday task files for the week that ended two days earlier. Pull the claim week with `pinole work activities list --week <YYYY-Www> --table` (the `--week` filter expands to the Sunday through Saturday claim week containing that ISO week's Monday) and keep only what was genuinely completed:
+Claim weeks run Sunday through Saturday; a Monday filing covers the week that ended two days earlier. Pull the claim week with `pinole work activities list --week <YYYY-Www> --table` (the `--week` filter expands to the Sunday through Saturday claim week containing that ISO week's Monday) and keep only what was genuinely completed:
 
 - **Applications** (kind `application`) report as job applications with outcome Applied.
 - **Supporting activities** (kinds `listings_review`, `registration`, `registration_maintenance`, `resume_submission`) report with outcome No Decision.
@@ -58,9 +58,9 @@ Drive every control by DOM id, and read the section and error state rather than 
 2. **Basic Questions take Forni's standing answers** (see [learned-rules.md](learned-rules.md)). Before answering the work question, ask Forni for the claim week's practice hours and any invoice or deal that became final that week; Toggl is a cross check, not the test. `TOGGL_FORCE_PROFILE=atelic toggl list` reads only the last three days, so it cannot cover a full claim week filed on Monday. Any hours or earnings make the answer Yes, and the Earnings rules in learned-rules.md apply. Read each question's wording on the page before answering, and stop only if the wording has changed. A background run still bails to the main session the moment the section is not already Complete, per the agent contract.
 3. **Activity count**: select the radio matching the slate size (Five or More at cadence).
 4. **One form per activity**, saved individually. Field ids, dropdown mapping, and the ASPX gotchas live in [learned-rules.md](learned-rules.md). Verify each save by the numbered activity list growing.
-5. **Work Search Plan** checkboxes describe the coming week's intent: inquire online, apply online, interview online and by phone, other activities.
-6. **GATE: the certifications are Forni's hands.** Stop at the work search certification with everything filled, and read back the Basic Questions answers, every activity, and the plan. Forni checks the box, enters his initials (MGF), clicks FINISH, reviews the Summary, certifies under penalty of perjury, and submits. Claude never checks a certification box or clicks Submit.
-7. **Capture and close.** Once Forni reports the submit, read the confirmation number, submitted week, and timestamp off the confirmation page. Inline, stamp every included activity with `pinole work activities report --confirmation <code> <id> [<id>...]` (one call, every id from the slate); a background run reports the number and the ids and leaves the stamp to the main session. Complete or reschedule the close task and report the number.
+5. **Work Search Plan** checkboxes describe the coming week's genuine intent: check only what is planned, and at least one (the plan rule in [learned-rules.md](learned-rules.md)).
+6. **GATE: the certifications are Forni's hands.** Stop at the work search certification with everything filled, and read back the Basic Questions answers, the Earnings section when work was reported, every activity, and the plan. Forni checks the Earnings certification when the section is present and the work search box, enters his initials (MGF), clicks FINISH, reviews the Summary, certifies under penalty of perjury, and submits. Claude never checks a certification box or clicks Submit.
+7. **Capture and close.** Once Forni reports the submit, read the confirmation number, submitted week, and timestamp off the confirmation page. Inline, stamp every included activity with `pinole work activities report --confirmation <code> <id> [<id>...]` (one call, every id from the slate); a background run reports the number and the ids and leaves the stamp to the main session. Complete the close task with `td task complete <id>`, or move it with `td task reschedule <id> <date>`, and report the number.
 
 ## Activity Type Mapping
 
