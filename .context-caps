@@ -1,0 +1,9 @@
+# Byte caps on the two always loaded files this repo owns, read by
+# bin/lint/context-size from the pre-commit hook and from CI. One line per
+# file, path|bytes. CLAUDE.md deploys to ~/CLAUDE.md and .claude/CLAUDE.md to
+# ~/.claude/CLAUDE.md, so both load into every session on the machine. Set
+# 2026-08-27 at the first prune (CLAUDE.md went from 35,658 bytes to 11,355)
+# with slack for a one line edit; lowering a cap locks a reduction in,
+# raising one is a review decision.
+CLAUDE.md|12288
+.claude/CLAUDE.md|18158

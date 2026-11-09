@@ -150,7 +150,7 @@ jobs:
       - name: Test the worktree gate
         run: ./bin/lint/worktree-gate-test
 
-      # The two always loaded context files (CLAUDE.md, .claude/CLAUDE.md) each
+      # The always loaded context files listed in .context-caps each
       # carry a byte cap set at their last reduction. Growth past it fails here
       # and in the pre-commit hook, so a reduction stays reduced.
       - name: Check context size caps
