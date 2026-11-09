@@ -90,6 +90,7 @@
     ],
     "deny": [
       "Bash(agent-browser *chkEnhancedConfirmation*)",
+      "Bash(agent-browser *chkSelfEmployment*)",
       "mcp__claude-in-chrome"
     ],
     "ask": [],
