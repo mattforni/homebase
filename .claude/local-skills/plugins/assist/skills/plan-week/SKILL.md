@@ -109,10 +109,10 @@ Full boards (every thread, every task, every event) surface only on request. The
 
 Look back at the week that closed yesterday, read as a **compass, not a verdict**. This phase is a quiet dialogue: the agent fan out waits until it closes, so nothing lands mid question.
 
-**The emailed retro is the first pass.** Before the session opens the runner has pulled Strava, the Gmail takeout tally, and the HubSpot outreach week, graded them against the block doc, and mailed the result (Before Every Invocation, step 7). Forni has read it in his inbox, so the session does not restate its tables. The session's contribution is what the email cannot carry:
+**The emailed retro is the first pass.** Before the session opens the runner has pulled Strava and the Gmail takeout tally, graded them against the block doc, and mailed the result as the Last Week half of the brief (Before Every Invocation, step 7); the outreach week left the brief for the Pipeline mail on 2026-11-09. Forni has read it in his inbox, so the session does not restate its tables. The session's contribution is what the email cannot carry:
 
 - **Name what stands out**, two or three sentences, lightly.
-- **Ask the felt sense** as an open prose question, never an option menu (a word or two for the week), and follow the live thread. The email's headline is a grade against the block; the felt sense is the story, and it can turn the grade over (on 2026-08-30 "skipped the plan entirely" was, lived, the first weekend home after a month of racing). The numbers are numbers; his read is the read.
+- **Ask the felt sense** as an open prose question, never an option menu (a word or two for the week), and follow the live thread. The scoreboard is counts against the block and carries no verdict (the graded headline left the brief 2026-11-09); the felt sense is the story, and it can turn the numbers over (on 2026-08-30 "skipped the plan entirely" was, lived, the first weekend home after a month of racing). The numbers are numbers; his read is the read.
 - **Fill the blind spots** the email names for itself (how the heel and body felt) in one factual ask, and carry the answers into Plan Training.
 - **Settle the carry forward**, the one thing the week ahead is for; it seeds Set Intention.
 
