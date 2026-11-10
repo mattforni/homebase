@@ -79,7 +79,7 @@ Identify every tracker item the session touched: an issue named in the session, 
 - **Work partially done.** Mint one Linear issue per remaining item, placed in a cycle with an estimate and a cognitive load label, then close the original as Done with a comment that points at them (see [learned-rules.md](learned-rules.md), 2026-09-24). Surface the new issues in the Step 8 summary.
 - **Work abandoned or superseded.** Ask before cancelling. That is a judgment call, not a cleanup.
 
-Follow the repo's tracker split: engineering and client work is a Linear issue, personal and operational work is Todoist (see [learned-rules.md](learned-rules.md)). How a ticket is written and kept, including body-is-the-spec and comments-are-the-timeline, lives in `~/Eudaimonia/Admin/Concepts/tickets.md`.
+Follow the repo's tracker split: engineering and client work is a Linear issue, personal and operational work is Todoist (see [learned-rules.md](learned-rules.md)). How a ticket is written and kept, including that the body is the spec and comments are the timeline, lives in `~/Eudaimonia/Admin/Concepts/tickets.md`.
 
 ### Step 3: Surface External Commitments
 
