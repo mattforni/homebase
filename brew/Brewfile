@@ -32,6 +32,7 @@ brew "automake"
 brew "cmake"
 brew "make"
 brew "maven"
+brew "python@3.11" # For Poetry projects whose deploy images pin 3.11
 brew "python@3.12"
 brew "rust" # cargo toolchain; the toggl CLI installs via `cargo install toggl`
 
@@ -39,6 +40,9 @@ brew "rust" # cargo toolchain; the toggl CLI installs via `cargo install toggl`
 brew "mise" # Runtime version manager; replaced fnm and rbenv 2026-08-11
 brew "bun"
 brew "pnpm"
+brew "poetry" # Python dependency manager; match the major version that wrote a project's lockfile
+brew "pre-commit" # Runs a repo's .pre-commit-config.yaml hooks
+brew "go-task" # task: runs Taskfile.yml recipes
 
 # Data & services
 brew "postgresql@15"
@@ -48,6 +52,7 @@ brew "supabase"
 brew "googleworkspace-cli"
 brew "heroku"
 brew "railway"
+brew "sentry-cli"
 
 # Applications
 cask "antigravity-ide" # The only IDE. Its cask puts antigravity-ide and agy-ide on PATH
