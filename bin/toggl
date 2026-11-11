@@ -19,10 +19,13 @@
 # start, check and stop would spend most of an hour's budget. So the personal
 # profile execs the real CLI untouched, and the atelic profile is answered
 # here with curl against Toggl API v9 and the business token from the vault,
-# at one to four requests a command, the way bin/hs answers `hs api` itself. The subset is deliberately small: start, stop, current and
-# list. Anything else names that subset and stops, rather than quietly running
-# the real CLI against the personal account from inside the business tree,
-# which is the exact failure the marker exists to prevent.
+# the way bin/hs answers `hs api` itself: one to four requests a command, five
+# for a backdated start that hands over from a running entry, and three plus
+# one per entry written for add. Each subcommand counts its own above it. The
+# subset is deliberately small: start, stop, current, list and add. Anything
+# else names that subset and stops, rather than quietly running the real CLI
+# against the personal account from inside the business tree, which is the
+# exact failure the marker exists to prevent.
 #
 # Precedence, highest first:
 #   1. TOGGL_FORCE_PROFILE=<name>: names a profile outright, for scripts and
@@ -43,6 +46,13 @@
 # never printed, never written to disk or the Keychain, and never placed on a
 # command line where `ps` could read it: curl receives it through a config
 # read from a pipe.
+#
+# One exception on the personal profile: `add`, which the real CLI has no
+# equivalent for and logging a finished session needs, is answered here too,
+# through the same API code, against the personal workspace with the token
+# the real CLI itself keeps in the Keychain (service `togglcli`, account
+# `default`), read the same way it is never printed. Everything else on the
+# personal profile still execs the real CLI.
 
 set -euo pipefail
 
@@ -76,7 +86,41 @@ if [[ -z "$real_toggl" && -x "$HOME/.cargo/bin/toggl" && ! -d "$HOME/.cargo/bin/
     real_toggl="$HOME/.cargo/bin/toggl"
 fi
 
+# `start --at` and `add` are the shim's own. The real CLI's start has no start
+# time option (0.5.1 takes only billable, interactive, project, tags and task),
+# and handed an unknown flag it stops on an argument error that names
+# nothing about why; and it has no command that creates a finished entry.
+# So both are refused by name before the exec, with the route the real CLI
+# does offer: start, then move the start or stop with `edit`.
+refuse_real_shim_only() {
+    local arg
+    # Skip the global options the real CLI takes before its subcommand.
+    while (( $# )); do
+        case "$1" in
+            -C|--proxy) shift; (( $# )) && shift ;;
+            -*) shift ;;
+            *) break ;;
+        esac
+    done
+    if [[ "${1:-}" == "add" ]]; then
+        echo "toggl shim: add is answered by the shim itself, never the real CLI, which has no command that creates a finished entry." >&2
+        echo "toggl shim: give add as the first argument, with no global option before it; if it already is, this tree's profile could not be resolved to one the shim answers." >&2
+        exit 2
+    fi
+    [[ "${1:-}" == "start" ]] || return 0
+    shift
+    for arg in "$@"; do
+        [[ "$arg" == "--" ]] && break
+        if [[ "$arg" == "--at" || "$arg" == --at=* ]]; then
+            echo "toggl shim: --at works only on the atelic profile; the real CLI's start has no start time flag." >&2
+            echo "toggl shim: start without it, then run: toggl edit --start-time <RFC3339, e.g. 2026-11-11T13:47:00-07:00>" >&2
+            exit 2
+        fi
+    done
+}
+
 run_real() {
+    refuse_real_shim_only "$@"
     if [[ -z "$real_toggl" ]]; then
         echo "toggl shim: cannot find the real toggl binary on PATH or in ~/.cargo/bin" >&2
         exit 127
@@ -106,28 +150,53 @@ else
 fi
 
 # Profile to Toggl account. An explicit table, as in bin/hs: adding a profile
-# means adding a line here and a token in the vault.
+# means adding a line here and a token in the vault. The personal account is
+# answered here for add alone, scoped to its one workspace.
+account_label="" account_workspace="" token_secret=""
 case "$profile" in
-    personal) run_real "$@" ;;
-    atelic)   token_secret="toggl-api-token-atelic" ;;
+    personal)
+        [[ "${1:-}" == "add" ]] || run_real "$@"
+        account_label="personal"
+        account_workspace="7896933"
+        ;;
+    atelic)
+        account_label="Atelic"
+        token_secret="toggl-api-token-atelic"
+        ;;
     *)
         echo "toggl shim: profile '$profile' maps to no Toggl account, using the real CLI (personal)" >&2
         run_real "$@"
         ;;
 esac
 
-# Everything below answers the atelic profile against Toggl API v9.
+# Everything below answers against Toggl API v9: every subcommand for the
+# atelic profile, and add for the personal one.
 
 api_base="https://api.track.toggl.com/api/v9"
 created_with="homebase toggl shim"
 
 usage_atelic() {
+    if [[ "$profile" == "personal" ]]; then
+        cat >&2 <<'EOF'
+toggl shim: on the personal profile the shim answers only add; everything
+else runs the real CLI:
+  toggl add "<description>" --project "<project name>" --from <HH:MM | ISO 8601> --to <HH:MM | ISO 8601>
+            [--date YYYY-MM-DD] [--clip]
+      HH:MM is local on --date, or today; an ISO timestamp carries its own
+      date, which is how a span crosses midnight.
+EOF
+        return 0
+    fi
     cat >&2 <<'EOF'
 toggl shim: the atelic profile supports only these subcommands:
-  toggl start "<description>" [--project "<project name>"]
+  toggl start "<description>" [--project "<project name>"] [--at HH:MM | --at <ISO 8601>]
   toggl stop
   toggl current
   toggl list
+  toggl add "<description>" --project "<project name>" --from <HH:MM | ISO 8601> --to <HH:MM | ISO 8601>
+            [--date YYYY-MM-DD] [--clip]
+      HH:MM is local on --date, or today; an ISO timestamp carries its own
+      date, which is how a span crosses midnight.
 The real CLI only speaks for the personal Toggl account, so nothing else runs
 here. Use TOGGL_FORCE_PROFILE=personal to reach it from this tree on purpose.
 EOF
@@ -138,6 +207,25 @@ EOF
 # subshell dies with it, and every request would run gcloud again.
 toggl_token=""
 load_token() {
+    if [[ -z "$token_secret" ]]; then
+        # Personal: the real CLI's own Keychain item. -w prints only the
+        # password, straight into the variable; nothing echoes it.
+        if ! command -v security >/dev/null 2>&1; then
+            echo "toggl shim: the macOS security tool is not on PATH, so the personal token cannot be read from the Keychain" >&2
+            exit 1
+        fi
+        local rc=0
+        toggl_token="$(security find-generic-password -s togglcli -a default -w 2>/dev/null)" || rc=$?
+        if (( rc == 44 )); then
+            echo "toggl shim: no Keychain item for service togglcli, account default; run the real CLI's toggl auth once" >&2
+            exit 1
+        elif (( rc != 0 )); then
+            echo "toggl shim: the Keychain refused the togglcli item (security exit $rc); allow access when macOS asks, or unlock the login keychain" >&2
+            exit 1
+        fi
+        trim_token "the togglcli Keychain item"
+        return 0
+    fi
     local vault_lib="$shim_dir/lib/vault.sh" runner_lib="$shim_dir/runner/lib.sh" project
     if [[ ! -r "$vault_lib" || ! -r "$runner_lib" ]]; then
         echo "toggl shim: cannot read $vault_lib or $runner_lib to reach the vault" >&2
@@ -158,11 +246,16 @@ load_token() {
         echo "toggl shim: no signed in gcloud identity could read $token_secret from $project" >&2
         exit 1
     fi
-    # Trim surrounding whitespace, in case the secret was stored with a newline.
+    trim_token "$token_secret in the vault"
+}
+
+# Trim surrounding whitespace, in case the token was stored with a newline,
+# and refuse an empty one, naming where it came from.
+trim_token() {
     toggl_token="${toggl_token#"${toggl_token%%[![:space:]]*}"}"
     toggl_token="${toggl_token%"${toggl_token##*[![:space:]]}"}"
     if [[ -z "$toggl_token" ]]; then
-        echo "toggl shim: $token_secret is empty in the vault" >&2
+        echo "toggl shim: $1 is empty" >&2
         exit 1
     fi
 }
@@ -222,6 +315,9 @@ def desc: if (.description // "") == "" then "(no description)" else (.descripti
 def proj($name): if ($name // "") == "" then "" else " @" + $name end;
 def line($name): (if .billable then "$" else " " end) + " [" + (secs | hmmss) + "]"
     + (if running then "*" else " " end) + " –  " + desc + proj($name);
+def hm_or_hms: if . % 60 == 0 then strflocaltime("%H:%M") else strflocaltime("%H:%M:%S") end;
+def clock_for_humans: if strflocaltime("%Y-%m-%d") == (now | strflocaltime("%Y-%m-%d"))
+    then hm_or_hms else strflocaltime("%Y-%m-%d ") + hm_or_hms end;
 '
 
 # The account's active projects across its workspaces, fetched at most once
@@ -254,11 +350,37 @@ load_running() {
     [[ "$running" != "null" ]] || running=""
 }
 
+# The writable fields of a time entry, taken from the one Toggl returned, for
+# a PUT that changes only start, stop and duration. Every field is sent, as
+# the real CLI's own edit and stop do (PUT with its whole NetworkTimeEntry),
+# rather than a partial body whose missing fields the API documentation does
+# not promise to keep.
+# GET answers do not reliably carry created_with, which a write may require,
+# so the shim's own name stands in when it is missing.
+entry_fields="{description, start, stop, duration, billable, workspace_id,
+    tags: (.tags // []), project_id, task_id,
+    created_with: (.created_with // \"$created_with\")}"
+
+# PUT one edited entry back to its own workspace; prints Toggl's answer.
+put_running() {
+    local body="$1" wid id
+    wid="$(jq -r '.workspace_id' <<< "$running")"
+    id="$(jq -r '.id' <<< "$running")"
+    if [[ ! "$wid" =~ ^[0-9]+$ || ! "$id" =~ ^[0-9]+$ ]]; then
+        echo "toggl shim: could not read the running entry's workspace and id from Toggl's answer" >&2
+        return 1
+    fi
+    api PUT "workspaces/$wid/time_entries/$id" "$body"
+}
+
 # Stop the entry load_running found, if any, and print it like the real CLI.
 # Printing is best effort: once the stop has landed, a rendering hiccup must
 # not turn the command into a reported failure that a caller would retry.
+# With a stop time (UTC ISO and epoch) the entry ends then instead of now,
+# which takes a PUT, since the stop endpoint always stops at the moment of
+# the request.
 stop_loaded() {
-    local origin="$1" wid id name stopped
+    local origin="$1" stop_iso="${2:-}" stop_epoch="${3:-}" wid id name stopped body
     if [[ -z "$running" ]]; then
         [[ "$origin" == "cli" ]] && echo "No time entry is running at the moment"
         return 0
@@ -269,7 +391,14 @@ stop_loaded() {
         echo "toggl shim: could not read the running entry's workspace and id from Toggl's answer" >&2
         return 1
     fi
-    stopped="$(api PATCH "workspaces/$wid/time_entries/$id/stop")" || return 1
+    if [[ -n "$stop_iso" ]]; then
+        body="$(jq -c --arg stop "$stop_iso" --argjson e "$stop_epoch" \
+            "$jq_defs $entry_fields"' + {stop: $stop, duration: ($e - (.start | epoch | floor))}' \
+            <<< "$running")" || return 1
+        stopped="$(api PUT "workspaces/$wid/time_entries/$id" "$body")" || return 1
+    else
+        stopped="$(api PATCH "workspaces/$wid/time_entries/$id/stop")" || return 1
+    fi
     name="$(project_name "$(jq -r '.project_id' <<< "$stopped")")" || name=""
     if [[ "$origin" == "cli" ]]; then
         echo "Time entry stopped successfully"
@@ -324,20 +453,148 @@ cmd_list() {
         <<< "$entries"
 }
 
+# time_epoch_of <flag> <value> [YYYY-MM-DD]: epoch seconds, or a message on
+# stderr and a return of 1. HH:MM (or H:MM) is that clock time, local, on the
+# date given or else today. A full ISO 8601 timestamp is YYYY-MM-DDTHH:MM,
+# optional :SS and fraction, optional Z or offset; with no offset it is
+# local. All of it runs in jq, which every subcommand already needs, so the
+# BSD and GNU date dialects never matter. Local time is solved by asking
+# localtime for the offset twice, and the answer is formatted back and
+# compared, so an impossible date (February 30) or a clock time a DST change
+# skips is refused rather than rolled over into a different moment. A clock
+# time the fall back change repeats resolves to one of its two moments; give
+# an offset to choose.
+clock_re='^([01]?[0-9]|2[0-3]):([0-5][0-9])$'
+time_epoch_of() {
+    local flag="$1" value="$2" day="${3:-}" base="" offset="" hour epoch
+    if [[ "$value" =~ $clock_re ]]; then
+        hour="${BASH_REMATCH[1]}"
+        [[ ${#hour} -eq 2 ]] || hour="0$hour"
+        [[ -n "$day" ]] || day="$(jq -rn 'now | strflocaltime("%Y-%m-%d")')"
+        base="${day}T$hour:${BASH_REMATCH[2]}:00"
+    elif [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2})(:[0-9]{2})?(\.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})?$ ]]; then
+        base="${BASH_REMATCH[1]}${BASH_REMATCH[2]:-:00}"
+        offset="${BASH_REMATCH[4]}"
+        # +HHMM to +HH:MM, the one offset form the shared epoch def reads.
+        [[ "$offset" =~ ^([+-][0-9]{2})([0-9]{2})$ ]] && offset="${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
+    else
+        echo "toggl shim: $flag takes HH:MM (local) or an ISO 8601 timestamp such as 2026-11-11T13:47 or 2026-11-11T13:47:00-07:00, not \"$value\"" >&2
+        return 1
+    fi
+    epoch="$(jq -rn --arg b "$base" --arg o "$offset" "$jq_defs"'
+        def off(t): (t | localtime | mktime) - t;
+        (try (
+          ($b + "Z" | fromdateiso8601 | floor) as $t0
+          | if ($t0 | todate) != ($b + "Z") then null
+            elif $o == "" then
+              ($t0 - off($t0)) as $e1 | ($t0 - off($e1)) as $e
+              | if ($e | strflocaltime("%Y-%m-%dT%H:%M:%S")) == $b then $e else null end
+            else $b + $o | epoch | floor
+            end
+        ) catch null) // empty')" || epoch=""
+    if [[ ! "$epoch" =~ ^[0-9]+$ ]]; then
+        echo "toggl shim: $flag \"$value\" is not a real time (an impossible date, or a local clock time a daylight saving change skips)" >&2
+        return 1
+    fi
+    printf '%s' "$epoch"
+}
+
+# Epoch seconds to a local clock for messages: HH:MM today, else with the
+# date, and with seconds whenever the moment is not on the minute. An entry
+# a live timer stopped at 14:00:37 must not read as 14:00, or a refusal would
+# advise a time that is refused again.
+local_clock() {
+    jq -rn --argjson e "$1" "$jq_defs"' $e | clock_for_humans'
+}
+
+# resolve_project <name>: the one active project with exactly that name, as
+# the real CLI matches (within the profile's workspace when it names one),
+# setting the caller's pid, wid and billable (bash scope is dynamic, so the
+# caller declares them local first). Needs load_projects.
+resolve_project() {
+    local name="$1" matches project_json
+    matches="$(jq -c --arg n "$name" --arg ws "$account_workspace" \
+        '[.[] | select(.name == $n and (.active != false)
+                       and ($ws == "" or (.workspace_id | tostring) == $ws))]' <<< "$projects_json")"
+    case "$(jq 'length' <<< "$matches")" in
+        0)
+            echo "toggl shim: no active project named \"$name\" on the $account_label Toggl account${account_workspace:+ (workspace $account_workspace)}" >&2
+            return 1 ;;
+        1) project_json="$(jq -c '.[0]' <<< "$matches")" ;;
+        *)
+            echo "toggl shim: more than one active project is named \"$name\" across workspaces; refusing to guess" >&2
+            return 1 ;;
+    esac
+    pid="$(jq -r '.id' <<< "$project_json")"
+    wid="$(jq -r '.workspace_id' <<< "$project_json")"
+    billable="$(jq -r '.billable // false' <<< "$project_json")"
+}
+
+# tracked_overlaps <from> <to> [skip id]: every tracked entry overlapping the
+# span from..to, as a JSON array of {s, e, line}, earliest first, leaving out
+# the entry with the skip id. One request: the entries from a week before
+# <from> onward, since the API filters on start date and a forgotten timer
+# stopped late can begin days before the span it covers. The running entry
+# from load_running is folded in too, since it may have started before that
+# window; it covers up to now. A stopped entry ends at its stop (the running
+# def treats an entry with no stop as running). Call load_running first, at
+# function level.
+tracked_overlaps() {
+    local f="$1" t="$2" skip="${3:-0}" since until entries
+    since="$(jq -rn --argjson e "$f" '$e - 7 * 86400 | strflocaltime("%Y-%m-%d")')"
+    until="$(jq -rn --argjson e "$t" '$e + 2 * 86400 | strflocaltime("%Y-%m-%d")')"
+    entries="$(api GET "me/time_entries?start_date=$since&end_date=$until&meta=true")" || return 1
+    [[ "$entries" != "null" ]] || entries="[]"
+    jq -c --argjson f "$f" --argjson t "$t" --argjson now "$(date +%s)" \
+        --argjson skip "$skip" --argjson run "${running:-null}" "$jq_defs"'
+        (if $run != null and (any(.[]; .id == $run.id) | not) then . + [$run] else . end)
+        | [ .[]
+            | select(.id != $skip)
+            | (.start | epoch | floor) as $s
+            | (if running then $now else (.stop | epoch | floor) end) as $e
+            | select($s < $t and $e > $f)
+            | {s: $s, e: $e,
+               line: (($s | strflocaltime("%Y-%m-%d ") + hm_or_hms) + " to "
+                      + (if running then "now"
+                         elif ($e | strflocaltime("%Y-%m-%d")) == ($s | strflocaltime("%Y-%m-%d")) then ($e | hm_or_hms)
+                         else ($e | strflocaltime("%Y-%m-%d ") + hm_or_hms) end)
+                      + "  " + desc + proj(.project_name))} ]
+        | sort_by(.s)' <<< "$entries"
+}
+
 # Three or four requests: the running entry, the projects (when one is named)
 # or the account's default workspace (when none is), the stop (when something
-# runs), and the create.
+# runs), and the create. --at adds one, the read of the entries around it. A
+# correction (below) is three or four: the running entry, the projects when
+# one is named, that read, and the PUT that moves its start.
+#
+# --at backdates the start. Time any other entry already tracked between --at
+# and now is refused, listed, as add refuses an overlap, so a backdate never
+# double counts. With an entry running, it either corrects that entry or
+# hands over from it at --at, never overlapping the two:
+#   same description and project, started after --at: the timer was started
+#     late, so the running entry's start moves back to --at and nothing stops.
+#   same description and project, started at or before --at: that work is
+#     already running, so the command refuses rather than split it in two.
+#   anything else: the running entry stops at --at instead of now, and the new
+#     one starts there. If --at is at or before the running entry's own start,
+#     that stop would leave it negative or zero long, so the command refuses.
+# Every refusal says why and changes nothing.
 cmd_start() {
-    local description="" description_set="" project="" project_set=""
+    local description="" description_set="" project="" project_set="" at="" at_set=""
     while (( $# )); do
         case "$1" in
             -p|--project)
                 [[ $# -ge 2 ]] || { echo "toggl shim: $1 needs a project name" >&2; exit 2; }
                 project="$2"; project_set=1; shift 2 ;;
             -p=*|--project=*) project="${1#*=}"; project_set=1; shift ;;
+            --at)
+                [[ $# -ge 2 ]] || { echo "toggl shim: --at needs a time (HH:MM or ISO 8601)" >&2; exit 2; }
+                at="$2"; at_set=1; shift 2 ;;
+            --at=*) at="${1#*=}"; at_set=1; shift ;;
             --) shift; [[ $# -eq 1 && -z "$description_set" ]] || { usage_atelic; exit 2; }
                 description="$1"; description_set=1; shift ;;
-            -*) echo "toggl shim: start supports only --project on the atelic profile, not $1" >&2; exit 2 ;;
+            -*) echo "toggl shim: start supports only --project and --at on the atelic profile, not $1" >&2; exit 2 ;;
             *)
                 if [[ -n "$description_set" ]]; then
                     echo "toggl shim: start takes one description; quote it" >&2
@@ -355,36 +612,98 @@ cmd_start() {
         exit 2
     fi
 
+    # The time is settled before any request, so a typo costs no quota.
+    local at_epoch="" at_iso=""
+    if [[ -n "$at_set" ]]; then
+        at_epoch="$(time_epoch_of --at "$at")" || exit 2
+        if (( at_epoch > $(date +%s) )); then
+            echo "toggl shim: --at $(local_clock "$at_epoch") is in the future; a timer can only start at a time already past" >&2
+            if [[ "$at" =~ $clock_re ]]; then
+                echo "toggl shim: HH:MM always means today; for a time before midnight, give the date, e.g. --at $(jq -rn --argjson e "$at_epoch" '
+                    (now | strflocaltime("%Y-%m-%d") + "T12:00:00Z" | fromdateiso8601) - 86400
+                    | strftime("%Y-%m-%d") + ($e | strflocaltime("T%H:%M"))')" >&2
+            fi
+            exit 2
+        fi
+        at_iso="$(jq -rn --argjson e "$at_epoch" '$e | todate')"
+    fi
+
     load_token
     load_running || exit 1
 
     # Resolve everything before stopping anything, so a typo or a failed read
     # leaves the running entry alone. Exact name among active projects, as the
     # real CLI matches; the project also names the workspace.
-    local wid="" project_json="" pid="null" billable="false" body started
+    local wid="" pid="null" billable="false" body started
     if [[ -n "$project" ]]; then
         load_projects || exit 1
-        local matches
-        matches="$(jq -c --arg n "$project" \
-            '[.[] | select(.name == $n and (.active != false))]' <<< "$projects_json")"
-        case "$(jq 'length' <<< "$matches")" in
-            0)
-                echo "toggl shim: no active project named \"$project\" on the Atelic Toggl account" >&2
-                exit 1 ;;
-            1) project_json="$(jq -c '.[0]' <<< "$matches")" ;;
-            *)
-                echo "toggl shim: more than one active project is named \"$project\" across workspaces; refusing to guess" >&2
-                exit 1 ;;
-        esac
-        pid="$(jq -r '.id' <<< "$project_json")"
-        wid="$(jq -r '.workspace_id' <<< "$project_json")"
-        billable="$(jq -r '.billable // false' <<< "$project_json")"
-    else
+        resolve_project "$project" || exit 1
+    fi
+
+    # With --at and an entry running: correct it, refuse, or stop it at --at.
+    local stop_iso="" stop_epoch="" correction=""
+    if [[ -n "$at_set" && -n "$running" ]]; then
+        local run_epoch same
+        run_epoch="$(jq -r "$jq_defs .start | epoch | floor" <<< "$running" 2>/dev/null)" || run_epoch=""
+        if [[ ! "$run_epoch" =~ ^[0-9]+$ ]]; then
+            echo "toggl shim: could not read the running entry's start from Toggl's answer" >&2
+            exit 1
+        fi
+        same="$(jq -r --arg d "$description" --argjson pid "$pid" \
+            '(.description // "") == $d and .project_id == $pid' <<< "$running")"
+        if [[ "$same" == "true" ]]; then
+            if (( run_epoch <= at_epoch )); then
+                echo "toggl shim: \"$description\" is already running since $(local_clock "$run_epoch"), at or before --at $(local_clock "$at_epoch"); nothing changed." >&2
+                echo "toggl shim: --at only moves a running entry's start earlier; starting it again would split one piece of work in two." >&2
+                exit 2
+            fi
+            correction=1
+        elif (( at_epoch < run_epoch )); then
+            echo "toggl shim: --at $(local_clock "$at_epoch") is before the running entry's own start ($(local_clock "$run_epoch")), so stopping it there would give it a negative length." >&2
+            echo "toggl shim: nothing changed. A late start of the same work needs the same description and project; otherwise pick a time after $(local_clock "$run_epoch")." >&2
+            exit 2
+        elif (( at_epoch == run_epoch )); then
+            echo "toggl shim: --at $(local_clock "$at_epoch") is exactly the running entry's own start, so stopping it there would leave a zero length entry; nothing changed." >&2
+            echo "toggl shim: pick a time after $(local_clock "$run_epoch"), or stop the running entry first." >&2
+            exit 2
+        fi
+        if [[ -z "$correction" ]]; then
+            stop_iso="$at_iso"
+            stop_epoch="$at_epoch"
+        fi
+    fi
+
+    # Nothing else may already track time between --at and now. The running
+    # entry is left out: it is the one being corrected or stopped at --at.
+    if [[ -n "$at_set" ]]; then
+        local overlaps run_id=0
+        [[ -z "$running" ]] || run_id="$(jq -r '.id' <<< "$running")"
+        overlaps="$(tracked_overlaps "$at_epoch" "$(date +%s)" "$run_id")" || exit 1
+        if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
+            echo "toggl shim: --at $(local_clock "$at_epoch") reaches back into time already tracked; nothing changed:" >&2
+            jq -r '.[] | "  " + .line' <<< "$overlaps" >&2
+            echo "toggl shim: pick a time at or after the last of those ends" >&2
+            exit 1
+        fi
+    fi
+
+    if [[ -n "$correction" ]]; then
+        local moved
+        body="$(jq -c --arg start "$at_iso" --argjson e "$at_epoch" \
+            "$entry_fields"' + {start: $start, stop: null, duration: (0 - $e)}' \
+            <<< "$running")" || exit 1
+        moved="$(put_running "$body")" || exit 1
+        echo "Running time entry now starts at $(local_clock "$at_epoch")"
+        print_entry "$moved" "$project" || true
+        return 0
+    fi
+
+    if [[ -z "$project" ]]; then
         # No project: the account's default workspace, as the real CLI does,
         # never the running entry's, whichever workspace that happens to be in.
         wid="$(api GET "me" | jq -r '.default_workspace_id // empty')" || wid=""
         if [[ -z "$wid" ]]; then
-            echo "toggl shim: could not read the Atelic Toggl account's default workspace" >&2
+            echo "toggl shim: could not read the $account_label Toggl account's default workspace" >&2
             exit 1
         fi
     fi
@@ -392,12 +711,13 @@ cmd_start() {
     # Toggl's API documentation does not say that creating a running entry
     # stops the one already running, and the real CLI stops it explicitly
     # before every start (StopCommand in its start command). Do the same so
-    # exactly one entry runs.
-    stop_loaded start || exit 1
+    # exactly one entry runs. With --at it stops at --at, where the new one
+    # starts, so the two meet and never overlap.
+    stop_loaded start "$stop_iso" "$stop_epoch" || exit 1
 
     body="$(jq -nc \
         --arg desc "$description" \
-        --arg start "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        --arg start "${at_iso:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" \
         --arg cw "$created_with" \
         --argjson wid "$wid" \
         --argjson pid "$pid" \
@@ -416,10 +736,141 @@ cmd_start() {
     print_entry "$started" "$project" || true
 }
 
+# add: one finished entry from --from to --to, local, on --date or today.
+# --from and --to also take a full ISO 8601 timestamp, which carries its own
+# date. Nothing is ever written over time already tracked: the entries around
+# the span are read first (a running one covers up to now), and an overlap is
+# refused with each overlapping entry printed, unless --clip asks for the new
+# span trimmed to the time nothing covers, written as one entry per free run.
+# Free runs under a minute are dropped, so clipping never leaves crumbs.
+#
+# Requests: the projects, the running entry, the entries around the span, and
+# one create per entry written: four for a plain add.
+cmd_add() {
+    local description="" description_set="" project="" from="" to="" day="" clip=""
+    while (( $# )); do
+        case "$1" in
+            -p|--project|--from|--to|--date)
+                [[ $# -ge 2 ]] || { echo "toggl shim: $1 needs a value" >&2; exit 2; }
+                case "$1" in
+                    -p|--project) project="$2" ;;
+                    --from) from="$2" ;;
+                    --to) to="$2" ;;
+                    --date) day="$2" ;;
+                esac
+                shift 2 ;;
+            -p=*|--project=*) project="${1#*=}"; shift ;;
+            --from=*) from="${1#*=}"; shift ;;
+            --to=*) to="${1#*=}"; shift ;;
+            --date=*) day="${1#*=}"; shift ;;
+            --clip) clip=1; shift ;;
+            --) shift; [[ $# -eq 1 && -z "$description_set" ]] || { usage_atelic; exit 2; }
+                description="$1"; description_set=1; shift ;;
+            -*) echo "toggl shim: add supports only --project, --from, --to, --date and --clip, not $1" >&2; exit 2 ;;
+            *)
+                if [[ -n "$description_set" ]]; then
+                    echo "toggl shim: add takes one description; quote it" >&2
+                    exit 2
+                fi
+                description="$1"; description_set=1; shift ;;
+        esac
+    done
+    if [[ -z "$description_set" || -z "$project" || -z "$from" || -z "$to" ]]; then
+        echo "toggl shim: add needs a description, --project, --from and --to" >&2
+        usage_atelic
+        exit 2
+    fi
+    if [[ -n "$day" && ! "$day" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+        echo "toggl shim: --date takes YYYY-MM-DD, not \"$day\"" >&2
+        exit 2
+    fi
+
+    # Every time is settled before any request, so a typo costs no quota.
+    if [[ -n "$day" ]] && ! [[ "$from" =~ $clock_re && "$to" =~ $clock_re ]]; then
+        echo "toggl shim: --date applies only to HH:MM times; a full ISO 8601 --from or --to carries its own date, so drop --date or give both as HH:MM" >&2
+        exit 2
+    fi
+
+    # Today is read once, so --from and --to never straddle midnight apart.
+    [[ -n "$day" ]] || day="$(jq -rn 'now | strflocaltime("%Y-%m-%d")')"
+
+    local from_epoch to_epoch now_epoch
+    from_epoch="$(time_epoch_of --from "$from" "$day")" || exit 2
+    to_epoch="$(time_epoch_of --to "$to" "$day")" || exit 2
+    now_epoch="$(date +%s)"
+    if (( to_epoch <= from_epoch )); then
+        echo "toggl shim: --to $(local_clock "$to_epoch") is not after --from $(local_clock "$from_epoch"); an entry needs a positive length" >&2
+        exit 2
+    fi
+    if (( to_epoch > now_epoch )); then
+        echo "toggl shim: --to $(local_clock "$to_epoch") is in the future; add records only time already past" >&2
+        exit 2
+    fi
+
+    load_token
+    load_projects || exit 1
+    local pid wid billable
+    resolve_project "$project" || exit 1
+    load_running || exit 1
+
+    local overlaps
+    overlaps="$(tracked_overlaps "$from_epoch" "$to_epoch")" || exit 1
+
+    local runs
+    if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
+        if [[ -z "$clip" ]]; then
+            echo "toggl shim: $(local_clock "$from_epoch") to $(local_clock "$to_epoch") overlaps time already tracked; nothing written:" >&2
+            jq -r '.[] | "  " + .line' <<< "$overlaps" >&2
+            echo "toggl shim: clip the span by hand, or pass --clip to write only the time nothing covers" >&2
+            exit 1
+        fi
+        # The free runs: walk the covered intervals in order, keeping the gap
+        # before each one, then the tail after the last.
+        runs="$(jq -c --argjson f "$from_epoch" --argjson t "$to_epoch" '
+            reduce .[] as $o ({cur: $f, runs: []};
+                if $o.s > .cur then .runs += [[.cur, ([$o.s, $t] | min)]] else . end
+                | .cur = ([.cur, $o.e] | max))
+            | (if .cur < $t then .runs + [[.cur, $t]] else .runs end)
+            | map(select(.[1] - .[0] >= 60))' <<< "$overlaps")"
+        if [[ "$(jq 'length' <<< "$runs")" == "0" ]]; then
+            echo "Nothing written: these entries leave no free minute between $(local_clock "$from_epoch") and $(local_clock "$to_epoch")"
+            jq -r '.[] | "  " + .line' <<< "$overlaps"
+            return 0
+        fi
+    else
+        runs="[[${from_epoch},${to_epoch}]]"
+    fi
+
+    local count i=0 s e body added
+    count="$(jq 'length' <<< "$runs")"
+    while IFS=$'\t' read -r s e; do
+        body="$(jq -nc \
+            --arg desc "$description" \
+            --argjson s "$s" --argjson e "$e" \
+            --arg cw "$created_with" \
+            --argjson wid "$wid" \
+            --argjson pid "$pid" \
+            --argjson billable "$billable" \
+            '{description: $desc, start: ($s | todate), stop: ($e | todate), duration: ($e - $s),
+              workspace_id: $wid, project_id: $pid, billable: $billable, created_with: $cw}')"
+        if ! added="$(api POST "workspaces/$wid/time_entries" "$body")"; then
+            (( i == 0 )) || echo "toggl shim: $i of $count entries were written before this one failed" >&2
+            exit 1
+        fi
+        if (( i == 0 )); then
+            if (( count == 1 )); then echo "Time entry added"; else echo "$count time entries added"; fi
+        fi
+        jq -r --arg name "$project" "$jq_defs"' (.start | epoch | strflocaltime("%Y-%m-%d %H:%M")) + " " + line($name)' \
+            <<< "$added" || true
+        i=$(( i + 1 ))
+    done < <(jq -r '.[] | @tsv' <<< "$runs")
+}
+
 case "${1:-}" in
     start)   shift; cmd_start "$@" ;;
     stop)    shift; cmd_stop "$@" ;;
     current) shift; cmd_current "$@" ;;
     list)    shift; cmd_list "$@" ;;
+    add)     shift; cmd_add "$@" ;;
     *)       usage_atelic; exit 2 ;;
 esac
