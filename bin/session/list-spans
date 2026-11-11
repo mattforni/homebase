@@ -12,9 +12,9 @@
 # sessions running side by side never read each other's.
 #
 # One line per span in local time, as two ISO timestamps `toggl add --from --to`
-# takes (`2026-11-09T14:00 2026-11-09T15:30`), so a span keeps its own day. --date keeps the spans that
-# start on that day (default today), and a span running past midnight ends at
-# 23:59 of the day it started. A span under a minute is dropped, since a lone
+# takes (`2026-11-09T14:00 2026-11-09T15:30`), so a span keeps its own dates,
+# midnight crossings included. Every day's spans print unless --date keeps only
+# those that start on that day. A span under a minute is dropped, since a lone
 # message is not a sitting. The main transcript holds the main thread only,
 # so a foreground agent's minutes count only between the messages around it.
 set -euo pipefail
@@ -26,7 +26,7 @@ usage() {
 
 transcript=""
 gap=20
-day="$(date +%Y-%m-%d)"
+day=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --gap) [ $# -ge 2 ] || usage; gap="$2"; shift 2 ;;
@@ -40,7 +40,7 @@ case "$gap" in
 esac
 gap=$((10#$gap))
 case "$day" in
-    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+    '' | [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
     *) echo "list-spans: --date takes YYYY-MM-DD" >&2; exit 2 ;;
 esac
 
@@ -60,22 +60,16 @@ if [ -z "$transcript" ]; then
 fi
 [ -r "$transcript" ] || { echo "list-spans: cannot read $transcript" >&2; exit 1; }
 
-# The last minute of the day, as an epoch, so a span is cut at midnight.
-if ! day_end="$(date -j -f "%Y-%m-%d %H:%M:%S" "$day 23:59:00" +%s 2>/dev/null)"; then
-    day_end="$(date -d "$day 23:59:00" +%s)"
-fi
-
 # A line that is not JSON (the last line, mid write, while the session runs)
 # or a timestamp in a shape jq cannot read is skipped rather than failing.
 jq -R -r '
     fromjson? | select(.type == "user" or .type == "assistant") | .timestamp // empty
     | (try (sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601) catch empty)
-' "$transcript" | sort -n | jq -s -r --argjson gap "$((gap * 60))" --arg day "$day" --argjson day_end "$day_end" '
+' "$transcript" | sort -n | jq -s -r --argjson gap "$((gap * 60))" --arg day "$day" '
     reduce .[] as $t ([];
         if length > 0 and ($t - .[-1][1]) <= $gap then .[-1][1] = $t else . + [[$t, $t]] end)
     | .[]
-    | select((.[0] | strflocaltime("%Y-%m-%d")) == $day)
-    | .[1] = ([.[1], $day_end] | min)
+    | select($day == "" or (.[0] | strflocaltime("%Y-%m-%d")) == $day)
     | select(.[1] - .[0] >= 60)
     | (.[0] | strflocaltime("%Y-%m-%dT%H:%M")) + " " + (.[1] | strflocaltime("%Y-%m-%dT%H:%M"))
 '
