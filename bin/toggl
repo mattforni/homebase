@@ -262,6 +262,9 @@ def desc: if (.description // "") == "" then "(no description)" else (.descripti
 def proj($name): if ($name // "") == "" then "" else " @" + $name end;
 def line($name): (if .billable then "$" else " " end) + " [" + (secs | hmmss) + "]"
     + (if running then "*" else " " end) + " –  " + desc + proj($name);
+def hm_or_hms: if . % 60 == 0 then strflocaltime("%H:%M") else strflocaltime("%H:%M:%S") end;
+def clock_for_humans: if strflocaltime("%Y-%m-%d") == (now | strflocaltime("%Y-%m-%d"))
+    then hm_or_hms else strflocaltime("%Y-%m-%d ") + hm_or_hms end;
 '
 
 # The account's active projects across its workspaces, fetched at most once
@@ -407,9 +410,10 @@ cmd_list() {
 # change, and the answer is formatted back and compared, so an impossible
 # date (February 30) or a clock time a DST change skips is refused rather
 # than rolled over into a different moment.
+clock_re='^([01]?[0-9]|2[0-3]):([0-5][0-9])$'
 time_epoch_of() {
     local flag="$1" value="$2" day="${3:-}" base="" offset="" hour epoch
-    if [[ "$value" =~ ^([01]?[0-9]|2[0-3]):([0-5][0-9])$ ]]; then
+    if [[ "$value" =~ $clock_re ]]; then
         hour="${BASH_REMATCH[1]}"
         [[ ${#hour} -eq 2 ]] || hour="0$hour"
         [[ -n "$day" ]] || day="$(jq -rn 'now | strflocaltime("%Y-%m-%d")')"
@@ -441,11 +445,12 @@ time_epoch_of() {
     printf '%s' "$epoch"
 }
 
-# Epoch seconds to a local clock for messages: HH:MM today, else with the date.
+# Epoch seconds to a local clock for messages: HH:MM today, else with the
+# date, and with seconds whenever the moment is not on the minute. An entry
+# a live timer stopped at 14:00:37 must not read as 14:00, or a refusal would
+# advise a time that is refused again.
 local_clock() {
-    jq -rn --argjson e "$1" '
-        if ($e | strflocaltime("%Y-%m-%d")) == (now | strflocaltime("%Y-%m-%d"))
-        then $e | strflocaltime("%H:%M") else $e | strflocaltime("%Y-%m-%d %H:%M") end'
+    jq -rn --argjson e "$1" "$jq_defs"' $e | clock_for_humans'
 }
 
 # resolve_project <name>: the one active project with exactly that name, as
@@ -485,7 +490,6 @@ tracked_overlaps() {
     [[ "$entries" != "null" ]] || entries="[]"
     jq -c --argjson f "$f" --argjson t "$t" --argjson now "$(date +%s)" \
         --argjson skip "$skip" --argjson run "${running:-null}" "$jq_defs"'
-        def clock: strflocaltime("%Y-%m-%d %H:%M");
         (if $run != null and (any(.[]; .id == $run.id) | not) then . + [$run] else . end)
         | [ .[]
             | select(.id != $skip)
@@ -493,7 +497,8 @@ tracked_overlaps() {
             | (if running then $now elif .stop then (.stop | epoch | floor) else $s + .duration end) as $e
             | select($s < $t and $e > $f)
             | {s: $s, e: $e,
-               line: (($s | clock) + " to " + (if running then "now" else ($e | strflocaltime("%H:%M")) end)
+               line: (($s | strflocaltime("%Y-%m-%d ") + hm_or_hms) + " to "
+                      + (if running then "now" else ($e | hm_or_hms) end)
                       + "  " + desc + proj(.project_name))} ]
         | sort_by(.s)' <<< "$entries"
 }
@@ -551,7 +556,7 @@ cmd_start() {
         at_epoch="$(time_epoch_of --at "$at")" || exit 2
         if (( at_epoch > $(date +%s) )); then
             echo "toggl shim: --at $(local_clock "$at_epoch") is in the future; a timer can only start at a time already past" >&2
-            if [[ "$at" =~ ^[0-9]{1,2}:[0-9]{2}$ ]]; then
+            if [[ "$at" =~ $clock_re ]]; then
                 echo "toggl shim: HH:MM always means today; for a time before midnight, give the date, e.g. --at $(jq -rn --argjson e "$at_epoch" '
                     (now | strflocaltime("%Y-%m-%d") + "T12:00:00Z" | fromdateiso8601) - 86400
                     | strftime("%Y-%m-%d") + ($e | strflocaltime("T%H:%M"))')" >&2
@@ -714,7 +719,7 @@ cmd_add() {
     fi
 
     # Every time is settled before any request, so a typo costs no quota.
-    if [[ -n "$day" ]] && ! [[ "$from" =~ ^[0-9]{1,2}:[0-9]{2}$ && "$to" =~ ^[0-9]{1,2}:[0-9]{2}$ ]]; then
+    if [[ -n "$day" ]] && ! [[ "$from" =~ $clock_re && "$to" =~ $clock_re ]]; then
         echo "toggl shim: --date applies only to HH:MM times; a full ISO 8601 --from or --to carries its own date, so drop --date or give both as HH:MM" >&2
         exit 2
     fi
