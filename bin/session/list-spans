@@ -11,7 +11,8 @@
 # CLAUDE_CODE_SESSION_ID Claude Code sets in every shell it starts, so two
 # sessions running side by side never read each other's.
 #
-# One line per span in local time, `HH:MM HH:MM`. --date keeps the spans that
+# One line per span in local time, as two ISO timestamps `toggl add --from --to`
+# takes (`2026-11-09T14:00 2026-11-09T15:30`), so a span keeps its own day. --date keeps the spans that
 # start on that day (default today), and a span running past midnight ends at
 # 23:59 of the day it started. A span under a minute is dropped, since a lone
 # message is not a sitting. The main transcript holds the main thread only,
@@ -76,5 +77,5 @@ jq -R -r '
     | select((.[0] | strflocaltime("%Y-%m-%d")) == $day)
     | .[1] = ([.[1], $day_end] | min)
     | select(.[1] - .[0] >= 60)
-    | (.[0] | strflocaltime("%H:%M")) + " " + (.[1] | strflocaltime("%H:%M"))
+    | (.[0] | strflocaltime("%Y-%m-%dT%H:%M")) + " " + (.[1] | strflocaltime("%Y-%m-%dT%H:%M"))
 '
