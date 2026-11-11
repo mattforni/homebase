@@ -174,7 +174,7 @@ The session is ready to hand off only when every condition below holds:
 - **No PR the user authored this session is still open.** An open PR is not hand off state. Hand the PR to the lander agent, which watches it through review (CodeRabbit, Gemini, human reviewers), triages feedback, and merges; then clean up the local branch.
 - **No ticket whose work merged this session is still open.** Closed in Step 2. A ticket left open behind a merged PR is the loose end the user keeps having to point out.
 
-Before the line, stop the session timer per Session Timers in `~/Eudaimonia/Admin/Tools/toggl.md`: read the running entry and stop it only when it is this session's own; otherwise leave it running and say so.
+Before the line, log the session's time per Session Timers in `~/Eudaimonia/Admin/Tools/toggl.md`. First stop any live timer this session started itself, reading the running entry before the stop; one it did not start is left running. Then read the spans with `~/bin/session/list-spans`, which finds this session's own transcript, write each with `toggl add --clip` under the project and description the work takes, and list what was written as Toggl rows in Close Out. A session that did two kinds of work splits its spans where the work changed, each part under its own project.
 
 When all conditions are met, the last line of the wrap is exactly this, on its own:
 
