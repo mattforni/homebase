@@ -82,8 +82,9 @@ fi
 # `start --at` and `add` are the shim's own. The real CLI's start has no start
 # time option (0.5.1 takes only billable, interactive, project, tags and task),
 # and handed an unknown flag it stops on an argument error that names
-# nothing about why; and it has no command that creates a finished entry. So both are refused by name before the exec, with the route the real
-# CLI does offer: start, then move the start or stop with `edit`.
+# nothing about why; and it has no command that creates a finished entry.
+# So both are refused by name before the exec, with the route the real CLI
+# does offer: start, then move the start or stop with `edit`.
 refuse_real_shim_only() {
     local arg
     # Skip the global options the real CLI takes before its subcommand.
@@ -478,10 +479,10 @@ resolve_project() {
 # span from..to, as a JSON array of {s, e, line}, earliest first, leaving out
 # the entry with the skip id. One request: the entries from a week before
 # <from> onward, since the API filters on start date and a forgotten timer
-# stopped late can begin days before the span it covers. The running entry from load_running is folded in too, since it
-# may have started before that window; it covers up to now. A stopped entry
-# ends at its stop, or at start plus duration without one. Call load_running
-# first, at function level.
+# stopped late can begin days before the span it covers. The running entry
+# from load_running is folded in too, since it may have started before that
+# window; it covers up to now. A stopped entry ends at its stop, or at start
+# plus duration without one. Call load_running first, at function level.
 tracked_overlaps() {
     local f="$1" t="$2" skip="${3:-0}" since until entries
     since="$(jq -rn --argjson e "$f" '$e - 7 * 86400 | strflocaltime("%Y-%m-%d")')"
@@ -498,7 +499,9 @@ tracked_overlaps() {
             | select($s < $t and $e > $f)
             | {s: $s, e: $e,
                line: (($s | strflocaltime("%Y-%m-%d ") + hm_or_hms) + " to "
-                      + (if running then "now" else ($e | hm_or_hms) end)
+                      + (if running then "now"
+                         elif ($e | strflocaltime("%Y-%m-%d")) == ($s | strflocaltime("%Y-%m-%d")) then ($e | hm_or_hms)
+                         else ($e | strflocaltime("%Y-%m-%d ") + hm_or_hms) end)
                       + "  " + desc + proj(.project_name))} ]
         | sort_by(.s)' <<< "$entries"
 }
