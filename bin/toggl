@@ -19,10 +19,13 @@
 # start, check and stop would spend most of an hour's budget. So the personal
 # profile execs the real CLI untouched, and the atelic profile is answered
 # here with curl against Toggl API v9 and the business token from the vault,
-# at one to four requests a command, the way bin/hs answers `hs api` itself. The subset is deliberately small: start, stop, current,
-# list and add. Anything else names that subset and stops, rather than quietly running
-# the real CLI against the personal account from inside the business tree,
-# which is the exact failure the marker exists to prevent.
+# the way bin/hs answers `hs api` itself: one to four requests a command, five
+# for a backdated start that hands over from a running entry, and three plus
+# one per entry written for add. Each subcommand counts its own above it. The
+# subset is deliberately small: start, stop, current, list and add. Anything
+# else names that subset and stops, rather than quietly running the real CLI
+# against the personal account from inside the business tree, which is the
+# exact failure the marker exists to prevent.
 #
 # Precedence, highest first:
 #   1. TOGGL_FORCE_PROFILE=<name>: names a profile outright, for scripts and
@@ -78,9 +81,8 @@ fi
 
 # `start --at` and `add` are the shim's own. The real CLI's start has no start
 # time option (0.5.1 takes only billable, interactive, project, tags and task),
-# and handing it an unknown flag would either fail obscurely or, worse, take
-# the time as the description; and it has no command that creates a finished
-# entry. So both are refused by name before the exec, with the route the real
+# and handed an unknown flag it stops on an argument error that names
+# nothing about why; and it has no command that creates a finished entry. So both are refused by name before the exec, with the route the real
 # CLI does offer: start, then move the start or stop with `edit`.
 refuse_real_shim_only() {
     local arg
@@ -162,7 +164,10 @@ toggl shim: the atelic profile supports only these subcommands:
   toggl stop
   toggl current
   toggl list
-  toggl add "<description>" --project "<project name>" --from HH:MM --to HH:MM [--date YYYY-MM-DD] [--clip]
+  toggl add "<description>" --project "<project name>" --from <HH:MM | ISO 8601> --to <HH:MM | ISO 8601>
+            [--date YYYY-MM-DD] [--clip]
+      HH:MM is local on --date, or today; an ISO timestamp carries its own
+      date, which is how a span crosses midnight.
 The real CLI only speaks for the personal Toggl account, so nothing else runs
 here. Use TOGGL_FORCE_PROFILE=personal to reach it from this tree on purpose.
 EOF
@@ -466,15 +471,15 @@ resolve_project() {
 
 # tracked_overlaps <from> <to> [skip id]: every tracked entry overlapping the
 # span from..to, as a JSON array of {s, e, line}, earliest first, leaving out
-# the entry with the skip id. One request: the entries from the local day
-# before <from> onward, as list reads them (a date alone may be read as UTC
-# midnight). The running entry from load_running is folded in too, since it
+# the entry with the skip id. One request: the entries from a week before
+# <from> onward, since the API filters on start date and a forgotten timer
+# stopped late can begin days before the span it covers. The running entry from load_running is folded in too, since it
 # may have started before that window; it covers up to now. A stopped entry
 # ends at its stop, or at start plus duration without one. Call load_running
 # first, at function level.
 tracked_overlaps() {
     local f="$1" t="$2" skip="${3:-0}" since until entries
-    since="$(jq -rn --argjson e "$f" '$e - 86400 | strflocaltime("%Y-%m-%d")')"
+    since="$(jq -rn --argjson e "$f" '$e - 7 * 86400 | strflocaltime("%Y-%m-%d")')"
     until="$(jq -rn --argjson e "$t" '$e + 2 * 86400 | strflocaltime("%Y-%m-%d")')"
     entries="$(api GET "me/time_entries?start_date=$since&end_date=$until&meta=true")" || return 1
     [[ "$entries" != "null" ]] || entries="[]"
@@ -713,6 +718,9 @@ cmd_add() {
         echo "toggl shim: --date applies only to HH:MM times; a full ISO 8601 --from or --to carries its own date, so drop --date or give both as HH:MM" >&2
         exit 2
     fi
+
+    # Today is read once, so --from and --to never straddle midnight apart.
+    [[ -n "$day" ]] || day="$(jq -rn 'now | strflocaltime("%Y-%m-%d")')"
 
     local from_epoch to_epoch now_epoch
     from_epoch="$(time_epoch_of --from "$from" "$day")" || exit 2
