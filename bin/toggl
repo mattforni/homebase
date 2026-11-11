@@ -287,8 +287,11 @@ load_running() {
 # the real CLI's own edit and stop do (PUT with its whole NetworkTimeEntry),
 # rather than a partial body whose missing fields the API documentation does
 # not promise to keep.
-entry_fields='{description, start, stop, duration, billable, workspace_id,
-    tags: (.tags // []), project_id, task_id, created_with}'
+# GET answers do not reliably carry created_with, which a write may require,
+# so the shim's own name stands in when it is missing.
+entry_fields="{description, start, stop, duration, billable, workspace_id,
+    tags: (.tags // []), project_id, task_id,
+    created_with: (.created_with // \"$created_with\")}"
 
 # PUT one edited entry back to its own workspace; prints Toggl's answer.
 put_running() {
@@ -400,11 +403,13 @@ at_epoch_of() {
     elif [[ "$value" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2})(:[0-9]{2})?(\.[0-9]+)?(Z|[+-][0-9]{2}:?[0-9]{2})?$ ]]; then
         base="${BASH_REMATCH[1]}${BASH_REMATCH[2]:-:00}"
         offset="${BASH_REMATCH[4]}"
+        # +HHMM to +HH:MM, the one offset form the shared epoch def reads.
+        [[ "$offset" =~ ^([+-][0-9]{2})([0-9]{2})$ ]] && offset="${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
     else
         echo "toggl shim: --at takes HH:MM (today, local) or an ISO 8601 timestamp such as 2026-11-11T13:47 or 2026-11-11T13:47:00-07:00, not \"$value\"" >&2
         return 1
     fi
-    epoch="$(jq -rn --arg b "$base" --arg o "$offset" '
+    epoch="$(jq -rn --arg b "$base" --arg o "$offset" "$jq_defs"'
         def off(t): (t | localtime | mktime) - t;
         (try (
           ($b + "Z" | fromdateiso8601 | floor) as $t0
@@ -412,12 +417,7 @@ at_epoch_of() {
             elif $o == "" then
               ($t0 - off($t0)) as $e1 | ($t0 - off($e1)) as $e
               | if ($e | strflocaltime("%Y-%m-%dT%H:%M:%S")) == $b then $e else null end
-            else
-              ($o | if . == "Z" then 0 else
-                  capture("^(?<s>[+-])(?<h>[0-9]{2}):?(?<m>[0-9]{2})$")
-                  | (if .s == "-" then -1 else 1 end)
-                    * ((.h | tonumber) * 3600 + (.m | tonumber) * 60) end) as $os
-              | $t0 - $os
+            else $b + $o | epoch | floor
             end
         ) catch null) // empty')" || epoch=""
     if [[ ! "$epoch" =~ ^[0-9]+$ ]]; then
@@ -484,6 +484,9 @@ cmd_start() {
         at_epoch="$(at_epoch_of "$at")" || exit 2
         if (( at_epoch > $(date +%s) )); then
             echo "toggl shim: --at $(local_clock "$at_epoch") is in the future; a timer can only start at a time already past" >&2
+            if [[ "$at" =~ ^[0-9]{1,2}:[0-9]{2}$ ]]; then
+                echo "toggl shim: HH:MM always means today; for a time before midnight, give the date, e.g. --at $(jq -rn --argjson e "$at_epoch" '$e - 86400 | strflocaltime("%Y-%m-%dT%H:%M")')" >&2
+            fi
             exit 2
         fi
         at_iso="$(jq -rn --argjson e "$at_epoch" '$e | todate')"
@@ -519,13 +522,13 @@ cmd_start() {
     local stop_iso="" stop_epoch=""
     if [[ -n "$at_set" && -n "$running" ]]; then
         local run_epoch same moved
-        run_epoch="$(jq -r "$jq_defs .start | epoch | floor" <<< "$running")"
-        same="$(jq -r --arg d "$description" --argjson pid "$pid" \
-            '(.description // "") == $d and .project_id == $pid' <<< "$running")"
+        run_epoch="$(jq -r "$jq_defs .start | epoch | floor" <<< "$running" 2>/dev/null)" || run_epoch=""
         if [[ ! "$run_epoch" =~ ^[0-9]+$ ]]; then
             echo "toggl shim: could not read the running entry's start from Toggl's answer" >&2
             exit 1
         fi
+        same="$(jq -r --arg d "$description" --argjson pid "$pid" \
+            '(.description // "") == $d and .project_id == $pid' <<< "$running")"
         if [[ "$same" == "true" ]] && (( run_epoch >= at_epoch )); then
             if (( run_epoch == at_epoch )); then
                 echo "The running time entry already starts at $(local_clock "$at_epoch"); nothing to change"
