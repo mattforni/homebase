@@ -46,6 +46,13 @@
 # never printed, never written to disk or the Keychain, and never placed on a
 # command line where `ps` could read it: curl receives it through a config
 # read from a pipe.
+#
+# One exception on the personal profile: `add`, which the real CLI has no
+# equivalent for and every session's wrap now runs, is answered here too,
+# through the same API code, against the personal workspace with the token
+# the real CLI itself keeps in the Keychain (service `togglcli`, account
+# `default`), read the same way it is never printed. Everything else on the
+# personal profile still execs the real CLI.
 
 set -euo pipefail
 
@@ -96,8 +103,8 @@ refuse_real_shim_only() {
         esac
     done
     if [[ "${1:-}" == "add" ]]; then
-        echo "toggl shim: add works only on the atelic profile; the real CLI has no command that creates a finished entry." >&2
-        echo "toggl shim: start and stop one, then run: toggl edit <id> --start-time <RFC3339> --stop-time <RFC3339>" >&2
+        echo "toggl shim: add is answered by the shim itself, never the real CLI, which has no command that creates a finished entry." >&2
+        echo "toggl shim: give add as the first argument, with no global option before it, from a tree whose profile resolves to personal or atelic." >&2
         exit 2
     fi
     [[ "${1:-}" == "start" ]] || return 0
@@ -143,22 +150,43 @@ else
 fi
 
 # Profile to Toggl account. An explicit table, as in bin/hs: adding a profile
-# means adding a line here and a token in the vault.
+# means adding a line here and a token in the vault. The personal account is
+# answered here for add alone, scoped to its one workspace.
+account_label="" account_workspace="" token_secret=""
 case "$profile" in
-    personal) run_real "$@" ;;
-    atelic)   token_secret="toggl-api-token-atelic" ;;
+    personal)
+        [[ "${1:-}" == "add" ]] || run_real "$@"
+        account_label="personal"
+        account_workspace="7896933"
+        ;;
+    atelic)
+        account_label="Atelic"
+        token_secret="toggl-api-token-atelic"
+        ;;
     *)
         echo "toggl shim: profile '$profile' maps to no Toggl account, using the real CLI (personal)" >&2
         run_real "$@"
         ;;
 esac
 
-# Everything below answers the atelic profile against Toggl API v9.
+# Everything below answers against Toggl API v9: every subcommand for the
+# atelic profile, and add for the personal one.
 
 api_base="https://api.track.toggl.com/api/v9"
 created_with="homebase toggl shim"
 
 usage_atelic() {
+    if [[ "$profile" == "personal" ]]; then
+        cat >&2 <<'EOF'
+toggl shim: on the personal profile the shim answers only add; everything
+else runs the real CLI:
+  toggl add "<description>" --project "<project name>" --from <HH:MM | ISO 8601> --to <HH:MM | ISO 8601>
+            [--date YYYY-MM-DD] [--clip]
+      HH:MM is local on --date, or today; an ISO timestamp carries its own
+      date, which is how a span crosses midnight.
+EOF
+        return 0
+    fi
     cat >&2 <<'EOF'
 toggl shim: the atelic profile supports only these subcommands:
   toggl start "<description>" [--project "<project name>"] [--at HH:MM | --at <ISO 8601>]
@@ -179,6 +207,25 @@ EOF
 # subshell dies with it, and every request would run gcloud again.
 toggl_token=""
 load_token() {
+    if [[ -z "$token_secret" ]]; then
+        # Personal: the real CLI's own Keychain item. -w prints only the
+        # password, straight into the variable; nothing echoes it.
+        if ! command -v security >/dev/null 2>&1; then
+            echo "toggl shim: the macOS security tool is not on PATH, so the personal token cannot be read from the Keychain" >&2
+            exit 1
+        fi
+        if ! toggl_token="$(security find-generic-password -s togglcli -a default -w 2>/dev/null)"; then
+            echo "toggl shim: no Keychain item for service togglcli, account default; run the real CLI's toggl auth once" >&2
+            exit 1
+        fi
+        toggl_token="${toggl_token#"${toggl_token%%[![:space:]]*}"}"
+        toggl_token="${toggl_token%"${toggl_token##*[![:space:]]}"}"
+        if [[ -z "$toggl_token" ]]; then
+            echo "toggl shim: the togglcli Keychain item is empty" >&2
+            exit 1
+        fi
+        return 0
+    fi
     local vault_lib="$shim_dir/lib/vault.sh" runner_lib="$shim_dir/runner/lib.sh" project
     if [[ ! -r "$vault_lib" || ! -r "$runner_lib" ]]; then
         echo "toggl shim: cannot read $vault_lib or $runner_lib to reach the vault" >&2
@@ -455,15 +502,17 @@ local_clock() {
 }
 
 # resolve_project <name>: the one active project with exactly that name, as
-# the real CLI matches, setting the caller's pid, wid and billable (bash scope
-# is dynamic, so the caller declares them local first). Needs load_projects.
+# the real CLI matches (within the profile's workspace when it names one),
+# setting the caller's pid, wid and billable (bash scope is dynamic, so the
+# caller declares them local first). Needs load_projects.
 resolve_project() {
     local name="$1" matches project_json
-    matches="$(jq -c --arg n "$name" \
-        '[.[] | select(.name == $n and (.active != false))]' <<< "$projects_json")"
+    matches="$(jq -c --arg n "$name" --arg ws "$account_workspace" \
+        '[.[] | select(.name == $n and (.active != false)
+                       and ($ws == "" or (.workspace_id | tostring) == $ws))]' <<< "$projects_json")"
     case "$(jq 'length' <<< "$matches")" in
         0)
-            echo "toggl shim: no active project named \"$name\" on the Atelic Toggl account" >&2
+            echo "toggl shim: no active project named \"$name\" on the $account_label Toggl account${account_workspace:+ (workspace $account_workspace)}" >&2
             return 1 ;;
         1) project_json="$(jq -c '.[0]' <<< "$matches")" ;;
         *)
@@ -518,9 +567,12 @@ tracked_overlaps() {
 # hands over from it at --at, never overlapping the two:
 #   same description and project, started after --at: the timer was started
 #     late, so the running entry's start moves back to --at and nothing stops.
+#   same description and project, started at or before --at: that work is
+#     already running, so the command refuses rather than split it in two.
 #   anything else: the running entry stops at --at instead of now, and the new
-#     one starts there. If --at is before the running entry's own start, that
-#     stop would give it a negative length, so the command refuses instead.
+#     one starts there. If --at is at or before the running entry's own start,
+#     that stop would leave it negative or zero long, so the command refuses.
+# Every refusal says why and changes nothing.
 cmd_start() {
     local description="" description_set="" project="" project_set="" at="" at_set=""
     while (( $# )); do
@@ -592,15 +644,20 @@ cmd_start() {
         fi
         same="$(jq -r --arg d "$description" --argjson pid "$pid" \
             '(.description // "") == $d and .project_id == $pid' <<< "$running")"
-        if [[ "$same" == "true" ]] && (( run_epoch >= at_epoch )); then
-            if (( run_epoch == at_epoch )); then
-                echo "The running time entry already starts at $(local_clock "$at_epoch"); nothing to change"
-                return 0
+        if [[ "$same" == "true" ]]; then
+            if (( run_epoch <= at_epoch )); then
+                echo "toggl shim: \"$description\" is already running since $(local_clock "$run_epoch"), at or before --at $(local_clock "$at_epoch"); nothing changed." >&2
+                echo "toggl shim: --at only moves a running entry's start earlier; starting it again would split one piece of work in two." >&2
+                exit 2
             fi
             correction=1
         elif (( at_epoch < run_epoch )); then
             echo "toggl shim: --at $(local_clock "$at_epoch") is before the running entry's own start ($(local_clock "$run_epoch")), so stopping it there would give it a negative length." >&2
-            echo "toggl shim: nothing changed. A late start of the same work needs the same description and project; otherwise pick a time at or after $(local_clock "$run_epoch")." >&2
+            echo "toggl shim: nothing changed. A late start of the same work needs the same description and project; otherwise pick a time after $(local_clock "$run_epoch")." >&2
+            exit 2
+        elif (( at_epoch == run_epoch )); then
+            echo "toggl shim: --at $(local_clock "$at_epoch") is exactly the running entry's own start, so stopping it there would leave a zero length entry; nothing changed." >&2
+            echo "toggl shim: pick a time after $(local_clock "$run_epoch"), or stop the running entry first." >&2
             exit 2
         fi
         if [[ -z "$correction" ]]; then
@@ -639,7 +696,7 @@ cmd_start() {
         # never the running entry's, whichever workspace that happens to be in.
         wid="$(api GET "me" | jq -r '.default_workspace_id // empty')" || wid=""
         if [[ -z "$wid" ]]; then
-            echo "toggl shim: could not read the Atelic Toggl account's default workspace" >&2
+            echo "toggl shim: could not read the $account_label Toggl account's default workspace" >&2
             exit 1
         fi
     fi
