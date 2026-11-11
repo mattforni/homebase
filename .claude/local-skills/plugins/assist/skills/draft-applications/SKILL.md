@@ -23,7 +23,7 @@ Read before drafting; none of this is duplicated here:
 
 Work a single role to a finished package before touching the next; Forni processes serially.
 
-Bracket the drain with the session timer per Session Timers in `~/Eudaimonia/Admin/Tools/toggl.md`: project `💼 Vocation`, description `🔎 Work Search` (the weekly block retired 2026-11-02 with the unemployment claim, so the timer names the work, not a block). Start before the first role; stop when the drain ends, whether the queue is empty or Forni stops early.
+Log the drain's time when it ends per Session Timers in `~/Eudaimonia/Admin/Tools/toggl.md`: project `💼 Vocation`, description `🔎 Work Search` (the weekly block retired 2026-11-02 with the unemployment claim, so the entry names the work, not a block), whether the queue is empty or Forni stops early.
 
 1. **Pull the next queued posting** (`pinole work postings list --status queued`, oldest first), or the posting Forni names.
 2. **Fetch the live posting.** Confirm it is still open and still passes the rubric's hard filters (full remote or Denver metro, Senior+ IC). If a hard filter fails, reject it with the reason on the posting: `pinole work postings update <id> --status rejected --notes "<which filter and why>"`. If the posting is gone, close it (a shortlisted or flagged posting cannot move to closed; record it rejected with a "Closed:" note instead): `pinole work postings update <id> --status closed --closed-reason filled`. Either way, tell Forni and move on.

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Prints the spans of a Claude Code session's work, read from its transcript:
+# every user and assistant message time, split wherever two messages sit more
+# than --gap minutes apart. assist:wrap logs these to Toggl with `toggl add`
+# (~/Eudaimonia/Admin/Tools/toggl.md, Session Timers), so a session's time is
+# the work in it, not how long its window stayed open.
+#
+#   work-spans <transcript.jsonl> [--gap MINUTES] [--date YYYY-MM-DD]
+#
+# One line per span in local time, `HH:MM HH:MM`. --date keeps the spans that
+# start on that day (default today). A span under a minute is dropped, since a
+# lone message is not a sitting.
+set -euo pipefail
+
+usage() {
+    echo "usage: work-spans <transcript.jsonl> [--gap MINUTES] [--date YYYY-MM-DD]" >&2
+    exit 2
+}
+
+transcript=""
+gap=20
+day="$(date +%Y-%m-%d)"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --gap) [ $# -ge 2 ] || usage; gap="$2"; shift 2 ;;
+        --date) [ $# -ge 2 ] || usage; day="$2"; shift 2 ;;
+        -*) usage ;;
+        *) [ -z "$transcript" ] || usage; transcript="$1"; shift ;;
+    esac
+done
+[ -n "$transcript" ] || usage
+[ -r "$transcript" ] || { echo "work-spans: cannot read $transcript" >&2; exit 1; }
+case "$gap" in
+    '' | *[!0-9]*) echo "work-spans: --gap takes whole minutes" >&2; exit 2 ;;
+esac
+case "$day" in
+    [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) ;;
+    *) echo "work-spans: --date takes YYYY-MM-DD" >&2; exit 2 ;;
+esac
+
+# A line that is not JSON (the last line, mid write, while the session runs)
+# is skipped rather than failing the read.
+jq -R -r '
+    fromjson? | select(.type == "user" or .type == "assistant") | .timestamp // empty
+    | sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601
+' "$transcript" | sort -n | jq -s -r --argjson gap "$((gap * 60))" --arg day "$day" '
+    reduce .[] as $t ([];
+        if length > 0 and ($t - .[-1][1]) <= $gap then .[-1][1] = $t else . + [[$t, $t]] end)
+    | .[]
+    | select(.[1] - .[0] >= 60)
+    | select((.[0] | strflocaltime("%Y-%m-%d")) == $day)
+    | (.[0] | strflocaltime("%H:%M")) + " " + (.[1] | strflocaltime("%H:%M"))
+'
