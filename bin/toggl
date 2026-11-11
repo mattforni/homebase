@@ -443,13 +443,66 @@ local_clock() {
         then $e | strflocaltime("%H:%M") else $e | strflocaltime("%Y-%m-%d %H:%M") end'
 }
 
+# resolve_project <name>: the one active project with exactly that name, as
+# the real CLI matches, setting the caller's pid, wid and billable (bash scope
+# is dynamic, so the caller declares them local first). Needs load_projects.
+resolve_project() {
+    local name="$1" matches project_json
+    matches="$(jq -c --arg n "$name" \
+        '[.[] | select(.name == $n and (.active != false))]' <<< "$projects_json")"
+    case "$(jq 'length' <<< "$matches")" in
+        0)
+            echo "toggl shim: no active project named \"$name\" on the Atelic Toggl account" >&2
+            return 1 ;;
+        1) project_json="$(jq -c '.[0]' <<< "$matches")" ;;
+        *)
+            echo "toggl shim: more than one active project is named \"$name\" across workspaces; refusing to guess" >&2
+            return 1 ;;
+    esac
+    pid="$(jq -r '.id' <<< "$project_json")"
+    wid="$(jq -r '.workspace_id' <<< "$project_json")"
+    billable="$(jq -r '.billable // false' <<< "$project_json")"
+}
+
+# tracked_overlaps <from> <to> [skip id]: every tracked entry overlapping the
+# span from..to, as a JSON array of {s, e, line}, earliest first, leaving out
+# the entry with the skip id. One request: the entries from the local day
+# before <from> onward, as list reads them (a date alone may be read as UTC
+# midnight). The running entry from load_running is folded in too, since it
+# may have started before that window; it covers up to now. A stopped entry
+# ends at its stop, or at start plus duration without one. Call load_running
+# first, at function level.
+tracked_overlaps() {
+    local f="$1" t="$2" skip="${3:-0}" since until entries
+    since="$(jq -rn --argjson e "$f" '$e - 86400 | strflocaltime("%Y-%m-%d")')"
+    until="$(jq -rn --argjson e "$t" '$e + 2 * 86400 | strflocaltime("%Y-%m-%d")')"
+    entries="$(api GET "me/time_entries?start_date=$since&end_date=$until&meta=true")" || return 1
+    [[ "$entries" != "null" ]] || entries="[]"
+    jq -c --argjson f "$f" --argjson t "$t" --argjson now "$(date +%s)" \
+        --argjson skip "$skip" --argjson run "${running:-null}" "$jq_defs"'
+        def clock: strflocaltime("%Y-%m-%d %H:%M");
+        (if $run != null and (any(.[]; .id == $run.id) | not) then . + [$run] else . end)
+        | [ .[]
+            | select(.id != $skip)
+            | (.start | epoch | floor) as $s
+            | (if running then $now elif .stop then (.stop | epoch | floor) else $s + .duration end) as $e
+            | select($s < $t and $e > $f)
+            | {s: $s, e: $e,
+               line: (($s | clock) + " to " + (if running then "now" else ($e | strflocaltime("%H:%M")) end)
+                      + "  " + desc + proj(.project_name))} ]
+        | sort_by(.s)' <<< "$entries"
+}
+
 # Three or four requests: the running entry, the projects (when one is named)
 # or the account's default workspace (when none is), the stop (when something
-# runs), and the create. A correction (below) is two or three: the running
-# entry, the projects when one is named, and the PUT that moves its start.
+# runs), and the create. --at adds one, the read of the entries around it. A
+# correction (below) is three or four: the running entry, the projects when
+# one is named, that read, and the PUT that moves its start.
 #
-# --at backdates the start. With an entry running, it either corrects that
-# entry or hands over from it at --at, never overlapping the two:
+# --at backdates the start. Time any other entry already tracked between --at
+# and now is refused, listed, as add refuses an overlap, so a backdate never
+# double counts. With an entry running, it either corrects that entry or
+# hands over from it at --at, never overlapping the two:
 #   same description and project, started after --at: the timer was started
 #     late, so the running entry's start moves back to --at and nothing stops.
 #   anything else: the running entry stops at --at instead of now, and the new
@@ -494,7 +547,9 @@ cmd_start() {
         if (( at_epoch > $(date +%s) )); then
             echo "toggl shim: --at $(local_clock "$at_epoch") is in the future; a timer can only start at a time already past" >&2
             if [[ "$at" =~ ^[0-9]{1,2}:[0-9]{2}$ ]]; then
-                echo "toggl shim: HH:MM always means today; for a time before midnight, give the date, e.g. --at $(jq -rn --argjson e "$at_epoch" '$e - 86400 | strflocaltime("%Y-%m-%dT%H:%M")')" >&2
+                echo "toggl shim: HH:MM always means today; for a time before midnight, give the date, e.g. --at $(jq -rn --argjson e "$at_epoch" '
+                    (now | strflocaltime("%Y-%m-%d") + "T12:00:00Z" | fromdateiso8601) - 86400
+                    | strftime("%Y-%m-%d") + ($e | strflocaltime("T%H:%M"))')" >&2
             fi
             exit 2
         fi
@@ -507,30 +562,16 @@ cmd_start() {
     # Resolve everything before stopping anything, so a typo or a failed read
     # leaves the running entry alone. Exact name among active projects, as the
     # real CLI matches; the project also names the workspace.
-    local wid="" project_json="" pid="null" billable="false" body started
+    local wid="" pid="null" billable="false" body started
     if [[ -n "$project" ]]; then
         load_projects || exit 1
-        local matches
-        matches="$(jq -c --arg n "$project" \
-            '[.[] | select(.name == $n and (.active != false))]' <<< "$projects_json")"
-        case "$(jq 'length' <<< "$matches")" in
-            0)
-                echo "toggl shim: no active project named \"$project\" on the Atelic Toggl account" >&2
-                exit 1 ;;
-            1) project_json="$(jq -c '.[0]' <<< "$matches")" ;;
-            *)
-                echo "toggl shim: more than one active project is named \"$project\" across workspaces; refusing to guess" >&2
-                exit 1 ;;
-        esac
-        pid="$(jq -r '.id' <<< "$project_json")"
-        wid="$(jq -r '.workspace_id' <<< "$project_json")"
-        billable="$(jq -r '.billable // false' <<< "$project_json")"
+        resolve_project "$project" || exit 1
     fi
 
     # With --at and an entry running: correct it, refuse, or stop it at --at.
-    local stop_iso="" stop_epoch=""
+    local stop_iso="" stop_epoch="" correction=""
     if [[ -n "$at_set" && -n "$running" ]]; then
-        local run_epoch same moved
+        local run_epoch same
         run_epoch="$(jq -r "$jq_defs .start | epoch | floor" <<< "$running" 2>/dev/null)" || run_epoch=""
         if [[ ! "$run_epoch" =~ ^[0-9]+$ ]]; then
             echo "toggl shim: could not read the running entry's start from Toggl's answer" >&2
@@ -543,21 +584,41 @@ cmd_start() {
                 echo "The running time entry already starts at $(local_clock "$at_epoch"); nothing to change"
                 return 0
             fi
-            body="$(jq -c --arg start "$at_iso" --argjson e "$at_epoch" \
-                "$entry_fields"' + {start: $start, stop: null, duration: (0 - $e)}' \
-                <<< "$running")" || exit 1
-            moved="$(put_running "$body")" || exit 1
-            echo "Running time entry now starts at $(local_clock "$at_epoch")"
-            print_entry "$moved" "$project" || true
-            return 0
-        fi
-        if (( at_epoch < run_epoch )); then
+            correction=1
+        elif (( at_epoch < run_epoch )); then
             echo "toggl shim: --at $(local_clock "$at_epoch") is before the running entry's own start ($(local_clock "$run_epoch")), so stopping it there would give it a negative length." >&2
             echo "toggl shim: nothing changed. A late start of the same work needs the same description and project; otherwise pick a time at or after $(local_clock "$run_epoch")." >&2
             exit 2
         fi
-        stop_iso="$at_iso"
-        stop_epoch="$at_epoch"
+        if [[ -z "$correction" ]]; then
+            stop_iso="$at_iso"
+            stop_epoch="$at_epoch"
+        fi
+    fi
+
+    # Nothing else may already track time between --at and now. The running
+    # entry is left out: it is the one being corrected or stopped at --at.
+    if [[ -n "$at_set" ]]; then
+        local overlaps run_id=0
+        [[ -z "$running" ]] || run_id="$(jq -r '.id' <<< "$running")"
+        overlaps="$(tracked_overlaps "$at_epoch" "$(date +%s)" "$run_id")" || exit 1
+        if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
+            echo "toggl shim: --at $(local_clock "$at_epoch") reaches back into time already tracked; nothing changed:" >&2
+            jq -r '.[] | "  " + .line' <<< "$overlaps" >&2
+            echo "toggl shim: pick a time at or after the last of those ends" >&2
+            exit 1
+        fi
+    fi
+
+    if [[ -n "$correction" ]]; then
+        local moved
+        body="$(jq -c --arg start "$at_iso" --argjson e "$at_epoch" \
+            "$entry_fields"' + {start: $start, stop: null, duration: (0 - $e)}' \
+            <<< "$running")" || exit 1
+        moved="$(put_running "$body")" || exit 1
+        echo "Running time entry now starts at $(local_clock "$at_epoch")"
+        print_entry "$moved" "$project" || true
+        return 0
     fi
 
     if [[ -z "$project" ]]; then
@@ -606,8 +667,8 @@ cmd_start() {
 # span trimmed to the time nothing covers, written as one entry per free run.
 # Free runs under a minute are dropped, so clipping never leaves crumbs.
 #
-# Requests: the projects, the entries around the span, and one create per
-# entry written: three for a plain add.
+# Requests: the projects, the running entry, the entries around the span, and
+# one create per entry written: four for a plain add.
 cmd_add() {
     local description="" description_set="" project="" from="" to="" day="" clip=""
     while (( $# )); do
@@ -648,6 +709,11 @@ cmd_add() {
     fi
 
     # Every time is settled before any request, so a typo costs no quota.
+    if [[ -n "$day" ]] && ! [[ "$from" =~ ^[0-9]{1,2}:[0-9]{2}$ && "$to" =~ ^[0-9]{1,2}:[0-9]{2}$ ]]; then
+        echo "toggl shim: --date applies only to HH:MM times; a full ISO 8601 --from or --to carries its own date, so drop --date or give both as HH:MM" >&2
+        exit 2
+    fi
+
     local from_epoch to_epoch now_epoch
     from_epoch="$(time_epoch_of --from "$from" "$day")" || exit 2
     to_epoch="$(time_epoch_of --to "$to" "$day")" || exit 2
@@ -663,42 +729,12 @@ cmd_add() {
 
     load_token
     load_projects || exit 1
-    local matches project_json pid wid billable
-    matches="$(jq -c --arg n "$project" \
-        '[.[] | select(.name == $n and (.active != false))]' <<< "$projects_json")"
-    case "$(jq 'length' <<< "$matches")" in
-        0)
-            echo "toggl shim: no active project named \"$project\" on the Atelic Toggl account" >&2
-            exit 1 ;;
-        1) project_json="$(jq -c '.[0]' <<< "$matches")" ;;
-        *)
-            echo "toggl shim: more than one active project is named \"$project\" across workspaces; refusing to guess" >&2
-            exit 1 ;;
-    esac
-    pid="$(jq -r '.id' <<< "$project_json")"
-    wid="$(jq -r '.workspace_id' <<< "$project_json")"
-    billable="$(jq -r '.billable // false' <<< "$project_json")"
+    local pid wid billable
+    resolve_project "$project" || exit 1
+    load_running || exit 1
 
-    # The entries around the span, by local date with a day of margin on each
-    # side, as list reads them: a date alone may be read as UTC midnight.
-    local since until entries overlaps
-    since="$(jq -rn --argjson e "$from_epoch" '$e - 86400 | strflocaltime("%Y-%m-%d")')"
-    until="$(jq -rn --argjson e "$to_epoch" '$e + 2 * 86400 | strflocaltime("%Y-%m-%d")')"
-    entries="$(api GET "me/time_entries?start_date=$since&end_date=$until&meta=true")" || exit 1
-    [[ "$entries" != "null" ]] || entries="[]"
-
-    # Each overlapping entry as {s, e, line}, earliest first. A running entry
-    # ends now; a stopped one at its stop, or start plus duration without one.
-    overlaps="$(jq -c --argjson f "$from_epoch" --argjson t "$to_epoch" --argjson now "$now_epoch" "$jq_defs"'
-        def clock: strflocaltime("%Y-%m-%d %H:%M");
-        [ .[]
-          | (.start | epoch | floor) as $s
-          | (if running then $now elif .stop then (.stop | epoch | floor) else $s + .duration end) as $e
-          | select($s < $t and $e > $f)
-          | {s: $s, e: $e,
-             line: (($s | clock) + " to " + (if running then "now" else ($e | strflocaltime("%H:%M")) end)
-                    + "  " + desc + proj(.project_name))} ]
-        | sort_by(.s)' <<< "$entries")" || exit 1
+    local overlaps
+    overlaps="$(tracked_overlaps "$from_epoch" "$to_epoch")" || exit 1
 
     local runs
     if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
@@ -725,11 +761,9 @@ cmd_add() {
         runs="[[${from_epoch},${to_epoch}]]"
     fi
 
-    local count i s e body added
+    local count i=0 s e body added
     count="$(jq 'length' <<< "$runs")"
-    for (( i = 0; i < count; i++ )); do
-        s="$(jq -r ".[$i][0]" <<< "$runs")"
-        e="$(jq -r ".[$i][1]" <<< "$runs")"
+    while IFS=$'\t' read -r s e; do
         body="$(jq -nc \
             --arg desc "$description" \
             --argjson s "$s" --argjson e "$e" \
@@ -748,7 +782,8 @@ cmd_add() {
         fi
         jq -r --arg name "$project" "$jq_defs"' (.start | epoch | strflocaltime("%Y-%m-%d %H:%M")) + " " + line($name)' \
             <<< "$added" || true
-    done
+        i=$(( i + 1 ))
+    done < <(jq -r '.[] | @tsv' <<< "$runs")
 }
 
 case "${1:-}" in
