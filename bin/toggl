@@ -48,7 +48,7 @@
 # read from a pipe.
 #
 # One exception on the personal profile: `add`, which the real CLI has no
-# equivalent for and every session's wrap now runs, is answered here too,
+# equivalent for and logging a finished session needs, is answered here too,
 # through the same API code, against the personal workspace with the token
 # the real CLI itself keeps in the Keychain (service `togglcli`, account
 # `default`), read the same way it is never printed. Everything else on the
@@ -104,7 +104,7 @@ refuse_real_shim_only() {
     done
     if [[ "${1:-}" == "add" ]]; then
         echo "toggl shim: add is answered by the shim itself, never the real CLI, which has no command that creates a finished entry." >&2
-        echo "toggl shim: give add as the first argument, with no global option before it, from a tree whose profile resolves to personal or atelic." >&2
+        echo "toggl shim: give add as the first argument, with no global option before it; if it already is, this tree's profile could not be resolved to one the shim answers." >&2
         exit 2
     fi
     [[ "${1:-}" == "start" ]] || return 0
@@ -214,16 +214,16 @@ load_token() {
             echo "toggl shim: the macOS security tool is not on PATH, so the personal token cannot be read from the Keychain" >&2
             exit 1
         fi
-        if ! toggl_token="$(security find-generic-password -s togglcli -a default -w 2>/dev/null)"; then
+        local rc=0
+        toggl_token="$(security find-generic-password -s togglcli -a default -w 2>/dev/null)" || rc=$?
+        if (( rc == 44 )); then
             echo "toggl shim: no Keychain item for service togglcli, account default; run the real CLI's toggl auth once" >&2
             exit 1
-        fi
-        toggl_token="${toggl_token#"${toggl_token%%[![:space:]]*}"}"
-        toggl_token="${toggl_token%"${toggl_token##*[![:space:]]}"}"
-        if [[ -z "$toggl_token" ]]; then
-            echo "toggl shim: the togglcli Keychain item is empty" >&2
+        elif (( rc != 0 )); then
+            echo "toggl shim: the Keychain refused the togglcli item (security exit $rc); allow access when macOS asks, or unlock the login keychain" >&2
             exit 1
         fi
+        trim_token "the togglcli Keychain item"
         return 0
     fi
     local vault_lib="$shim_dir/lib/vault.sh" runner_lib="$shim_dir/runner/lib.sh" project
@@ -246,11 +246,16 @@ load_token() {
         echo "toggl shim: no signed in gcloud identity could read $token_secret from $project" >&2
         exit 1
     fi
-    # Trim surrounding whitespace, in case the secret was stored with a newline.
+    trim_token "$token_secret in the vault"
+}
+
+# Trim surrounding whitespace, in case the token was stored with a newline,
+# and refuse an empty one, naming where it came from.
+trim_token() {
     toggl_token="${toggl_token#"${toggl_token%%[![:space:]]*}"}"
     toggl_token="${toggl_token%"${toggl_token##*[![:space:]]}"}"
     if [[ -z "$toggl_token" ]]; then
-        echo "toggl shim: $token_secret is empty in the vault" >&2
+        echo "toggl shim: $1 is empty" >&2
         exit 1
     fi
 }
@@ -450,14 +455,15 @@ cmd_list() {
 
 # time_epoch_of <flag> <value> [YYYY-MM-DD]: epoch seconds, or a message on
 # stderr and a return of 1. HH:MM (or H:MM) is that clock time, local, on the
-# date given or else today. A full ISO 8601 timestamp
-# is YYYY-MM-DDTHH:MM, optional :SS and fraction, optional Z or offset; with
-# no offset it is local. All of it runs in jq, which every subcommand already
-# needs, so the BSD and GNU date dialects never matter. Local time is solved
-# by asking localtime for the offset twice, which lands right across a DST
-# change, and the answer is formatted back and compared, so an impossible
-# date (February 30) or a clock time a DST change skips is refused rather
-# than rolled over into a different moment.
+# date given or else today. A full ISO 8601 timestamp is YYYY-MM-DDTHH:MM,
+# optional :SS and fraction, optional Z or offset; with no offset it is
+# local. All of it runs in jq, which every subcommand already needs, so the
+# BSD and GNU date dialects never matter. Local time is solved by asking
+# localtime for the offset twice, and the answer is formatted back and
+# compared, so an impossible date (February 30) or a clock time a DST change
+# skips is refused rather than rolled over into a different moment. A clock
+# time the fall back change repeats resolves to one of its two moments; give
+# an offset to choose.
 clock_re='^([01]?[0-9]|2[0-3]):([0-5][0-9])$'
 time_epoch_of() {
     local flag="$1" value="$2" day="${3:-}" base="" offset="" hour epoch
@@ -530,8 +536,9 @@ resolve_project() {
 # <from> onward, since the API filters on start date and a forgotten timer
 # stopped late can begin days before the span it covers. The running entry
 # from load_running is folded in too, since it may have started before that
-# window; it covers up to now. A stopped entry ends at its stop, or at start
-# plus duration without one. Call load_running first, at function level.
+# window; it covers up to now. A stopped entry ends at its stop (the running
+# def treats an entry with no stop as running). Call load_running first, at
+# function level.
 tracked_overlaps() {
     local f="$1" t="$2" skip="${3:-0}" since until entries
     since="$(jq -rn --argjson e "$f" '$e - 7 * 86400 | strflocaltime("%Y-%m-%d")')"
@@ -544,7 +551,7 @@ tracked_overlaps() {
         | [ .[]
             | select(.id != $skip)
             | (.start | epoch | floor) as $s
-            | (if running then $now elif .stop then (.stop | epoch | floor) else $s + .duration end) as $e
+            | (if running then $now else (.stop | epoch | floor) end) as $e
             | select($s < $t and $e > $f)
             | {s: $s, e: $e,
                line: (($s | strflocaltime("%Y-%m-%d ") + hm_or_hms) + " to "
