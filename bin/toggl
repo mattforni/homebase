@@ -541,11 +541,12 @@ resolve_project() {
 }
 
 # tracked_overlaps <from> <to> <description> <project id> [skip id]: every
-# tracked entry of the same work overlapping the span from..to, as a JSON
+# tracked entry of the same work overlapping the span from..to (add widens the
+# span by a minute to find the entries that only touch it), as a JSON
 # array of {s, e, line, run, entry}, earliest first, leaving out the entry
 # with the skip id. run says the entry is still running, and entry is Toggl's
-# own record of it, which add needs to extend one. The same work is the same description and the same project (the JSON
-# null for none). The same work is counted once; entries for different work
+# own record of it, which add needs to extend one. The same work is the same
+# description and the same project (the JSON null for none). The same work is counted once; entries for different work
 # may share the same minutes, so they are never an overlap here. One request:
 # the entries from a week before <from> onward, since the API filters on start
 # date and a forgotten timer stopped late can begin days before the span it
@@ -848,7 +849,7 @@ cmd_add() {
     # The same read finds the entries the span overlaps and the ones it only
     # touches: every entry of the same work within a minute of the span.
     local near overlaps
-    near="$(tracked_overlaps "$(( from_epoch - 59 ))" "$(( to_epoch + 59 ))" "$description" "$pid")" || exit 1
+    near="$(tracked_overlaps "$(( from_epoch - 60 ))" "$(( to_epoch + 60 ))" "$description" "$pid")" || exit 1
     overlaps="$(jq -c --argjson f "$from_epoch" --argjson t "$to_epoch" \
         '[.[] | select(.s < $t and .e > $f)]' <<< "$near")"
 
@@ -907,6 +908,15 @@ cmd_add() {
             if ! added="$(api PUT "workspaces/$ewid/time_entries/$eid" "$body")"; then
                 (( i == 0 )) || echo "toggl shim: $i of $count runs were written before this one failed" >&2
                 exit 1
+            fi
+            # Keep the snapshot true, so a later run that touches this same
+            # entry builds from what was just written.
+            if [[ "$how" == "stop" ]]; then
+                near="$(jq -c --argjson id "$eid" --argjson e "$e" '
+                    map(if .entry.id == $id then .e = $e | .entry.stop = ($e | todate) else . end)' <<< "$near")"
+            else
+                near="$(jq -c --argjson id "$eid" --argjson s "$s" '
+                    map(if .entry.id == $id then .s = $s | .entry.start = ($s | todate) else . end)' <<< "$near")"
             fi
             echo "Time entry extended"
         else
