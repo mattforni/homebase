@@ -541,9 +541,10 @@ resolve_project() {
 # array of {s, e, line}, earliest first, leaving out the entry with the skip
 # id. The same work is the same description and the same project (the JSON
 # null for none). The same work is counted once; entries for different work
-# may share the same minutes, so they are never an overlap here. One request: the entries from a week before
-# <from> onward, since the API filters on start date and a forgotten timer
-# stopped late can begin days before the span it covers. The running entry
+# may share the same minutes, so they are never an overlap here. One request:
+# the entries from a week before <from> onward, since the API filters on start
+# date and a forgotten timer stopped late can begin days before the span it
+# covers. The running entry
 # from load_running is folded in too, since it may have started before that
 # window; it covers up to now. A stopped entry ends at its stop (the running
 # def treats an entry with no stop as running). Call load_running first, at
@@ -694,7 +695,7 @@ cmd_start() {
         [[ -z "$running" ]] || run_id="$(jq -r '.id' <<< "$running")"
         overlaps="$(tracked_overlaps "$at_epoch" "$(date +%s)" "$description" "$pid" "$run_id")" || exit 1
         if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
-            echo "toggl shim: --at $(local_clock "$at_epoch") reaches back into time \"$description\" already tracks on this project; nothing changed:" >&2
+            echo "toggl shim: --at $(local_clock "$at_epoch") reaches back into time \"$description\" already tracks${project:+ on $project}; nothing changed:" >&2
             jq -r '.[] | "  " + .line' <<< "$overlaps" >&2
             echo "toggl shim: pick a time at or after the last of those ends" >&2
             exit 1
@@ -836,7 +837,7 @@ cmd_add() {
     local runs
     if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
         if [[ -z "$clip" ]]; then
-            echo "toggl shim: $(local_clock "$from_epoch") to $(local_clock "$to_epoch") overlaps time \"$description\" already tracks on this project; nothing written:" >&2
+            echo "toggl shim: $(local_clock "$from_epoch") to $(local_clock "$to_epoch") overlaps time \"$description\" already tracks on $project; nothing written:" >&2
             jq -r '.[] | "  " + .line' <<< "$overlaps" >&2
             echo "toggl shim: clip the span by hand, or pass --clip to write only the time that work does not already cover" >&2
             exit 1
@@ -850,7 +851,7 @@ cmd_add() {
             | (if .cur < $t then .runs + [[.cur, $t]] else .runs end)
             | map(select(.[1] - .[0] >= 60))' <<< "$overlaps")"
         if [[ "$(jq 'length' <<< "$runs")" == "0" ]]; then
-            echo "Nothing written: \"$description\" already covers $(local_clock "$from_epoch") to $(local_clock "$to_epoch")"
+            echo "Nothing written: \"$description\" on $project leaves no free minute between $(local_clock "$from_epoch") and $(local_clock "$to_epoch")"
             jq -r '.[] | "  " + .line' <<< "$overlaps"
             return 0
         fi
