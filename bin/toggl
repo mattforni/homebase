@@ -186,7 +186,9 @@ else runs the real CLI:
       date, which is how a span crosses midnight. Entries for different
       work may share the same minutes. A span that overlaps an entry with
       the same description and project is refused, or with --clip trimmed
-      to the time that work does not already cover.
+      to the time that work does not already cover. A span that starts
+      where an entry of the same work ends, or ends where one starts,
+      extends that entry and adds none.
 EOF
         return 0
     fi
@@ -202,7 +204,9 @@ toggl shim: the atelic profile supports only these subcommands:
       date, which is how a span crosses midnight. Entries for different
       work may share the same minutes. A span that overlaps an entry with
       the same description and project is refused, or with --clip trimmed
-      to the time that work does not already cover.
+      to the time that work does not already cover. A span that starts
+      where an entry of the same work ends, or ends where one starts,
+      extends that entry and adds none.
 The real CLI only speaks for the personal Toggl account, so nothing else runs
 here. Use TOGGL_FORCE_PROFILE=personal to reach it from this tree on purpose.
 EOF
@@ -538,8 +542,9 @@ resolve_project() {
 
 # tracked_overlaps <from> <to> <description> <project id> [skip id]: every
 # tracked entry of the same work overlapping the span from..to, as a JSON
-# array of {s, e, line}, earliest first, leaving out the entry with the skip
-# id. The same work is the same description and the same project (the JSON
+# array of {s, e, line, run, entry}, earliest first, leaving out the entry
+# with the skip id. run says the entry is still running, and entry is Toggl's
+# own record of it, which add needs to extend one. The same work is the same description and the same project (the JSON
 # null for none). The same work is counted once; entries for different work
 # may share the same minutes, so they are never an overlap here. One request:
 # the entries from a week before <from> onward, since the API filters on start
@@ -565,7 +570,7 @@ tracked_overlaps() {
             | (.start | epoch | floor) as $s
             | (if running then $now else (.stop | epoch | floor) end) as $e
             | select($s < $t and $e > $f)
-            | {s: $s, e: $e,
+            | {s: $s, e: $e, run: running, entry: .,
                line: (($s | strflocaltime("%Y-%m-%d ") + hm_or_hms) + " to "
                       + (if running then "now"
                          elif ($e | strflocaltime("%Y-%m-%d")) == ($s | strflocaltime("%Y-%m-%d")) then ($e | hm_or_hms)
@@ -762,8 +767,17 @@ cmd_start() {
 # runs under a minute are dropped, so clipping never leaves crumbs. Running
 # the same add --clip twice therefore writes nothing the second time.
 #
+# One piece of work is one entry. When a span to be written starts within a
+# minute of where a stopped entry of the same work ends, that entry's stop
+# moves out to the span's end and nothing new is created; when it ends within
+# a minute of where one starts, that entry's start moves back. So a second
+# add for a sitting that went on extends the first entry. A running entry is
+# never extended, and no entry is ever deleted or merged into another: a span
+# that fills the gap between two entries extends the earlier one, and the two
+# then meet.
+#
 # Requests: the projects, the running entry, the entries around the span, and
-# one create per entry written: four for a plain add.
+# one write per run, a create or the PUT that extends: four for a plain add.
 cmd_add() {
     local description="" description_set="" project="" from="" to="" day="" clip=""
     while (( $# )); do
@@ -831,8 +845,12 @@ cmd_add() {
     resolve_project "$project" || exit 1
     load_running || exit 1
 
-    local overlaps
-    overlaps="$(tracked_overlaps "$from_epoch" "$to_epoch" "$description" "$pid")" || exit 1
+    # The same read finds the entries the span overlaps and the ones it only
+    # touches: every entry of the same work within a minute of the span.
+    local near overlaps
+    near="$(tracked_overlaps "$(( from_epoch - 59 ))" "$(( to_epoch + 59 ))" "$description" "$pid")" || exit 1
+    overlaps="$(jq -c --argjson f "$from_epoch" --argjson t "$to_epoch" \
+        '[.[] | select(.s < $t and .e > $f)]' <<< "$near")"
 
     local runs
     if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
@@ -859,24 +877,53 @@ cmd_add() {
         runs="[[${from_epoch},${to_epoch}]]"
     fi
 
-    local count i=0 s e body added
+    local count i=0 s e body added touch how eid ewid
     count="$(jq 'length' <<< "$runs")"
     while IFS=$'\t' read -r s e; do
-        body="$(jq -nc \
-            --arg desc "$description" \
-            --argjson s "$s" --argjson e "$e" \
-            --arg cw "$created_with" \
-            --argjson wid "$wid" \
-            --argjson pid "$pid" \
-            --argjson billable "$billable" \
-            '{description: $desc, start: ($s | todate), stop: ($e | todate), duration: ($e - $s),
-              workspace_id: $wid, project_id: $pid, billable: $billable, created_with: $cw}')"
-        if ! added="$(api POST "workspaces/$wid/time_entries" "$body")"; then
-            (( i == 0 )) || echo "toggl shim: $i of $count entries were written before this one failed" >&2
-            exit 1
-        fi
-        if (( i == 0 )); then
-            if (( count == 1 )); then echo "Time entry added"; else echo "$count time entries added"; fi
+        # A stopped entry of the same work this run touches: the one ending
+        # where the run starts, else the one starting where it ends.
+        touch="$(jq -c --argjson s "$s" --argjson e "$e" '
+            [.[] | select(.run | not)] as $n
+            | ([$n[] | select(.e <= $s and $s - .e < 60)] | last) as $before
+            | ([$n[] | select(.s >= $e and .s - $e < 60)] | first) as $after
+            | if $before then {how: "stop", o: $before}
+              elif $after then {how: "start", o: $after}
+              else null end' <<< "$near")"
+        if [[ "$touch" != "null" ]]; then
+            how="$(jq -r '.how' <<< "$touch")"
+            eid="$(jq -r '.o.entry.id' <<< "$touch")"
+            ewid="$(jq -r '.o.entry.workspace_id' <<< "$touch")"
+            if [[ ! "$eid" =~ ^[0-9]+$ || ! "$ewid" =~ ^[0-9]+$ ]]; then
+                echo "toggl shim: could not read the id and workspace of the entry to extend from Toggl's answer" >&2
+                exit 1
+            fi
+            if [[ "$how" == "stop" ]]; then
+                body="$(jq -c --argjson e "$e" "$entry_fields"' + {stop: ($e | todate), duration: ($e - .s0)}' \
+                    <<< "$(jq -c '.o.entry + {s0: .o.s}' <<< "$touch")")" || exit 1
+            else
+                body="$(jq -c --argjson s "$s" "$entry_fields"' + {start: ($s | todate), duration: (.e0 - $s)}' \
+                    <<< "$(jq -c '.o.entry + {e0: .o.e}' <<< "$touch")")" || exit 1
+            fi
+            if ! added="$(api PUT "workspaces/$ewid/time_entries/$eid" "$body")"; then
+                (( i == 0 )) || echo "toggl shim: $i of $count runs were written before this one failed" >&2
+                exit 1
+            fi
+            echo "Time entry extended"
+        else
+            body="$(jq -nc \
+                --arg desc "$description" \
+                --argjson s "$s" --argjson e "$e" \
+                --arg cw "$created_with" \
+                --argjson wid "$wid" \
+                --argjson pid "$pid" \
+                --argjson billable "$billable" \
+                '{description: $desc, start: ($s | todate), stop: ($e | todate), duration: ($e - $s),
+                  workspace_id: $wid, project_id: $pid, billable: $billable, created_with: $cw}')"
+            if ! added="$(api POST "workspaces/$wid/time_entries" "$body")"; then
+                (( i == 0 )) || echo "toggl shim: $i of $count runs were written before this one failed" >&2
+                exit 1
+            fi
+            echo "Time entry added"
         fi
         jq -r --arg name "$project" "$jq_defs"' (.start | epoch | strflocaltime("%Y-%m-%d %H:%M")) + " " + line($name)' \
             <<< "$added" || true
