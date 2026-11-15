@@ -19,9 +19,9 @@
 # start, check and stop would spend most of an hour's budget. So the personal
 # profile execs the real CLI untouched, and the atelic profile is answered
 # here with curl against Toggl API v9 and the business token from the vault,
-# the way bin/hs answers `hs api` itself: one to four requests a command, five
-# for a backdated start that hands over from a running entry, and three plus
-# one per entry written for add. Each subcommand counts its own above it. The
+# the way bin/hs answers `hs api` itself: one to four requests a command, two
+# for add, and three plus one per entry written for add --clip. Each
+# subcommand counts its own above it. The
 # subset is deliberately small: start, stop, current, list and add. Anything
 # else names that subset and stops, rather than quietly running the real CLI
 # against the personal account from inside the business tree, which is the
@@ -183,7 +183,9 @@ else runs the real CLI:
   toggl add "<description>" --project "<project name>" --from <HH:MM | ISO 8601> --to <HH:MM | ISO 8601>
             [--date YYYY-MM-DD] [--clip]
       HH:MM is local on --date, or today; an ISO timestamp carries its own
-      date, which is how a span crosses midnight.
+      date, which is how a span crosses midnight. The span is written as
+      given, over any time already tracked; --clip writes only the time no
+      entry covers.
 EOF
         return 0
     fi
@@ -196,7 +198,9 @@ toggl shim: the atelic profile supports only these subcommands:
   toggl add "<description>" --project "<project name>" --from <HH:MM | ISO 8601> --to <HH:MM | ISO 8601>
             [--date YYYY-MM-DD] [--clip]
       HH:MM is local on --date, or today; an ISO timestamp carries its own
-      date, which is how a span crosses midnight.
+      date, which is how a span crosses midnight. The span is written as
+      given, over any time already tracked; --clip writes only the time no
+      entry covers.
 The real CLI only speaks for the personal Toggl account, so nothing else runs
 here. Use TOGGL_FORCE_PROFILE=personal to reach it from this tree on purpose.
 EOF
@@ -564,14 +568,13 @@ tracked_overlaps() {
 
 # Three or four requests: the running entry, the projects (when one is named)
 # or the account's default workspace (when none is), the stop (when something
-# runs), and the create. --at adds one, the read of the entries around it. A
-# correction (below) is three or four: the running entry, the projects when
-# one is named, that read, and the PUT that moves its start.
+# runs), and the create. A correction (below) is two or three: the running
+# entry, the projects when one is named, and the PUT that moves its start.
 #
-# --at backdates the start. Time any other entry already tracked between --at
-# and now is refused, listed, as add refuses an overlap, so a backdate never
-# double counts. With an entry running, it either corrects that entry or
-# hands over from it at --at, never overlapping the two:
+# --at backdates the start. It may reach back over stopped entries: two
+# pieces of work can share the same minutes, and the entries overlap as add's
+# do. Toggl runs one timer per account, though, so with an entry running it
+# either corrects that entry or hands over from it at --at:
 #   same description and project, started after --at: the timer was started
 #     late, so the running entry's start moves back to --at and nothing stops.
 #   same description and project, started at or before --at: that work is
@@ -673,20 +676,6 @@ cmd_start() {
         fi
     fi
 
-    # Nothing else may already track time between --at and now. The running
-    # entry is left out: it is the one being corrected or stopped at --at.
-    if [[ -n "$at_set" ]]; then
-        local overlaps run_id=0
-        [[ -z "$running" ]] || run_id="$(jq -r '.id' <<< "$running")"
-        overlaps="$(tracked_overlaps "$at_epoch" "$(date +%s)" "$run_id")" || exit 1
-        if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
-            echo "toggl shim: --at $(local_clock "$at_epoch") reaches back into time already tracked; nothing changed:" >&2
-            jq -r '.[] | "  " + .line' <<< "$overlaps" >&2
-            echo "toggl shim: pick a time at or after the last of those ends" >&2
-            exit 1
-        fi
-    fi
-
     if [[ -n "$correction" ]]; then
         local moved
         body="$(jq -c --arg start "$at_iso" --argjson e "$at_epoch" \
@@ -712,7 +701,7 @@ cmd_start() {
     # stops the one already running, and the real CLI stops it explicitly
     # before every start (StopCommand in its start command). Do the same so
     # exactly one entry runs. With --at it stops at --at, where the new one
-    # starts, so the two meet and never overlap.
+    # starts, so the two meet.
     stop_loaded start "$stop_iso" "$stop_epoch" || exit 1
 
     body="$(jq -nc \
@@ -738,14 +727,16 @@ cmd_start() {
 
 # add: one finished entry from --from to --to, local, on --date or today.
 # --from and --to also take a full ISO 8601 timestamp, which carries its own
-# date. Nothing is ever written over time already tracked: the entries around
-# the span are read first (a running one covers up to now), and an overlap is
-# refused with each overlapping entry printed, unless --clip asks for the new
-# span trimmed to the time nothing covers, written as one entry per free run.
-# Free runs under a minute are dropped, so clipping never leaves crumbs.
+# date. The span is written as given, over any time already tracked: two
+# pieces of work can share the same minutes, and Toggl keeps both entries.
+# --clip asks instead for the span trimmed to the time nothing covers: the
+# entries around it are read first (a running one covers up to now), and it is
+# written as one entry per free run. Free runs under a minute are dropped, so
+# clipping never leaves crumbs.
 #
-# Requests: the projects, the running entry, the entries around the span, and
-# one create per entry written: four for a plain add.
+# Requests: the projects and the create, two for a plain add. --clip adds the
+# running entry and the entries around the span, and creates once per entry
+# written.
 cmd_add() {
     local description="" description_set="" project="" from="" to="" day="" clip=""
     while (( $# )); do
@@ -811,19 +802,16 @@ cmd_add() {
     load_projects || exit 1
     local pid wid billable
     resolve_project "$project" || exit 1
-    load_running || exit 1
 
-    local overlaps
-    overlaps="$(tracked_overlaps "$from_epoch" "$to_epoch")" || exit 1
+    # Without --clip the span is written whole, whatever it overlaps, and
+    # nothing around it is read.
+    local overlaps="[]" runs
+    if [[ -n "$clip" ]]; then
+        load_running || exit 1
+        overlaps="$(tracked_overlaps "$from_epoch" "$to_epoch")" || exit 1
+    fi
 
-    local runs
     if [[ "$(jq 'length' <<< "$overlaps")" != "0" ]]; then
-        if [[ -z "$clip" ]]; then
-            echo "toggl shim: $(local_clock "$from_epoch") to $(local_clock "$to_epoch") overlaps time already tracked; nothing written:" >&2
-            jq -r '.[] | "  " + .line' <<< "$overlaps" >&2
-            echo "toggl shim: clip the span by hand, or pass --clip to write only the time nothing covers" >&2
-            exit 1
-        fi
         # The free runs: walk the covered intervals in order, keeping the gap
         # before each one, then the tail after the last.
         runs="$(jq -c --argjson f "$from_epoch" --argjson t "$to_epoch" '
