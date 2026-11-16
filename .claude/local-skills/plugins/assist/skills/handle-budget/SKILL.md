@@ -47,7 +47,7 @@ ynab transactions list --approved false
 ynab transactions list --approved false | jq '[.[] | select(.category_id == null)]'
 
 # trimmed for reading, when the full payload is noise
-ynab transactions list --approved false --fields id,date,payee_name,amount_formatted
+ynab transactions list --approved false --fields id,date,payee_name,import_payee_name_original,amount_formatted
 ```
 
 Add `--since <YYYY-MM-DD>` to bound the window. Decode HTML entities in payee names (`&amp;` to `&`) before matching.

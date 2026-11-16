@@ -62,7 +62,7 @@ import type { Page, RenderContext } from "./types";
  * restates the numbers under it, no date range, no Atelic outreach.
  *
  * The sessions and the day strip are built from strava.json here, never from
- * the model, so the only numbers the model supplies are the graded coverage
+ * the model, so the only numbers the model supplies are the coverage
  * counts. The spend tables, the completed tasks, the apply record and the
  * pull ledger are the entrypoint's, merged in after the model runs.
  */
@@ -107,7 +107,7 @@ export type BriefDraft = {
 
 /* ---------- the week, derived ---------- */
 
-/** Strava's sport types in the words the week is graded in. */
+/** Strava's sport types in the words the week is counted in. */
 const KINDS: Record<string, string> = {
 	Run: "Run",
 	TrailRun: "Run",
@@ -144,7 +144,7 @@ function kindOf(activity: Activity): string {
 }
 
 /**
- * The same test the prompt grades by: a run Strava matched other athletes
+ * The same test the prompt counts by: a run Strava matched other athletes
  * into, or one whose name says who it was with.
  */
 function isSocial(activity: Activity): boolean {
@@ -236,14 +236,17 @@ function modalityLabel(value: unknown): string {
 		.join(" ");
 }
 
-/** The model's coverage, with its note; a PT row from an older draft or a slip is left out. */
+/**
+ * The model's coverage, with its note; a PT row from an older draft or a slip is left out.
+ * Every row is a bare count, and a target an older draft still carries is dropped here.
+ */
 function movementTargets(draft: BriefDraft): Target[] {
 	return alt(draft.coverage, [])
 		.filter((row) => !/^(physical therapy|pt)\b/i.test(jqToString(alt(row.modality, "")).trim()))
 		.map((row) => ({
 			label: modalityLabel(row.modality),
 			logged: num(row.logged),
-			target: num(row.target),
+			target: null,
 			note: jqToString(alt(row.note, "")),
 		}));
 }

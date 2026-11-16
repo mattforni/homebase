@@ -138,6 +138,9 @@ function shapeTransaction(t) {
         amount: dollars(t.amount),
         payeeId: t.payee_id || null,
         payeeName: t.payee_name || "",
+        // The bank's own descriptor, which a payee rule may match when the
+        // cleaned payee name is ambiguous (ATI*<digits> is Atom Tickets).
+        importPayeeNameOriginal: t.import_payee_name_original || "",
         categoryId: t.category_id || null,
         categoryName: t.category_name || "",
         memo: t.memo || "",

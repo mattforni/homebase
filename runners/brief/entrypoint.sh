@@ -163,11 +163,11 @@ pulls_close() {
 PULLS_CLOSED=0
 
 # ---------- Eudaimonia ----------
-# The first pull is the repo itself: the block doc is the one source for what
-# the retro grades, and the prompt reads it rather than carrying a copy.
+# The first pull is the repo itself: schedule.md and the tool docs are the
+# rules the prompt reads, rather than carrying a copy.
 EUDY="$WORK/eudy"
 EUDY_REPO="${EUDY_REPO:-git@github.com:mattforni/Eudaimonia.git}"
-BLOCK_DOC="Constitution/Fitness/2026-recomp-block.md"
+SKELETON_DOC="schedule.md"
 eudy_pull() {
     mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
     printf '%s\n' "$EUDY_DEPLOY_KEY" > "$HOME/.ssh/eudy_deploy_key"
@@ -179,10 +179,10 @@ eudy_pull() {
         fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
-    # The block doc is the only thing the retro grades against; without it the
-    # mail would still render, graded against nothing, so fail closed here.
-    if [[ ! -f "$EUDY/$BLOCK_DOC" ]]; then
-        fail_reason="Eudaimonia clone is missing $BLOCK_DOC"
+    # The skeleton is what the calendar pass reads the week against; a clone
+    # without it is not the repo this run expects, so fail closed here.
+    if [[ ! -f "$EUDY/$SKELETON_DOC" ]]; then
+        fail_reason="Eudaimonia clone is missing $SKELETON_DOC"
         fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
@@ -496,7 +496,7 @@ if [[ "$SKIP_PULLS" == "1" ]]; then
     for cached in strava.json takeout.jsonl atelic.json; do
         [[ -f "$WORK/$cached" ]] || { fail_reason="SKIP_PULLS is set but $WORK/$cached is missing; run once without it"; exit 1; }
     done
-    [[ -f "$EUDY/$BLOCK_DOC" ]] || { fail_reason="SKIP_PULLS is set but the Eudaimonia clone at $EUDY has no $BLOCK_DOC; run once without it"; exit 1; }
+    [[ -f "$EUDY/$SKELETON_DOC" ]] || { fail_reason="SKIP_PULLS is set but the Eudaimonia clone at $EUDY has no $SKELETON_DOC; run once without it"; exit 1; }
     # The rules clone is keyless and cheap, so a reused run still makes it
     # when none is on disk; the model reads the rules as they stand today.
     homebase_pull || exit 1

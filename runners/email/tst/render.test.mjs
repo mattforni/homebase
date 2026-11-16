@@ -282,6 +282,23 @@ test("a PT session and a PT coverage row never reach the page", () => {
 });
 
 /*
+ * Nothing is graded (W47): the fixture's coverage rows still carry the targets
+ * an older draft had, and none of them reaches the page as "n / m" or a bar.
+ */
+test("a coverage target never reaches the page", () => {
+	const draft = briefDraft();
+	assert.ok(draft.coverage.some((row) => row.target !== undefined), "the fixture still carries a target");
+	const text = renderRaw("brief", "text", JSON.stringify(draft)).stdout;
+	const movement = text.slice(text.indexOf("Movement"), text.indexOf("Takeout"));
+	assert.ok(!/\d\s*\/\s*\d/.test(movement), "no logged over target");
+	assert.ok(!/[#.]{2,}/.test(movement), "no bar");
+	for (const row of draft.coverage) delete row.target;
+	const bare = renderRaw("brief", "text", JSON.stringify(draft));
+	assert.equal(bare.status, 0, bare.stderr);
+	assert.equal(bare.stdout, text, "a draft with no target key renders the same page");
+});
+
+/*
  * The ledger and both rules tables open on the accent header the movement
  * table opens on, and the email rules draw a yes green and a no red (W47).
  */

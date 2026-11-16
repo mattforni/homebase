@@ -1,6 +1,6 @@
 ---
 name: plan-training
-description: Training plan scheduling, weekly training retrospectives, and training adjacent constraint validation against the block plan in `Constitution/Fitness/`. Use when Forni mentions lifts, runs, recovery days, or the recomp block, or says "schedule my training" or "training retro".
+description: Training scheduling from the weekly skeleton in `schedule.md`, the weekly training look back, and training adjacent constraint validation. Use when Forni mentions lifts, runs, or recovery days, or says "schedule my training" or "training retro".
 argument-hint: "[week | move | retro]"
 allowed-tools:
   - Bash
@@ -15,28 +15,25 @@ allowed-tools:
 
 # Plan Training Assist
 
-Help Forni schedule the week's training from the active block plan, run the weekly retro, and move sessions safely with constraint validation. The skill is independently invocable, and also gets called by `/assist:plan-week` during Monday planning before triage and slotting.
+Help Forni schedule the week's training from `schedule.md`, look back on the week just closed, and move sessions safely with constraint validation. The skill is independently invocable, and also gets called by `/assist:plan-week` during Monday planning before triage and slotting.
 
 ## Before Every Invocation
 
 1. Read [learned-rules.md](learned-rules.md) in this directory
 2. Read the canonical training context:
-   - `~/Eudaimonia/Constitution/Fitness/2026-recomp-block.md` — active block (target, weekly shape, strength emphasis, guardrails, checkpoints)
    - `~/Eudaimonia/Constitution/Fitness/CLAUDE.md` — training conventions
    - `~/Eudaimonia/schedule.md` — weekly skeleton (held loosely by design)
 3. Determine the target week. Default to the current ISO week. Use `date +"%G-W%V"` for the week identifier.
 
-The FPL block (`2026-training-plan.md`) is closed and read only for history.
-
 ## Source of Truth
 
-The block plan lives at `Constitution/Fitness/2026-recomp-block.md`. The weekly skeleton lives at `schedule.md` and is a default, not a law. Google Calendar holds the live scheduled reality.
+The weekly skeleton lives at `schedule.md` and is a default, not a law. Google Calendar holds the live scheduled reality.
 
 **For scheduling decisions** (what's on the calendar this week, what conflicts with what): the calendar is truth.
 
 **For retrospective decisions** (what actually happened last week): Strava is truth for all movement, lifts and yoga included. Calendar events are scheduled intent, never evidence of completion.
 
-**Strength programming is Fitbod's, not this skill's.** The block doc holds the emphasis and the session count; exercise selection, weights, and reps live in Fitbod and are not planned, targeted, or graded here.
+**Strength programming is Fitbod's, not this skill's.** Exercise selection, weights, and reps live in Fitbod and are not planned here.
 
 ## Training Constraints
 
@@ -63,7 +60,7 @@ The Monday morning training pass. Runs as part of `/assist:plan-week` plan mode 
 
 ### Phase 1: Retrospective on the Previous Week
 
-The emailed retro (the runner's `YYYY-Www Brief`, consumed by `assist:plan-week` Review Week) is the coverage read: lifts, social runs, and yoga against the block doc, plus the takeout count. Add only what it cannot see, how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
+The emailed retro (the runner's `YYYY-Www Brief`, consumed by `assist:plan-week` Review Week) is the coverage read: bare counts of lifts, social runs, and yoga, plus the takeout count. Add only what it cannot see, how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
 
 ### Phase 2: Detect Existing Placeholders
 
@@ -78,13 +75,12 @@ Fetch the week's calendar events (Monday through Sunday). Do not overwrite or du
 
 Lay out the week as one small table: day, session, purpose. Place yoga against the actual Movement schedule for the week (the skeleton is a default; studio schedules change). Verify the studio still holds the assumed slots when in doubt.
 
-**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here). Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
+**The one look weekly summary is the deliverable**: sessions by modality as plain counts. Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
 
 ### Phase 4: Special Week Handling
 
 - **Last Thursday of the month**: the 16:00 Liz session replaces Alignment Yoga. Clear the yoga instance and both of its transition flanks; do not schedule around a collision that should not exist.
-- **Travel weeks**: skeleton sessions become opportunistic, not graded.
-- **Block close (W45, week of Nov 8)**: composition read plus the winter shape conversation.
+- **Travel weeks**: skeleton sessions become opportunistic.
 
 ## Mode: move
 
@@ -96,63 +92,44 @@ Move or swap a training event with constraint validation.
 4. Present the proposed change with downstream impacts
 5. Execute after confirmation
 
-When moving recurring events for one week, modify only that occurrence. Permanent changes update the series and flag that `schedule.md` and the block doc may need updating. **Never modify existing events without explicit permission.**
+When moving recurring events for one week, modify only that occurrence. Permanent changes update the series and flag that `schedule.md` may need updating. **Never modify existing events without explicit permission.**
 
 ## Mode: retro
 
-Look back on a completed week. Compare planned vs actual coverage. Append the result as a new `### Wk N` subsection under a **Weekly Retrospectives** section of `2026-recomp-block.md` (create the section on first use, immediately before References), chronological order, `####` inner headings.
+Look back on a completed week: what was done, how the heel and body felt, and what carries into scheduling. Present it in the terminal; nothing is written to a file.
 
 ### Phase 1: Determine the Target Week
 
-Default: the most recently completed ISO week. Natural cadence is Monday morning. Heading format: `### Wk N: ISO YYYY-WNN (Mon Date to Sun Date)`, numbering from the block start (2026-W33 = Wk 1).
+Default: the most recently completed ISO week. Natural cadence is Monday morning.
 
 ### Phase 2: Gather Data
 
-1. **Block doc**: the weekly shape and any week specific notes (checkpoints).
-2. **Strava**: pull the week's activities via `mcp__claude_ai_Strava__list_activities` with `range_start`/`range_end`. Filter by `sport_type`. Strava is the sole source of record for all movement; never ask the user to confirm sessions, never infer from calendar.
+Pull the week's activities from Strava via `mcp__claude_ai_Strava__list_activities` with `range_start`/`range_end`. Filter by `sport_type`. Strava is the sole source of record for all movement; never ask the user to confirm sessions, never infer from calendar.
 
-### Phase 3: Build the Coverage Table
+### Phase 3: What Was Done
 
-One row per planned session: Mon lift, Tue DRC, Tue Align and Flow, Wed lift, Thu SPRC, Thu Alignment, Fri lift, Sun Hatha, Sun Yin. Mark `✅` (hit), `❌` (missed), `↪️` (shifted), `n/a` (not applicable). Sessions skipped while travelling are `n/a`, never misses, and Alignment Yoga is `n/a` on the last Thursday of the month, when Liz replaces it. A session that moved days but happened is a hit; the skeleton is a default.
-
-### Phase 4: The Numbers
-
-| Metric | Source |
+| Modality | Count |
 |---|---|
-| Lifts | count vs 3 |
-| Runs | sessions + total miles (informational, no target) |
-| Yoga | count vs 4 standing holds |
+| Lifts | sessions |
+| Runs | sessions + total miles |
+| Yoga | sessions |
 
-Run mileage carries no target and no ceiling; it is context, not a grade. Mileage and vert ceilings retired with the FPL block.
+### Phase 4: Load Check
 
-### Phase 5: Load Check
-
-Reshaped for the recomp block; run every retro:
+Run every retro:
 
 1. **Hard effort count.** More than one hard run effort in the week is a flag (heel guardrail). Any hard effort the week after a flare is a flag.
 2. **Clustering.** Two big days (over 8 mi or over 1,000 ft) within 48 hours is a flag; the pattern to catch is a big Saturday day on a cold trail base, since no trail running is left on the calendar after 4K Friday retired (2026-09-14).
 3. **Heel signal.** Any reported heel, calf, or foot signal drops the next week's hard and trail efforts.
 4. **Recovery read.** Only when runs look hot: check easy day HR vs the Z2 ceiling via `get_activity_performance`.
 
-### Phase 6: Interrogate Significant Deltas
+### Phase 5: Heel and Body
 
-When coverage shows meaningful misses (a modality at zero, two consecutive weeks of the same miss), interrogate cause before writing: injury or body, schedule or life, motivation or state, conditions. One focused question, then room for detail. Medical causes prompt for provider notes worth capturing.
+Ask how the heel and body felt, in one factual question.
 
-### Phase 7: Write the Retro Subsection
+### Phase 6: Carry Forward
 
-Skeleton: Coverage, Numbers, Load Check, The Read (2 to 4 short paragraphs, direct, no effusive praise), Carry Forward, Open Items. Present the draft and confirm via one `AskUserQuestion` before saving.
-
-### Phase 8: Adjustment Check
-
-Coverage misses drive schedule repair (move the slot, shrink the commitment), not target step downs; there is no volume ladder in this block. A load check flag tightens the next week's run shape. Skip only when the week landed clean.
-
-### Phase 9: Surface Trends
-
-Scan the prior 1 to 2 retros for patterns: repeated misses, a modality quietly fading. One or two sentences, only when the data is there.
-
-## Retired with the FPL Block
-
-The long-run mode (Friday mountain long run workflow, route selection, vert budgets, mileage ceilings) retired 2026-08-05 with the FPL block. Route taste and the vetted shortlist are archived in git history and `reference/`; a future mountain objective reopens them as adventure planning, not weekly training.
+A load check flag or a heel signal tightens the next week's run shape. Name what carries into scheduling, then hand it to week mode.
 
 ## Key Locations
 

@@ -109,10 +109,10 @@ Full boards (every thread, every task, every event) surface only on request. The
 
 Look back at the week that closed yesterday, read as a **compass, not a verdict**. This phase is a quiet dialogue: the agent fan out waits until it closes, so nothing lands mid question.
 
-**The emailed retro is the first pass.** Before the session opens the runner has pulled Strava and the Gmail takeout tally, graded them against the block doc, and mailed the result as the Last Week half of the brief (Before Every Invocation, step 7); the outreach week left the brief for the Pipeline mail on 2026-11-09. Forni has read it in his inbox, so the session does not restate its tables. The session's contribution is what the email cannot carry:
+**The emailed retro is the first pass.** Before the session opens the runner has pulled Strava and the Gmail takeout tally, counted what was done, and mailed the result as the Last Week half of the brief (Before Every Invocation, step 7); the outreach week left the brief for the Pipeline mail on 2026-11-09. Forni has read it in his inbox, so the session does not restate its tables. The session's contribution is what the email cannot carry:
 
 - **Name what stands out**, two or three sentences, lightly.
-- **Ask the felt sense** as an open prose question, never an option menu (a word or two for the week), and follow the live thread. The scoreboard is counts against the block and carries no verdict (the graded headline left the brief 2026-11-09); the felt sense is the story, and it can turn the numbers over (on 2026-08-30 "skipped the plan entirely" was, lived, the first weekend home after a month of racing). The numbers are numbers; his read is the read.
+- **Ask the felt sense** as an open prose question, never an option menu (a word or two for the week), and follow the live thread. The scoreboard is bare counts and carries no verdict; the felt sense is the story, and it can turn the numbers over (on 2026-08-30 "skipped the plan entirely" was, lived, the first weekend home after a month of racing). The numbers are numbers; his read is the read.
 - **Fill the blind spots** the email names for itself (how the heel and body felt) in one factual ask, and carry the answers into Plan Training.
 - **Settle the carry forward**, the one thing the week ahead is for; it seeds Set Intention.
 
@@ -195,7 +195,7 @@ Execute only the agreed changes before moving on. The calendar should be clean a
 
 ### Phase 6: Plan Training
 
-Invoke the `assist:plan-training` skill in `week` mode via the Skill tool. Its retro gate is satisfied by the emailed retro plus the blind spots Review Week collected; the coach agent (`~/.claude/agents/coach.md`, dispatched on `sonnet`) reads the week's shape from the block doc and the calendar pull. The skill detects existing recurring placeholders (Mon/Wed/Fri lifts, Tue DRC, Thu SPRC, the four yoga holds; Tue Diego retired 2026-11-09), surfaces what's missing, lays out the week's shape and strength targets, and **places every training event for the week**, following its own constraint logic. 4K Friday retired 2026-09-14, so there are no alternating one offs. The week leaves this phase with training fully on the calendar, not just shaped. Return here once training scheduling is complete.
+Invoke the `assist:plan-training` skill in `week` mode via the Skill tool. Its retro gate is satisfied by the emailed retro plus the blind spots Review Week collected; the coach agent (`~/.claude/agents/coach.md`, dispatched on `sonnet`) reads the week's shape from `schedule.md` and the calendar pull. The skill detects existing recurring placeholders (Mon/Wed/Fri lifts, Tue DRC, Thu SPRC, the four yoga holds; Tue Diego retired 2026-11-09), surfaces what's missing, lays out the week's shape, and **places every training event for the week**, following its own constraint logic. 4K Friday retired 2026-09-14, so there are no alternating one offs. The week leaves this phase with training fully on the calendar, not just shaped. Return here once training scheduling is complete.
 
 ### Phase 7: Plan Tasks
 
@@ -238,14 +238,14 @@ Present the proposed slots as a board with corrections invited (the board patter
 
 1. Set the date and time with `td task reschedule <ref> "2026-03-31T07:00:00"`. Reschedule preserves recurrence, and a date only value drops an existing time, so pass the full date and time form
 2. Set the labels with `td task update <ref> --labels`. The flag replaces the entire label set, so pass everything the task keeps in one list: the `⏰ Scheduled` label, exactly one cognitive load label (🧠 Sharp / ⚖️ Medium / 🍃 Light), and any labels already on the task. Move the task out of Inbox into its pillar project with `td task move <ref> --project "<name>"` (see Slotting Rules in the plugin learned-rules.md)
-3. The `⏰ Scheduled` label removes the task from the Schedule filter so it does not resurface during prioritization. The duration cannot be set from here: `td` accepts `--duration` on add and update and silently drops it, so the task's length gets set in the Todoist app, and every slotted task goes on the Present Week hand list with its intended length
+3. The `⏰ Scheduled` label removes the task from the Schedule filter so it does not resurface during prioritization. The duration cannot be set from here: `td` accepts `--duration` on add and update and silently drops it, so the task's length is set by lengthening its event on the `📝 Todoist` calendar feed (see learned-rules.md)
 4. Todoist's calendar integration automatically shows scheduled tasks on Google Calendar
 
 Google Calendar is still used directly for non task events: meetings, transitions, sauna sessions, social events, etc.
 
 **Recurring catch up/call tasks**: When a recurring task (e.g., "📱 Ryan Bruno", every 2 months) gets slotted:
 
-1. Create a new one off Todoist task with the specific date/time, duration, the `⏰ Scheduled` label, exactly one cognitive load label (🧠 Sharp / ⚖️ Medium / 🍃 Light), and its pillar project
+1. Create a new one off Todoist task with the specific date/time, the `⏰ Scheduled` label, exactly one cognitive load label (🧠 Sharp / ⚖️ Medium / 🍃 Light), and its pillar project; the length goes on through the calendar feed rule in learned-rules.md
 2. Complete the recurring task so the next occurrence auto generates on its cycle
 3. The one off task is the reminder for this week; the recurrence handles the next one
 
@@ -264,7 +264,7 @@ Supplement the link only with what the calendar cannot show:
 - The deferred ledger: any tasks that could not be slotted (no available time)
 - Remaining open slots for spontaneous work
 - The week's theme
-- The short list for his hands: Todoist durations (`td` drops `--duration` silently, on add and update alike, so they get set in the app) and anything the session could not do
+- The short list for his hands: anything the session could not do (Todoist durations are set by the session via the calendar feed, per learned-rules.md)
 
 Close the session by logging its time, per Session Timers in `~/Eudaimonia/Admin/Tools/toggl.md`.
 
@@ -286,7 +286,7 @@ Slot a specific task or event into the week.
 3. Identify available slots that fit the duration
 4. Present options via AskUserQuestion
 5. Slot into the chosen time:
-   - **If it is a Todoist task**: use `td task reschedule` to set the date and time, then `td task update` to set the full `--labels` set (the `⏰ Scheduled` label, exactly one cognitive load label 🧠 Sharp / ⚖️ Medium / 🍃 Light, plus whatever the task already carries, since the flag replaces the whole set), and `td task move` to land it in its pillar project. The duration is set in the app (`td` drops `--duration`), so name the intended length for his hands. Do **not** create a Google Calendar event; Todoist's calendar integration handles visibility automatically.
+   - **If it is a Todoist task**: use `td task reschedule` to set the date and time, then `td task update` to set the full `--labels` set (the `⏰ Scheduled` label, exactly one cognitive load label 🧠 Sharp / ⚖️ Medium / 🍃 Light, plus whatever the task already carries, since the flag replaces the whole set), and `td task move` to land it in its pillar project. `td` drops `--duration`, so set the length through the calendar feed event (learned-rules.md). Do **not** create a Google Calendar event; Todoist's calendar integration handles visibility automatically.
    - **If it is a non task event** (meeting, transition, sauna session, social event, etc.): propose the event details, confirm with the user, then create a Google Calendar event following the Calendar Event Conventions above.
 
 ## Mode: move
@@ -339,11 +339,11 @@ All Todoist access goes through the `td` CLI via Bash; the MCP connector retired
 
 - `td task list --filter '<query>' --json`: pull tasks with a raw Todoist filter query. There is no saved filter lookup, so pass the Schedule filter's raw query directly (see Phase 7). A date range pull uses `--due` (today, overdue, or YYYY-MM-DD).
 - `td task reschedule <ref> "<date>"`: move a task's due date. Always use this instead of `td task update --due` for date changes: reschedule preserves recurrence, while `update --due` replaces the whole due string. A date only value drops an existing time of day, so pass the full form (`2026-08-18T09:00:00`) when a time matters.
-- `td task update <ref>`: set task properties (but NOT dates). `--labels` is plural and replaces the entire label set, so always pass every label the task keeps, not just the addition. `--priority` takes `p1` through `p4`. `--duration` is accepted and silently dropped, on `add` and `update` alike (confirmed 2026-08-30 on four freshly slotted tasks); durations are set in the Todoist app.
+- `td task update <ref>`: set task properties (but NOT dates). `--labels` is plural and replaces the entire label set, so always pass every label the task keeps, not just the addition. `--priority` takes `p1` through `p4`. `--duration` is accepted and silently dropped, on `add` and `update` alike; durations are set through the calendar feed event (learned-rules.md).
 - `td task move <ref> --project "<name>"`: move a task out of Inbox into its pillar project.
 - `td task complete <ref>`: complete recurring tasks to fire the next occurrence (never `--forever`, which kills the recurrence).
 - `td task delete <ref> --yes`: delete notes/bookmarks that were never real tasks. Never complete these. The `--yes` flag is required or nothing is deleted.
-- `td task add "<title>" --project "<name>" --due "<date and time>" --priority p2 --labels "<a,b>"`: create one off tasks (e.g., a scheduled call from a recurring catch up); pass a full date and time value when the task carries a slot, not a date only value; the duration goes on in the app afterwards.
+- `td task add "<title>" --project "<name>" --due "<date and time>" --priority p2 --labels "<a,b>"`: create one off tasks (e.g., a scheduled call from a recurring catch up); pass a full date and time value when the task carries a slot, not a date only value; the duration goes on afterwards through the calendar feed event.
 - `td comment add <ref> --content "<text>"`: add detail to tasks when combining or enriching them.
 
 When slotting tasks, respect Todoist priorities:
