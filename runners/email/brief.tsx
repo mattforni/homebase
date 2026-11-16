@@ -926,11 +926,14 @@ function spendParts(draft: BriefDraft): Part[] {
  * Todoist pull did not include them says so rather than saying zero.
  */
 function completedLine(draft: BriefDraft): string {
-	if (!Array.isArray(draft.completed) || str(draft.completedNote) !== "") {
+	if (!Array.isArray(draft.completed)) {
 		return "The tasks completed last week were not read this run.";
 	}
 	const count = draft.completed.length;
-	return `${numberString(count)} ${count === 1 ? "task" : "tasks"} completed last week.`;
+	// A note beside a count means the history began inside the week: the
+	// count is real but may be short, and the line says so.
+	const short = str(draft.completedNote) !== "" ? " The activity history begins inside the week, so the count may be short." : "";
+	return `${numberString(count)} ${count === 1 ? "task" : "tasks"} completed last week.${short}`;
 }
 
 /* ---------- this week: the ledger ---------- */

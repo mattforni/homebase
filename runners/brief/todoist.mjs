@@ -183,6 +183,7 @@ async function pull(outDir, monday, before) {
         if (report.truncated) completedNote = "the activity history begins inside the week, so the count may be short";
     } catch (e) {
         completedNote = e.message;
+        done = null; // not read, which the brief says, and not zero
         log(`completed tasks not read: ${e.message}`);
     }
     const seen = new Set();
@@ -197,7 +198,7 @@ async function pull(outDir, monday, before) {
         completedNote,
     };
     writeFileSync(join(outDir, "todoist.json"), JSON.stringify(out, null, 1));
-    log(`${out.schedule.length} in the Schedule filter, ${out.landing.length} more due ${monday}, ${done.length} completed in the week before`);
+    log(`${out.schedule.length} in the Schedule filter, ${out.landing.length} more due ${monday}, ${done ? done.length : "no"} completed in the week before`);
 }
 
 async function main() {
