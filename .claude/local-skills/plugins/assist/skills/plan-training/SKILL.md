@@ -63,7 +63,7 @@ The Monday morning training pass. Runs as part of `/assist:plan-week` plan mode 
 
 ### Phase 1: Retrospective on the Previous Week
 
-The emailed retro (the runner's `YYYY-Www Brief`, consumed by `assist:plan-week` Review Week) is the coverage read: lifts, social runs, and yoga against the block doc, plus the takeout count. Add only what it cannot see, how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
+The emailed retro (the runner's `YYYY-Www Brief`, consumed by `assist:plan-week` Review Week) is the coverage read: bare counts of lifts, social runs, and yoga, plus the takeout count, with no target beside them (nothing is graded since 2026-11-16). Add only what it cannot see, how the heel and body felt, collected in Review Week's blind spot ask. Retro precedes scheduling, always; drift compounds otherwise. Mode: retro below is the standalone form for a direct ask; do not rerun it here.
 
 ### Phase 2: Detect Existing Placeholders
 
@@ -78,7 +78,7 @@ Fetch the week's calendar events (Monday through Sunday). Do not overwrite or du
 
 Lay out the week as one small table: day, session, purpose. Place yoga against the actual Movement schedule for the week (the skeleton is a default; studio schedules change). Verify the studio still holds the assumed slots when in doubt.
 
-**The one look weekly summary is the deliverable**: sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here). Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
+**No live block means no targets** (Forni, 2026-11-16): the recomp block closed 2026-11-08 without a successor, so until a new block doc exists the summary is sessions by modality as plain counts, and nothing is set or graded against the closed block. **The one look weekly summary is the deliverable**: when a block is live, sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here). Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
 
 ### Phase 4: Special Week Handling
 

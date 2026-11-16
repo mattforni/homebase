@@ -107,7 +107,7 @@ export type BriefDraft = {
 
 /* ---------- the week, derived ---------- */
 
-/** Strava's sport types in the words the week is graded in. */
+/** Strava's sport types in the words the week is counted in. */
 const KINDS: Record<string, string> = {
 	Run: "Run",
 	TrailRun: "Run",
@@ -144,7 +144,7 @@ function kindOf(activity: Activity): string {
 }
 
 /**
- * The same test the prompt grades by: a run Strava matched other athletes
+ * The same test the prompt counts by: a run Strava matched other athletes
  * into, or one whose name says who it was with.
  */
 function isSocial(activity: Activity): boolean {
