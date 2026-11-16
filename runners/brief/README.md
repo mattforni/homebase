@@ -31,7 +31,7 @@ bin/runner/fire brief                      # run production now
 |---|---|
 | `Dockerfile` | `node:24-slim` plus curl, jq, tzdata, and a pinned Claude Code; runs as the non root `runner` user |
 | `entrypoint.sh` | The pulls, the model call, the apply step, the merge, on the shared scaffold in `runners/lib/runner.sh` |
-| `prompt.md` | The brief: the retro grading, the planning rules to read, the bands and what makes a row a decision, the new rules to propose, the JSON shape; `{{WEEK}}`, `{{NEXT_WEEK}}`, `{{MONDAY}}`, `{{SUNDAY}}`, `{{NEXT_MONDAY}}`, `{{NEXT_SUNDAY}}`, `{{TODAY}}`, `{{WORK}}`, `{{EUDY}}`, `{{HOMEBASE}}`, `{{ATELIC}}` are filled at run time |
+| `prompt.md` | The brief: the plain count retro, the planning rules to read, the bands and what makes a row a decision, the new rules to propose, the JSON shape; `{{WEEK}}`, `{{NEXT_WEEK}}`, `{{MONDAY}}`, `{{SUNDAY}}`, `{{NEXT_MONDAY}}`, `{{NEXT_SUNDAY}}`, `{{TODAY}}`, `{{WORK}}`, `{{EUDY}}`, `{{HOMEBASE}}`, `{{ATELIC}}` are filled at run time |
 | `ynab.mjs` | `pull` (accounts, categories, payees, the queue, three months of rows per budget), `week` (the typical against the pace, with the first of the month charges counted whole and the rest prorated, the delta, the inflows, outliers and trips, into `spend.json`), `apply` (approve the banded rows at their category) |
 | `inbox.mjs` | `pull` (every inbox message in both mailboxes with its labels and a link, plus each label list), `apply` (label, mark read, archive) |
 | `calendar.mjs` | `pull` the week ahead on the three calendars, normalized to Denver, with the lint (overlaps, missing flanks, unlabeled) in `calendar-lint.json` |

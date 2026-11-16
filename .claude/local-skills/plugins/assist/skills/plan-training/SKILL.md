@@ -21,7 +21,7 @@ Help Forni schedule the week's training from the active block plan, run the week
 
 1. Read [learned-rules.md](learned-rules.md) in this directory
 2. Read the canonical training context:
-   - `~/Eudaimonia/Constitution/Fitness/2026-recomp-block.md` — active block (target, weekly shape, strength emphasis, guardrails, checkpoints)
+   - `~/Eudaimonia/Constitution/Fitness/2026-recomp-block.md` — the last block, closed 2026-11-08 (history; consult for guardrails and shape, never for targets unless a new block is live)
    - `~/Eudaimonia/Constitution/Fitness/CLAUDE.md` — training conventions
    - `~/Eudaimonia/schedule.md` — weekly skeleton (held loosely by design)
 3. Determine the target week. Default to the current ISO week. Use `date +"%G-W%V"` for the week identifier.
@@ -78,13 +78,12 @@ Fetch the week's calendar events (Monday through Sunday). Do not overwrite or du
 
 Lay out the week as one small table: day, session, purpose. Place yoga against the actual Movement schedule for the week (the skeleton is a default; studio schedules change). Verify the studio still holds the assumed slots when in doubt.
 
-**No live block means no targets** (Forni, 2026-11-16): the recomp block closed 2026-11-08 without a successor, so until a new block doc exists the summary is sessions by modality as plain counts, and nothing is set or graded against the closed block. **The one look weekly summary is the deliverable**: when a block is live, sessions by modality against the block doc's What This Block Asks For paragraph (`Constitution/Fitness/2026-recomp-block.md`, the one statement of the targets; never restate the numbers here). Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
+**No live block means no targets** (Forni, 2026-11-16): until a new block doc exists, nothing is set or graded against the closed recomp block. **The one look weekly summary is the deliverable**: sessions by modality as plain counts, and when a block is live, against that block doc's What This Block Asks For paragraph (the one statement of the targets; never restate the numbers here). Present it in the terminal; it is not written anywhere. (The week banner used to carry it; retired 2026-09-07 since Forni never read it there. The banner belongs to `assist:plan-week` and this skill never writes to it.)
 
 ### Phase 4: Special Week Handling
 
 - **Last Thursday of the month**: the 16:00 Liz session replaces Alignment Yoga. Clear the yoga instance and both of its transition flanks; do not schedule around a collision that should not exist.
 - **Travel weeks**: skeleton sessions become opportunistic, not graded.
-- **Block close (W45, week of Nov 8)**: composition read plus the winter shape conversation.
 
 ## Mode: move
 
@@ -100,7 +99,7 @@ When moving recurring events for one week, modify only that occurrence. Permanen
 
 ## Mode: retro
 
-Look back on a completed week. Compare planned vs actual coverage. Append the result as a new `### Wk N` subsection under a **Weekly Retrospectives** section of `2026-recomp-block.md` (create the section on first use, immediately before References), chronological order, `####` inner headings.
+Look back on a completed week. Compare planned vs actual coverage. With no live block, present the retro in the terminal as plain counts and write nothing; when a block is live, append it as a new `### Wk N` subsection under a **Weekly Retrospectives** section of that block doc (create the section on first use, immediately before References), chronological order, `####` inner headings. Nothing is graded against the closed recomp block.
 
 ### Phase 1: Determine the Target Week
 
@@ -119,9 +118,9 @@ One row per planned session: Mon lift, Tue DRC, Tue Align and Flow, Wed lift, Th
 
 | Metric | Source |
 |---|---|
-| Lifts | count vs 3 |
+| Lifts | count (vs the block's ask only when a block is live) |
 | Runs | sessions + total miles (informational, no target) |
-| Yoga | count vs 4 standing holds |
+| Yoga | count (vs the block's ask only when a block is live) |
 
 Run mileage carries no target and no ceiling; it is context, not a grade. Mileage and vert ceilings retired with the FPL block.
 
