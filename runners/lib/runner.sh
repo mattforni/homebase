@@ -730,6 +730,9 @@ runner_claude() {
             echo "attempt $attempt timed out after $attempt_timeout"
         elif runner_claude_refused; then
             echo "attempt $attempt was refused its credential (exit $rc); not retried"
+        elif jq -e '(.api_error_status // 0 | tonumber? // 0) as $s | $s == 429 or ($s >= 500 and $s < 600)' <<<"$result" >/dev/null 2>&1; then
+            transient=true
+            echo "attempt $attempt hit a transient API status (exit $rc)"
         elif re="$transient_re"; [[ $rc -ne 0 ]] || re="$transient_answer_re"; { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$re"; then
             transient=true
             echo "attempt $attempt hit a transient API error (exit $rc)"
