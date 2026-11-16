@@ -17,12 +17,6 @@
       "logged": "0",
       "target": "0",
       "note": ""
-    },
-    {
-      "modality": "PT",
-      "logged": "2",
-      "target": "4",
-      "note": "Tue PT Achilles · Thu PT"
     }
   ],
   "takeout": [
@@ -35,7 +29,7 @@
       "vehicle": "Ember Pizza"
     }
   ],
-  "blindSpots": "This draft cannot see how the body felt, or anything the sources do not carry.",
+  "blindSpots": "The personal inbox stopped at the pull's cap, so 12 older messages were left unbanded.",
   "strava": [
     {
       "name": "Kestrel Loop with the club",

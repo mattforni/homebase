@@ -51,7 +51,9 @@ export const addressesFromEnv = (raw = process.env.MAILBOX_ADDRESSES || "persona
 // machine, and the runner's own weekly reports (the brief, the recruiter
 // board, the pipeline board) are read by Forni and the Monday session after
 // this run, so the runner never marks them read or archives them either.
-export const NEVER_ARCHIVE = /state\.co\.us|cdle|myui|colorado division of unemployment|claude@atelic\.me/i;
+// Nor does it archive a notice that someone shared a Drive folder or file:
+// Forni goes through each share himself (W47, when the brief archived one).
+export const NEVER_ARCHIVE = /state\.co\.us|cdle|myui|colorado division of unemployment|claude@atelic\.me|drive-shares-(dm-)?noreply@google\.com|shared an? (folder|file|document|spreadsheet|presentation) with you|(folder|file|document|spreadsheet|presentation) shared with you/i;
 
 /** The bare address inside a From header, lowercased. */
 export const addressOf = (from) => {
@@ -212,7 +214,7 @@ async function apply(outDir, rowsPath) {
         // the prompt: unemployment insurance mail is deadline bearing and is
         // never archived unread by a machine, whatever band it was given.
         if (r.archive && NEVER_ARCHIVE.test(`${msg.from} ${msg.subject}`)) {
-            dropped.push({ kind: "gmail", id: r.id, reason: "CDLE, MyUI+ and the runner's own reports are never archived by the runner" });
+            dropped.push({ kind: "gmail", id: r.id, reason: "CDLE, MyUI+, Drive shares and the runner's own reports are never archived by the runner" });
             continue;
         }
         const remove = r.archive ? ["INBOX", "UNREAD"] : [];
