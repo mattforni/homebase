@@ -33,7 +33,6 @@ Training specific rules tied to current life shape. Read on every invocation. St
 - **Strava is the source of record for ALL movement; never ask the user to confirm sessions.** Lifts, yoga, runs, all of it. A session absent from Strava did not happen, for retro purposes. Forni, 2026-08-02: "Strava will tell you if lifts or yoga happened. You do not need to ask me again."
 - **Tally by sport_type, not distance alone.** Filter activities by type before counting; walks and yoga get miscounted otherwise. The native connector's `list_activities` carries `sport_type`; prefer it. Codified 2026-06-26.
 - **Strava distances are metric; convert.** miles = meters / 1609.34, feet = meters * 3.28084.
-- **Interrogate significant deltas, don't just record them.** The cause drives the adjustment more than the numbers do; ask category, then leave room for detail. Codified 2026-05-18 (a heel injury read as "fell off" until interrogated).
 - **PAH is transit, not training.** The Wednesday bike commute to Project Angel Heart is logistics and never counts as a session. Codified 2026-05-25.
 - **A session that keeps slipping drives schedule repair.** The slot needs moving or shrinking.
 

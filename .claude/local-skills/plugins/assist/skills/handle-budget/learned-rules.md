@@ -114,7 +114,7 @@ Payee corrections (session 2026-11-09, the first brief with writes on):
 Payee corrections (session 2026-11-16, the W47 brief):
 
 - **Bulbs and plants from a mail order garden supplier can be a gift**, `🎁 Gifts`, rather than `🏡 Home Improvement`. When the memo or the context does not settle which, hold the row and ask (a decision in the brief), never approve it as Home Improvement by default.
-- A row whose original import descriptor is `ATI*<digits>-<digits>` (the first digits open the Atom ticket id) is Atom Tickets, movie tickets: payee renamed `Atom Tickets`, `🍿 Entertainment`, and this one does not ask, unlike the show rule above (Forni, 2026-11-16). The match is the descriptor shape, never the bare payee `ATI`: any other `ATI` row (ATI Physical Therapy is a national chain) is a decision.
+- A row whose original import descriptor (YNAB's `import_payee_name_original`, `importPayeeNameOriginal` in the brief runner's pull) is `ATI*<digits>-<digits>` (the first digits open the Atom ticket id) is Atom Tickets, movie tickets: payee renamed `Atom Tickets`, `🍿 Entertainment`, and this one does not ask, unlike the show rule above (Forni, 2026-11-16). The match is the descriptor shape, never the bare payee `ATI`: any other `ATI` row (ATI Physical Therapy is a national chain) is a decision.
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
