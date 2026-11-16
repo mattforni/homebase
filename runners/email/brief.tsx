@@ -239,13 +239,13 @@ function modalityLabel(value: unknown): string {
 /** The model's coverage, with its note; a PT row from an older draft or a slip is left out. */
 function movementTargets(draft: BriefDraft): Target[] {
 	return alt(draft.coverage, [])
-		.filter((row) => !/^pt$/i.test(jqToString(alt(row.modality, "")).trim()))
+		.filter((row) => !/^(physical therapy|pt)\b/i.test(jqToString(alt(row.modality, "")).trim()))
 		.map((row) => ({
-		label: modalityLabel(row.modality),
-		logged: num(row.logged),
-		target: num(row.target),
-		note: jqToString(alt(row.note, "")),
-	}));
+			label: modalityLabel(row.modality),
+			logged: num(row.logged),
+			target: num(row.target),
+			note: jqToString(alt(row.note, "")),
+		}));
 }
 
 /** Takeout as a bare count: nothing measures it. */

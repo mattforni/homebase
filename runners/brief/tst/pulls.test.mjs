@@ -85,6 +85,25 @@ test("the completed walk pages the log back to the window's start and counts eve
     }
 });
 
+test("a history that ends inside the week is reported, and an empty one is not", async () => {
+    const realFetch = globalThis.fetch;
+    const realToken = process.env.TODOIST_API_TOKEN;
+    process.env.TODOIST_API_TOKEN = "invented";
+    try {
+        globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [completion("a", "2026-11-12T15:00:00Z", "kept", false)], next_cursor: null }) });
+        const short = {};
+        assert.equal((await completed("2026-11-16", new Map(), short)).length, 1);
+        assert.equal(short.truncated, true);
+        globalThis.fetch = async () => ({ ok: true, json: async () => ({ results: [], next_cursor: null }) });
+        const none = {};
+        assert.equal((await completed("2026-11-16", new Map(), none)).length, 0);
+        assert.equal(none.truncated, undefined);
+    } finally {
+        globalThis.fetch = realFetch;
+        if (realToken === undefined) delete process.env.TODOIST_API_TOKEN; else process.env.TODOIST_API_TOKEN = realToken;
+    }
+});
+
 test("the Schedule filter's relative bound becomes the named Monday", () => {
     assert.match(scheduleFilter("2026-10-26"), /due before: 10\/26\/2026$/);
     assert.match(scheduleFilter(undefined), /due before: next monday$/);

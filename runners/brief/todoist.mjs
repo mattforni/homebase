@@ -104,6 +104,7 @@ const denverMidnight = (iso) => {
  * its own content, labels and priority, and so does a task deleted since.
  */
 export function completedRow(event, sinceMs, untilMs, projectNames) {
+    if (event.object_type !== "item" || event.event_type !== "completed") return null;
     const at = Date.parse(event.event_date || "");
     if (Number.isNaN(at) || at < sinceMs || at >= untilMs) return null;
     const extra = event.extra_data || {};
@@ -138,7 +139,7 @@ export function completedRow(event, sinceMs, untilMs, projectNames) {
  * whole closed week is inside that history. A failure here costs the summary
  * and never the pull.
  */
-export async function completed(monday, projectNames) {
+export async function completed(monday, projectNames, report = {}) {
     const sinceMs = Date.parse(denverMidnight(shiftDays(monday, -7)));
     const untilMs = Date.parse(denverMidnight(monday));
     const out = [];
@@ -155,8 +156,13 @@ export async function completed(monday, projectNames) {
             if (row) out.push(row);
         }
         const oldest = Date.parse(events[events.length - 1]?.event_date || "");
-        cursor = events.length > 0 && !(oldest < sinceMs) ? page.next_cursor || null : null;
-        if (!page.next_cursor && !(oldest < sinceMs)) log("the activity history ends inside the week; the earliest completions may be missing");
+        const reached = oldest < sinceMs;
+        cursor = events.length > 0 && !reached ? page.next_cursor || null : null;
+        // A history that ends inside the week leaves the count short; say so on the page, not only in the log.
+        if (events.length > 0 && !page.next_cursor && !reached) {
+            report.truncated = true;
+            log("the activity history ends inside the week; the earliest completions may be missing");
+        }
     } while (cursor);
     return out;
 }
@@ -172,7 +178,9 @@ async function pull(outDir, monday, before) {
     let done = [];
     let completedNote = "";
     try {
-        done = await completed(monday, projectNames);
+        const report = {};
+        done = await completed(monday, projectNames, report);
+        if (report.truncated) completedNote = "the activity history begins inside the week, so the count may be short";
     } catch (e) {
         completedNote = e.message;
         log(`completed tasks not read: ${e.message}`);
