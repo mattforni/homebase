@@ -127,13 +127,20 @@ fi
 land=()
 for f in "${staged[@]}"; do
   case "$f" in
-    runners/lib/runner.sh|bin/lint/runner-land-test) land+=("$f") ;;
+    runners/lib/runner.sh|bin/lint/runner-land-test|bin/lint/runner-reason-test) land+=("$f") ;;
   esac
 done
 
 if [[ ${#land[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runner-land-test" ]]; then
   if ! "$ROOT/bin/lint/runner-land-test" >/dev/null; then
     printf "${RED}[x]${NC} file landing test failed. Run bin/lint/runner-land-test to see which, or run again with --no-verify.\n" >&2
+    status=1
+  fi
+fi
+
+if [[ ${#land[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runner-reason-test" ]]; then
+  if ! "$ROOT/bin/lint/runner-reason-test" >/dev/null; then
+    printf "${RED}[x]${NC} failure reason test failed. Run bin/lint/runner-reason-test to see which, or run again with --no-verify.\n" >&2
     status=1
   fi
 fi

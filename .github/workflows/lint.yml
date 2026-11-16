@@ -123,6 +123,14 @@ jobs:
       - name: Test the file landing and the line reader
         run: ./bin/lint/runner-land-test
 
+      # A run that dies on a credential has to say which and why in its mail.
+      # Both ways it did not were silent: the Google reason was set inside a
+      # command substitution and lost, and a refused Claude token was read as
+      # a transient error, retried, and reported with an empty reason. A fake
+      # curl and a fake claude on PATH hold both.
+      - name: Test the failure reasons a run reports
+        run: ./bin/lint/runner-reason-test
+
       # A promote takes its verdict from runner_build_wait, and the two ways
       # that can be wrong are both silent: a success reported for a build that
       # did not succeed, and a build left running with nobody to cancel it. A

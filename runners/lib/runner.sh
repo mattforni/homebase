@@ -405,21 +405,57 @@ runner_finish() {
 # An access token minted from a gws profile's exported authorized_user JSON
 # (client id, client secret, refresh token), which is how a container reads a
 # mailbox or a Doc without the per machine credentials.enc. Prints the token;
-# on failure prints nothing and sets fail_reason with the error body, minus the
-# token fields.
+# on failure prints nothing on stdout, sets fail_reason, and writes the same
+# reason to stderr: what Google answered, minus the token fields, or what curl
+# said when nothing answered. A caller that takes the token through $(...)
+# never sees fail_reason, since a command substitution is its own shell, which
+# is why google_token_into below is the way to call this.
 google_access_token() {
-    local resp access
+    local resp access curl_err why
+    curl_err="$(mktemp)"
     resp="$(curl -sS --max-time 30 -X POST https://oauth2.googleapis.com/token \
-        -d client_id="$(jq -r .client_id <<<"$1")" \
-        -d client_secret="$(jq -r .client_secret <<<"$1")" \
-        -d refresh_token="$(jq -r .refresh_token <<<"$1")" \
-        -d grant_type=refresh_token)"
-    access="$(jq -r '.access_token // empty' <<<"$resp")"
+        -d client_id="$(jq -r .client_id <<<"$1" 2>/dev/null)" \
+        -d client_secret="$(jq -r .client_secret <<<"$1" 2>/dev/null)" \
+        -d refresh_token="$(jq -r .refresh_token <<<"$1" 2>/dev/null)" \
+        -d grant_type=refresh_token 2>"$curl_err")"
+    access="$(jq -r '.access_token // empty' <<<"$resp" 2>/dev/null)"
     if [[ -z "$access" ]]; then
-        fail_reason="Google token refresh failed: $(jq -c 'del(.access_token)' <<<"$resp" 2>/dev/null | head -c 300)"
+        # Google's two named fields when it answered with them ({"error":
+        # "invalid_grant", "error_description": "..."}), and nothing else of
+        # the body: what an API sends back never rides into a mail whole. A
+        # body without them is named, not quoted. With no body at all, curl's
+        # own last line says why (a timeout, a name that did not resolve).
+        why="$(jq -r 'if type == "object" and (.error | type) == "string" then ([.error, (.error_description // empty | tostring)] | join(": ") | gsub("[\\r\\n]"; " ") | .[0:200]) else empty end' <<<"$resp" 2>/dev/null)"
+        [[ -n "$why" || -z "$resp" ]] || why="an answer without an error field ($(printf '%s' "$resp" | wc -c | tr -d ' ') bytes, not quoted)"
+        [[ -n "$why" ]] || why="$(tail -n 1 "$curl_err" | head -c 300)"
+        rm -f "$curl_err"
+        fail_reason="Google token refresh failed: ${why:-no answer and no error from curl}"
+        printf '%s\n' "$fail_reason" >&2
         return 1
     fi
+    rm -f "$curl_err"
     printf '%s' "$access"
+}
+
+# Usage: google_token_into <variable> <authorized_user json>
+# google_access_token with its reason kept: the token lands in the named
+# variable and, on failure, fail_reason is set in the calling shell, where a
+# bare $(google_access_token ...) would have lost it. The variable is emptied
+# on failure. Returns what google_access_token returned.
+google_token_into() {
+    local __err __token __rc
+    __err="$(mktemp)"
+    __token="$(google_access_token "$2" 2>"$__err")"
+    __rc=$?
+    if (( __rc != 0 )); then
+        # Only the reason line: xtrace or stray stderr must never be mailed.
+        fail_reason="$(grep -a '^Google token refresh failed' "$__err" | tail -n 1 | head -c 400)"
+        [[ -n "$fail_reason" ]] || fail_reason="Google token refresh failed with no reason given"
+        __token=""
+    fi
+    rm -f "$__err"
+    printf -v "$1" '%s' "$__token"
+    return "$__rc"
 }
 
 # Usage: fill_prompt <file>
@@ -616,6 +652,9 @@ runner_claude() {
     local stderr_file="$WORK/claude-stderr.txt" attempt=1 transient
     local attempt_timeout="${ATTEMPT_TIMEOUT:-45m}" max_attempts="${MAX_ATTEMPTS:-2}" backoff="${RETRY_BACKOFF_SECONDS:-15}"
     local transient_re='socket connection was closed|API Error|overloaded|Connection error|terminated'
+    # A refused credential is the same answer however often it is asked, and
+    # its text ("API Error: 401 ...") would otherwise read as transient.
+    local auth_re='"api_error_status": *40[13]|OAuth token (revoked|has expired)|Failed to authenticate|authentication_error|Invalid API key'
     while :; do
         echo "=== $(date -Iseconds) claude attempt $attempt/$max_attempts (timeout $attempt_timeout) ==="
         result="$(timeout "$attempt_timeout" claude -p "$prompt" "$@" --output-format json 2>"$stderr_file")"
@@ -626,6 +665,8 @@ runner_claude() {
         if [[ $rc -eq 124 ]]; then
             transient=true
             echo "attempt $attempt timed out after $attempt_timeout"
+        elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$auth_re"; then
+            echo "attempt $attempt was refused its credential (exit $rc); not retried"
         elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$transient_re"; then
             transient=true
             echo "attempt $attempt hit a transient API error (exit $rc)"
@@ -691,7 +732,12 @@ runner_replay() {
 # logged here so a failure page's log tail carries them.
 runner_check_result() {
     if [[ $rc -ne 0 ]]; then
-        fail_reason="claude exited $rc: $(head -c 400 "$WORK/claude-stderr.txt" 2>/dev/null)"
+        # claude -p reports most failures in its JSON on stdout (a revoked
+        # token is {"is_error": true, "result": "Failed to authenticate..."})
+        # and leaves stderr empty, so the reason is read from both.
+        local said
+        said="$(jq -r '[(.result // empty | tostring), (if .api_error_status then "status \(.api_error_status)" else empty end)] | join(", ")' <<<"$result" 2>/dev/null | head -c 300)"
+        fail_reason="claude exited $rc: ${said:+$said }$(head -c 400 "$WORK/claude-stderr.txt" 2>/dev/null)"
         return 1
     fi
     if ! jq -e . <<<"$result" >/dev/null 2>"$WORK/jq-stderr.txt"; then
@@ -705,7 +751,9 @@ runner_check_result() {
     denials="$(jq -r '.permission_denials // [] | .[] | "\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring | gsub("\n"; " ") | .[0:200])"' <<<"$result")"
     [[ -z "$denials" ]] || echo "claude: $(wc -l <<<"$denials" | tr -d ' ') permission denials:"$'\n'"$(sed 's/^/  denied /' <<<"$denials")"
     if ! jq -e '.subtype == "success" and .is_error == false' <<<"$result" >/dev/null; then
-        fail_reason="claude did not complete: $(jq -r '.subtype // "unknown"' <<<"$result")"
+        local why
+        why="$(jq -r '[(.subtype // "unknown"), (if .api_error_status then "status \(.api_error_status)" else empty end), (.result // empty | tostring | gsub("\n"; " ") | .[0:200])] | join(", ")' <<<"$result" 2>/dev/null)"
+        fail_reason="claude did not complete: $why"
         return 1
     fi
     local usage
