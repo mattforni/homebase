@@ -75,6 +75,7 @@ case "${CLAUDE_MODE:-ok}" in
     overloaded0) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}' ;;
     bad0)       printf '{"subtype":"success","is_error":true,"api_error_status":400,"result":"API Error: 400 invalid request"}' ;;
     prose)      printf '{"subtype":"success","is_error":false,"result":"The log shows the job Failed to authenticate last week, an authentication_error."}' ;;
+    bad400)     printf '{"subtype":"success","is_error":true,"api_error_status":400,"result":"API Error: 400 invalid request"}'; exit 1 ;;
     revoked0)   printf '{"subtype":"success","is_error":true,"api_error_status":401,"result":"Failed to authenticate: OAuth token revoked. Please log in again."}' ;;
 esac
 EOF
@@ -162,6 +163,11 @@ check "a refused credential that exits zero fails the call" test "$got" -ne 0
 check "a refused credential that exits zero is tried once" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
 case "$fail_reason" in *"OAuth token revoked"*) ok "and the refusal is named in fail_reason" ;; *) bad "and the refusal is named in fail_reason (got: $fail_reason)" ;; esac
 check "and says what to do" grep -qE "$CLAUDE_FIX_RE" <<<"$fail_fix"
+
+export CLAUDE_MODE=bad400; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
+runner_claude "a prompt" >/dev/null; got=$?
+check "a 400 that exits non zero fails the call" test "$got" -ne 0
+check "and is tried once" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
 
 export CLAUDE_MODE=ok; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
 runner_claude "a prompt" >/dev/null; got=$?

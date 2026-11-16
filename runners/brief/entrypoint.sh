@@ -291,12 +291,16 @@ vault_write_back() {
         fi
         return 1
     fi
-    local payload
-    payload="$(jq -n --arg d "$(printf '%s' "$1" | base64 | tr -d '\n')" '{payload: {data: $d}}')"
-    local code
-    code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' \
+    # Neither the rotated refresh token nor the bearer is on curl's command
+    # line: the payload is a file only this user can read, and the header
+    # comes in as a config on stdin.
+    local payload code
+    payload="$(mktemp)"; chmod 600 "$payload"
+    jq -n --arg d "$(printf '%s' "$1" | base64 | tr -d '\n')" '{payload: {data: $d}}' > "$payload"
+    code="$(printf 'header = "Authorization: Bearer %s"\n' "$sa_token" | curl -sS --max-time 30 -o /dev/null -w '%{http_code}' \
         -X POST "https://secretmanager.googleapis.com/v1/$STRAVA_SECRET_RESOURCE:addVersion" \
-        -H "Authorization: Bearer $sa_token" -H "Content-Type: application/json" -d "$payload")"
+        -K - -H "Content-Type: application/json" --data-binary "@$payload")"
+    rm -f "$payload"
     [[ "$code" =~ ^2 ]] && { echo "strava: rotated refresh token written back to the vault"; return 0; }
     echo "strava: vault write back returned HTTP $code"
     return 1

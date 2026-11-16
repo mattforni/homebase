@@ -710,7 +710,7 @@ runner_claude() {
     local prompt="$1"; shift
     local stderr_file="$WORK/claude-stderr.txt" attempt=1 transient
     local attempt_timeout="${ATTEMPT_TIMEOUT:-45m}" max_attempts="${MAX_ATTEMPTS:-2}" backoff="${RETRY_BACKOFF_SECONDS:-15}"
-    local transient_re='socket connection was closed|API Error|overloaded|Connection error|terminated'
+    local transient_re='socket connection was closed|API Error: (429|5[0-9][0-9])|overloaded|Connection error|terminated'
     # An answer that exits zero and reports an error names its status, so only
     # the ones waiting can mend are tried again: a rate limit, a 5xx, or a
     # lost connection. A 400 is the same answer on a second full run.
