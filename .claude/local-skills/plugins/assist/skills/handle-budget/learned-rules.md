@@ -114,7 +114,7 @@ Payee corrections (session 2026-11-09, the first brief with writes on):
 Payee corrections (session 2026-11-16, the W47 brief):
 
 - **Bulbs and plants from a mail order garden supplier can be a gift**, `🎁 Gifts`, rather than `🏡 Home Improvement`. When the memo or the context does not settle which, hold the row and ask (a decision in the brief), never approve it as Home Improvement by default.
-- `ATI` (card descriptor `ATI*<digits>`, where the digits open the Atom ticket id) is Atom Tickets, movie tickets: payee renamed `Atom Tickets`, always `🍿 Entertainment` (Forni, 2026-11-16).
+- `ATI` (card descriptor `ATI*<digits>`, where the digits open the Atom ticket id) is Atom Tickets, movie tickets: payee renamed `Atom Tickets`, always `🍿 Entertainment`; this payee does not ask, unlike the show rule above (Forni, 2026-11-16).
 
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 

@@ -30,7 +30,7 @@ The FPL block (`2026-training-plan.md`) is closed and read only for history.
 
 ## Source of Truth
 
-The block plan lives at `Constitution/Fitness/2026-recomp-block.md`. The weekly skeleton lives at `schedule.md` and is a default, not a law. Google Calendar holds the live scheduled reality.
+The last block plan, closed 2026-11-08 and history until a successor exists, lives at `Constitution/Fitness/2026-recomp-block.md`. The weekly skeleton lives at `schedule.md` and is a default, not a law. Google Calendar holds the live scheduled reality.
 
 **For scheduling decisions** (what's on the calendar this week, what conflicts with what): the calendar is truth.
 
@@ -99,7 +99,9 @@ When moving recurring events for one week, modify only that occurrence. Permanen
 
 ## Mode: retro
 
-Look back on a completed week. Compare planned vs actual coverage. With no live block, present the retro in the terminal as plain counts and write nothing; when a block is live, append it as a new `### Wk N` subsection under a **Weekly Retrospectives** section of that block doc (create the section on first use, immediately before References), chronological order, `####` inner headings. Nothing is graded against the closed recomp block.
+**While no block is live** (the recomp block closed 2026-11-08, no successor, Forni 2026-11-16) the retro is a plain overview of what was done, so the phases that grade against block targets, name misses, or save a `Wk N` section do not run, and the heel and load checks and the calendar housekeeping phases still do.
+
+Look back on a completed week. Compare planned vs actual coverage. When a block is live, append it as a new `### Wk N` subsection under a **Weekly Retrospectives** section of that block doc (create the section on first use, immediately before References), chronological order, `####` inner headings.
 
 ### Phase 1: Determine the Target Week
 
