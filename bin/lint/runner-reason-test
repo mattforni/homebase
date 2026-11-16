@@ -224,6 +224,7 @@ fail_reason=""; fail_step=""; fail_fix=""
 runner_probe_write >/dev/null 2>&1; got=$?
 check "a probe refused its credential fails" test "$got" -ne 0
 check "and names the model call as its step" test "$fail_step" = "Claude model call"
+case "$fail_reason" in *"Failed to authenticate"*) ok "and its reason carries the answer Claude gave" ;; *) bad "and its reason carries the answer Claude gave (got: $fail_reason)" ;; esac
 case "$fail_fix" in *"claude setup-token"*) ok "and says what to do" ;; *) bad "and says what to do (got: $fail_fix)" ;; esac
 unset CLAUDE_MODE
 

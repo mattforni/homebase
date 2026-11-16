@@ -748,8 +748,8 @@ runner_claude() {
 # fails here rather than after drafting a whole week (the first pipeline run
 # in its image, 2026-09-15: the agent's definition listed no Write tool, the
 # allowlist's Write($WORK/*) granted nothing, and the roster check failed
-# after 18 minutes and 11 USD). Sets fail_reason, fail_step and fail_fix and returns non zero when
-# the marker does not appear.
+# after 18 minutes and 11 USD). Sets fail_reason, fail_step and fail_fix and
+# returns non zero when the marker does not appear.
 runner_probe_write() {
     local marker="$WORK/.write-probe" out
     rm -f "$marker"
@@ -763,9 +763,10 @@ runner_probe_write() {
         result="$out"; cp "$WORK/probe-stderr.txt" "$WORK/claude-stderr.txt" 2>/dev/null
         if runner_claude_refused; then
             runner_claude_failed
-        else
-            fail_step="Agent write probe"; fail_fix=""
+            fail_reason="the write probe was refused its Claude credential: $(jq -r '[(.result // empty | tostring), (if .api_error_status then "status \(.api_error_status)" else empty end)] | join(", ")' <<<"$out" 2>/dev/null | head -c 300) $(head -c 200 "$WORK/probe-stderr.txt")"
+            return 1
         fi
+        fail_step="Agent write probe"; fail_fix=""
         fail_reason="the write probe failed: the agent could not write $marker (denials: $(jq -r '.permission_denials // [] | map(.tool_name) | unique | join(", ")' <<<"$out" 2>/dev/null); $(head -c 200 "$WORK/probe-stderr.txt"))"
         return 1
     fi
