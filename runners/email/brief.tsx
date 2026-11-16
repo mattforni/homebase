@@ -238,8 +238,7 @@ function modalityLabel(value: unknown): string {
 
 /**
  * The model's coverage, with its note; a PT row from an older draft or a slip is left out.
- * Every row is a bare count (Forni, W47): the training block closed and nothing
- * is graded, so a target an older draft still carries is dropped here.
+ * Every row is a bare count, and a target an older draft still carries is dropped here.
  */
 function movementTargets(draft: BriefDraft): Target[] {
 	return alt(draft.coverage, [])

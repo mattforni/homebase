@@ -109,10 +109,10 @@ Full boards (every thread, every task, every event) surface only on request. The
 
 Look back at the week that closed yesterday, read as a **compass, not a verdict**. This phase is a quiet dialogue: the agent fan out waits until it closes, so nothing lands mid question.
 
-**The emailed retro is the first pass.** Before the session opens the runner has pulled Strava and the Gmail takeout tally, counted what was done with no target beside it (nothing is graded since 2026-11-16, when the training block closed without a successor), and mailed the result as the Last Week half of the brief (Before Every Invocation, step 7); the outreach week left the brief for the Pipeline mail on 2026-11-09. Forni has read it in his inbox, so the session does not restate its tables. The session's contribution is what the email cannot carry:
+**The emailed retro is the first pass.** Before the session opens the runner has pulled Strava and the Gmail takeout tally, counted what was done, and mailed the result as the Last Week half of the brief (Before Every Invocation, step 7); the outreach week left the brief for the Pipeline mail on 2026-11-09. Forni has read it in his inbox, so the session does not restate its tables. The session's contribution is what the email cannot carry:
 
 - **Name what stands out**, two or three sentences, lightly.
-- **Ask the felt sense** as an open prose question, never an option menu (a word or two for the week), and follow the live thread. The scoreboard is bare counts and carries no verdict (the graded headline left the brief 2026-11-09, the targets 2026-11-16); the felt sense is the story, and it can turn the numbers over (on 2026-08-30 "skipped the plan entirely" was, lived, the first weekend home after a month of racing). The numbers are numbers; his read is the read.
+- **Ask the felt sense** as an open prose question, never an option menu (a word or two for the week), and follow the live thread. The scoreboard is bare counts and carries no verdict; the felt sense is the story, and it can turn the numbers over (on 2026-08-30 "skipped the plan entirely" was, lived, the first weekend home after a month of racing). The numbers are numbers; his read is the read.
 - **Fill the blind spots** the email names for itself (how the heel and body felt) in one factual ask, and carry the answers into Plan Training.
 - **Settle the carry forward**, the one thing the week ahead is for; it seeds Set Intention.
 
@@ -195,7 +195,7 @@ Execute only the agreed changes before moving on. The calendar should be clean a
 
 ### Phase 6: Plan Training
 
-Invoke the `assist:plan-training` skill in `week` mode via the Skill tool. Its retro gate is satisfied by the emailed retro plus the blind spots Review Week collected; the coach agent (`~/.claude/agents/coach.md`, dispatched on `sonnet`) reads the week's shape from the calendar pull. The skill detects existing recurring placeholders (Mon/Wed/Fri lifts, Tue DRC, Thu SPRC, the four yoga holds; Tue Diego retired 2026-11-09), surfaces what's missing, lays out the week's shape, and **places every training event for the week**, following its own constraint logic. 4K Friday retired 2026-09-14, so there are no alternating one offs. The week leaves this phase with training fully on the calendar, not just shaped. Return here once training scheduling is complete.
+Invoke the `assist:plan-training` skill in `week` mode via the Skill tool. Its retro gate is satisfied by the emailed retro plus the blind spots Review Week collected; the coach agent (`~/.claude/agents/coach.md`, dispatched on `sonnet`) reads the week's shape from `schedule.md` and the calendar pull. The skill detects existing recurring placeholders (Mon/Wed/Fri lifts, Tue DRC, Thu SPRC, the four yoga holds; Tue Diego retired 2026-11-09), surfaces what's missing, lays out the week's shape, and **places every training event for the week**, following its own constraint logic. 4K Friday retired 2026-09-14, so there are no alternating one offs. The week leaves this phase with training fully on the calendar, not just shaped. Return here once training scheduling is complete.
 
 ### Phase 7: Plan Tasks
 

@@ -164,8 +164,7 @@ PULLS_CLOSED=0
 
 # ---------- Eudaimonia ----------
 # The first pull is the repo itself: schedule.md and the tool docs are the
-# rules the prompt reads, rather than carrying a copy. Nothing is graded since
-# 2026-11-16, so no training block doc is required any more.
+# rules the prompt reads, rather than carrying a copy.
 EUDY="$WORK/eudy"
 EUDY_REPO="${EUDY_REPO:-git@github.com:mattforni/Eudaimonia.git}"
 SKELETON_DOC="schedule.md"
