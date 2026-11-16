@@ -424,7 +424,9 @@ google_access_token() {
         # else curl's last line (a timeout, a name that did not resolve). Neither
         # carries a credential: the request's fields are never echoed back.
         why="$(jq -c 'del(.access_token, .refresh_token, .id_token)' <<<"$resp" 2>/dev/null | head -c 300)"
-        [[ -n "$why" && "$why" != "null" ]] || why="$(tail -n 1 "$curl_err" | head -c 300)"
+        # A body that is not JSON (an HTML 5xx page) is reported as it came.
+        [[ -n "$why" && "$why" != "null" ]] || why="$(printf '%s' "$resp" | tr -d '\r\n' | head -c 300)"
+        [[ -n "$why" ]] || why="$(tail -n 1 "$curl_err" | head -c 300)"
         rm -f "$curl_err"
         fail_reason="Google token refresh failed: ${why:-no answer and no error from curl}"
         printf '%s\n' "$fail_reason" >&2
@@ -445,7 +447,8 @@ google_token_into() {
     __token="$(google_access_token "$2" 2>"$__err")"
     __rc=$?
     if (( __rc != 0 )); then
-        fail_reason="$(head -c 400 "$__err")"
+        # Only the reason line: xtrace or stray stderr must never be mailed.
+        fail_reason="$(grep -a '^Google token refresh failed' "$__err" | tail -n 1 | head -c 400)"
         [[ -n "$fail_reason" ]] || fail_reason="Google token refresh failed with no reason given"
         __token=""
     fi
