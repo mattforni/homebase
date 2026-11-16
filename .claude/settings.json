@@ -4,7 +4,6 @@
   },
   "permissions": {
     "allow": [
-      "Bash(agent-browser --session myui --identity personal --headed:*)",
       "Bash(awk:*)",
       "Bash(brew:*)",
       "Bash(bun:*)",
@@ -89,8 +88,6 @@
       "WebSearch"
     ],
     "deny": [
-      "Bash(agent-browser *chkEnhancedConfirmation*)",
-      "Bash(agent-browser *chkSelfEmployment*)",
       "mcp__claude-in-chrome"
     ],
     "ask": [],
