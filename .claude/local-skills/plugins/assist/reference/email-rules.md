@@ -25,7 +25,12 @@ Email routing rules shared by the clerk agent, `assist:triage-inbox`, and `assis
 - `xcelenergy@email.opower.com` "Energy Action Day" (pre_peak_time opower stream, distinct from the Home Energy Report rule below in spirit) -> unsubscribe (URL only) + trash. Unsubscribed 2026-07-24.
 - `gustonoreply@gusto.com` severance installment paydays (Zero Home Corporation): file the paystub PDF (Forni downloads it to ~/Downloads) to Drive folder `Compensation` (id `16YgL6ZhzIwkIo7vMn2HLW0Rz3v6Go7L_`) as `YYYY-MM-DD - Severance Paystub.pdf`, link it in a comment on the MyUI+ severance reporting task, then label Vocation + Financial and archive. 2026-07-24.
 - Sale-payout / income mail (e.g. `support@buybackboss.com` order and payment notices for an item Forni sold) -> 📑 Admin/🛒 Purchases. Archive, mark read. Confirmed 2026-09-19: not a purchase in the literal sense, but Purchases is the transaction-record home Forni wants for it.
+- Google Drive share notices (someone shared a Drive folder or file with Forni) -> keep in the inbox, unread. Never archive one or mark it read by rule, the weekly brief included: Forni goes through each share himself. A label is fine; the disposition is always keep. Codified 2026-11-16, after the W47 brief archived one.
 - Colorado DOR "new device login" notices (Revenue Online security alerts, distinct from the `dor_taxreminder` withholding reminder above) and Denver eBiz Tax Center login/device-access confirmations (`do-not-reply@denvergov.org`, distinct from the "Tax Return(s)/Charge Form(s) Now Available" OPT notice above) -> trash on sight. Confirmed 2026-09-19.
+
+## What Earns a Sender Rule
+
+- **A standing rule is for an automated or bulk sender, never for a person writing by hand.** Newsletters, notifications, receipts, and a business's regular mailing (a running store's newsletter, for one) earn a sender or domain rule, so keep proposing those. A message a person wrote to Forni, a friend, a family member, a client, a neighbor, is read and judged each time, so never propose a rule for that sender, in the weekly brief's rule table or anywhere else. When it is unclear whether a human wrote it, propose nothing. Codified 2026-11-16.
 
 ## Topic Rules
 

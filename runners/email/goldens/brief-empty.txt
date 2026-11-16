@@ -8,7 +8,6 @@ LAST WEEK · WEEK 5
 Movement
   Takeout        0              No confirmed orders
 
-By Day
   Mon  Rest
   Tue  Rest
   Wed  Rest
@@ -17,7 +16,6 @@ By Day
   Sat  Rest
   Sun  Rest
 
-Money
   Spend was not read this run.
 
   0 tasks completed last week.
@@ -39,7 +37,7 @@ The Ledger
   Calendar  0 fixes to make
   Tasks     0 tasks to place
 
-Money Rules · 0
+Budget Rules · 0
   Every money row sat on a rule already written.
 
 Email Rules · 0
@@ -51,18 +49,6 @@ WHAT I NEED FROM YOU
 ================================================================
 
   Nothing needs you this week.
-
-
-================================================================
-THIS RUN
-================================================================
-
-  Writes          Off
-  YNAB Applied    0
-  Mail Applied    0
-  Dropped         0
-
-  Every pull was read.
 
 
 12m 04s · $0.42 · 9 turns · claude-sonnet

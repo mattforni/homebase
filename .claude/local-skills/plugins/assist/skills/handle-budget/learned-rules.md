@@ -111,6 +111,10 @@ Payee corrections (session 2026-11-09, the first brief with writes on):
 - `PHILADELPHIA REPR` is the Philadelphia City Archives, Italian citizenship documents: payee renamed `Philadelphia City Archives`, `⚖️ Legal` (Forni, 2026-11-09). The one charge so far carries the memo `🇮🇹 Citizenship documents`, written by hand; the rule is the rename and the category.
 - A bank descriptor is renamed to its plain payee before it is categorized; the brief runner's apply does this through `payee_name` with `payee_id` cleared.
 
+Payee corrections (session 2026-11-16, the W47 brief):
+
+- **Bulbs and plants from a mail order garden supplier can be a gift**, `🎁 Gifts`, rather than `🏡 Home Improvement`. When the memo or the context does not settle which, hold the row and ask (a decision in the brief), never approve it as Home Improvement by default.
+
 Payee cleanup mechanics (session 2026-07-18, hard-won):
 
 - **Renaming a payee to an existing name does NOT merge them via the API.** It just creates a second payee with the same display name (verified: renamed `Illegalpetes` -> `Illegal Pete's` and ended with two `Illegal Pete's` records). The app merges on rename; the public API does not.

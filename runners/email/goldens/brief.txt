@@ -9,19 +9,16 @@ Movement
   Lifts          3 / 3   ###    Mon Push · Wed Pull
   Social Runs    1 / 3   #..    Tue Kestrel
   Yoga           0 / 0          
-  PT             2 / 4   ##..   Tue PT Achilles · Thu PT
   Takeout        2              Tue 01-27 Crosstown Noodle · Sat 01-31 Ember Pizza
 
-By Day
   Mon  Run · Lift
-  Tue  Run (S) · PT
+  Tue  Run (S)
   Wed  Lift · Ride · Yoga
-  Thu  Run (S) · PT
+  Thu  Run (S)
   Fri  Lift · Climb
   Sat  Workout
   Sun  Walk · Rowing
 
-Money · ⚠️
   Budget          Out         In       Pace     Delta
   Personal  $4,012.37  $3,612.00  $3,871.29  +$141.08
   Atelic      $318.40               $512.90  −$194.50
@@ -53,11 +50,15 @@ The Ledger
   Calendar  1 fix to make
   Tasks     Not read this run: the read timed out
 
+Blind Spots
+  The personal inbox stopped at the pull's cap, so 12 older messages
+  were left unbanded.
+
 Dropped · 1
   Sundown Grocery $84.12
     category 🛒 Grocery not found in the Personal budget
 
-Money Rules · 3
+Budget Rules · 3
   Budget    Payee                   Category
   Personal  Little Owl Espresso     ☕️ Cafés
   Personal  State Refund Office     Inflow: Ready to Assign
@@ -111,24 +112,6 @@ Tasks · 1
   1. Read the long essay on attention someone sent [note]
     p4
     Default: delete and file in Eudy
-
-
-================================================================
-THIS RUN
-================================================================
-
-  Writes          Off
-  YNAB Applied    0
-  Mail Applied    0
-  Dropped         1
-
-Blind Spots
-  This draft cannot see how the body felt, or anything the sources
-  do not carry.
-
-Not Read · 1
-  todoist
-    the read timed out
 
 
 12m 04s · $0.42 · 9 turns · claude-sonnet

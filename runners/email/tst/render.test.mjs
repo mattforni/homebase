@@ -237,8 +237,9 @@ test("the ledger counts the rows categorized and lists only the big ones", () =>
 	assert.ok(big.includes("Refund Office"), "and so is a large inflow");
 	assert.ok(!big.includes("Tally Only Bakery") && !big.includes("Spot Check Diner"), "small rows are counts only");
 	assert.ok(did.includes("Writes were off this run"), "writes off reads as the session's to apply");
-	assert.ok(did.includes("\nMoney Rules · "), "the money rules are a table");
+	assert.ok(did.includes("\nBudget Rules · "), "the budget rules are a table");
 	assert.ok(did.includes("\nEmail Rules · "), "and so are the email rules");
+	assert.ok(!did.includes("Money Rules"), "under their W47 name");
 	assert.match(did, /Mailbox +Sender +Label +Star +Read +Archive/, "as a table of checks");
 
 	draft.applied.writes = true;
@@ -256,12 +257,45 @@ test("the money table carries what went out and in, the pace, and the delta agai
 	assert.ok(!last.includes("Invented Payroll"), "no inflow is listed on its own");
 	assert.ok(!last.includes("Trips"), "trips are gone");
 	assert.ok(!last.includes("Month So Far"), "and so is the day count title");
-	assert.ok(last.includes("Money · ⚠️"), "the fixture's account in error puts the sign on the eyebrow");
-	assert.ok(last.includes("Front Range Checking"), "and the warning itself sits under the table");
+	assert.ok(!/\nMoney\b/.test(last), "the table carries no Money eyebrow (W47)");
+	assert.ok(last.includes("Front Range Checking"), "the account in error is the warning under the table");
 	assert.ok(!text.includes("\nSessions · "), "the sessions table is gone; the day strip is the movement detail");
+	assert.ok(!text.includes("\nBy Day\n"), "and the day strip carries no eyebrow (W47)");
+	assert.ok(text.includes("\n  Mon  Run · Lift\n"), "while the days themselves stay");
 });
 
-test("a pull that was not read is a line in the ledger and is listed in This Run", () => {
+/*
+ * PT is not reported (W47): no coverage row even when an older draft carries
+ * one, and a PT session is left off the day strip rather than counted as a
+ * lift. The fixture logs PT on Tuesday and Thursday beside a run.
+ */
+test("a PT session and a PT coverage row never reach the page", () => {
+	const draft = briefDraft();
+	draft.coverage.push({ modality: "PT", logged: "2", target: "4", note: "Tue PT Achilles · Thu PT" });
+	for (const format of ["text", "html"]) {
+		const result = renderRaw("brief", format, JSON.stringify(draft));
+		assert.equal(result.status, 0, result.stderr);
+		assert.ok(!/\bPT\b/.test(result.stdout), `${format}: no PT anywhere`);
+	}
+	const text = renderRaw("brief", "text", JSON.stringify(draft)).stdout;
+	assert.ok(text.includes("\n  Tue  Run (S)\n"), "Tuesday is the run alone, the PT session not recounted as a lift");
+});
+
+/*
+ * The ledger and both rules tables open on the accent header the movement
+ * table opens on, and the email rules draw a yes green and a no red (W47).
+ */
+test("the headed tables wear the accent and the checks are green and red", () => {
+	const html = render("brief", "html", "brief").stdout;
+	for (const title of ["The Ledger", "Budget Rules · 3", "Email Rules · 2"]) {
+		assert.match(html, new RegExp(`color:#FC4A1A">${title}<`), `${title} is in the accent`);
+	}
+	assert.ok(html.includes('<span style="color:#2F7A4B">✓</span>'), "a yes is green");
+	assert.ok(html.includes('<span style="color:#B23A2E">✗</span>'), "a no is red");
+	assert.ok(!html.includes(">This Run<"), "This Run is gone");
+});
+
+test("a pull that was not read is a line in the ledger, the only place it is named", () => {
 	const draft = briefDraft();
 	draft.pulls = draft.pulls.map((pull) =>
 		pull.name === "linear" ? { ...pull, ok: false, note: "the cycle read failed" } : { ...pull, ok: true, note: "" },
@@ -271,12 +305,26 @@ test("a pull that was not read is a line in the ledger and is listed in This Run
 	const did = sectionOf(text.stdout, "This Week");
 	assert.match(did, /Work +Not read this run: the cycle read failed/, "the ledger line carries the notice");
 	assert.ok(!/Tasks +Not read/.test(did), "and no other line does");
-	const run = sectionOf(text.stdout, "This Run");
-	assert.ok(run.includes("\nNot Read · 1\n  linear\n    the cycle read failed"), "This Run names it");
+	assert.ok(!text.stdout.includes("\nTHIS RUN\n"), "there is no This Run section to repeat it");
 
 	const html = renderRaw("brief", "html", JSON.stringify(draft));
 	assert.equal(html.status, 0, html.stderr);
 	assert.ok(html.stdout.includes("Not read this run: the cycle read failed"));
+});
+
+test("both mailboxes missed are both on the email line, and a pull no source claims sits under the ledger", () => {
+	const draft = briefDraft();
+	draft.pulls = [
+		{ name: "inbox-personal", ok: false, note: "the personal read timed out" },
+		{ name: "inbox-atelic", ok: false, note: "the Atelic token was refused" },
+		{ name: "weather", ok: false, note: "an invented pull no source names" },
+	];
+	const text = renderRaw("brief", "text", JSON.stringify(draft));
+	assert.equal(text.status, 0, text.stderr);
+	const did = sectionOf(text.stdout, "This Week");
+	assert.ok(did.includes("the personal read timed out") && did.includes("the Atelic token was refused"), "neither mailbox is lost");
+	assert.ok(did.includes("\nweather\n  Not read this run: an invented pull no source names"), "the stray pull is named");
+	assert.ok(did.includes("\nBlind Spots\n"), "and the model's blind spots ride under the ledger too");
 });
 
 test("a planning half that did not validate is a notice on every ledger line and never an all clear", () => {
