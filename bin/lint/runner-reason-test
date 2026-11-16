@@ -45,6 +45,8 @@ case "${CURL_MODE:-ok}" in
     ok)      printf '{"access_token":"ya29.MINTEDINVENTED","expires_in":3599}' ;;
     revoked) printf '{"error":"invalid_grant","error_description":"Token has been expired or revoked."}' ;;
     down)    echo "curl: (6) Could not resolve host: oauth2.googleapis.com" >&2; exit 6 ;;
+    extra)   printf '{"error":"invalid_grant","error_description":"Token has been expired or revoked.","echoed":"ECHOEDINVENTED"}' ;;
+    html)    printf '<html><body>502 Bad Gateway PAGEINVENTED</body></html>' ;;
 esac
 EOF
 cat > "$BIN/claude" <<'EOF'
@@ -80,6 +82,16 @@ export CURL_MODE=down
 fail_reason=""
 google_token_into TOKEN "$JSON"
 case "$fail_reason" in *"Could not resolve host"*) ok "a curl that cannot connect reports curl's own words" ;; *) bad "a curl that cannot connect reports curl's own words (got: $fail_reason)" ;; esac
+
+export CURL_MODE=extra
+fail_reason=""
+google_token_into TOKEN "$JSON"
+check "only the error and its description are carried" test "$fail_reason" = "Google token refresh failed: invalid_grant: Token has been expired or revoked."
+
+export CURL_MODE=html
+fail_reason=""
+google_token_into TOKEN "$JSON"
+case "$fail_reason" in *PAGEINVENTED*) bad "a body that is not JSON is named, never quoted" ;; *"not quoted"*) ok "a body that is not JSON is named, never quoted" ;; *) bad "a body that is not JSON is named, never quoted (got: $fail_reason)" ;; esac
 
 echo "runner_claude"
 

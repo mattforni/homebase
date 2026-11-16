@@ -420,12 +420,13 @@ google_access_token() {
         -d grant_type=refresh_token 2>"$curl_err")"
     access="$(jq -r '.access_token // empty' <<<"$resp" 2>/dev/null)"
     if [[ -z "$access" ]]; then
-        # Google's own answer when there is one ({"error": "invalid_grant", ...}),
-        # else curl's last line (a timeout, a name that did not resolve). Neither
-        # carries a credential: the request's fields are never echoed back.
-        why="$(jq -c 'del(.access_token, .refresh_token, .id_token)' <<<"$resp" 2>/dev/null | head -c 300)"
-        # A body that is not JSON (an HTML 5xx page) is reported as it came.
-        [[ -n "$why" && "$why" != "null" ]] || why="$(printf '%s' "$resp" | tr -d '\r\n' | head -c 300)"
+        # Google's two named fields when it answered with them ({"error":
+        # "invalid_grant", "error_description": "..."}), and nothing else of
+        # the body: what an API sends back never rides into a mail whole. A
+        # body without them is named, not quoted. With no body at all, curl's
+        # own last line says why (a timeout, a name that did not resolve).
+        why="$(jq -r 'if type == "object" and (.error | type) == "string" then ([.error, (.error_description // empty | tostring)] | join(": ") | gsub("[\\r\\n]"; " ") | .[0:200]) else empty end' <<<"$resp" 2>/dev/null)"
+        [[ -n "$why" || -z "$resp" ]] || why="an answer without an error field ($(printf '%s' "$resp" | wc -c | tr -d ' ') bytes, not quoted)"
         [[ -n "$why" ]] || why="$(tail -n 1 "$curl_err" | head -c 300)"
         rm -f "$curl_err"
         fail_reason="Google token refresh failed: ${why:-no answer and no error from curl}"
