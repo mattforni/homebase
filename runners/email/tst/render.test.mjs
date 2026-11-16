@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { canonicalize, firstDifference } from "../parity.mjs";
 import { spawnSync } from "node:child_process";
-import { bundlePath, CASES, FORMATS, fixturePath, goldenPath, render, renderRaw } from "./fixtures.mjs";
+import { bundlePath, CASES, FAILURE, FORMATS, fixturePath, goldenPath, render, renderFailure, renderRaw } from "./fixtures.mjs";
 
 /*
  * The gate on the renderer. Every fixture renders through its runner's built
@@ -110,6 +110,36 @@ test("every bundle carries the failure page", () => {
 		assert.ok(result.stdout.includes("an invented reason"), `${runner} renders the reason`);
 		assert.ok(result.stdout.endsWith("</html>\n"));
 	}
+});
+
+/*
+ * The structured failure page. A run that knows what failed and what to do
+ * passes --step and --fix, and the page lays the facts out as labelled rows.
+ * A run that knows neither gets the page it always got, byte for byte: the
+ * golden was frozen from the package before the step and the fix existed.
+ */
+test("a failure page with a step and a fix shows what failed, why, and what to do", () => {
+	const result = renderFailure(["--step", "Invented step", "--fix", "Run an invented command, then try again."]);
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(result.stderr, "");
+	const html = result.stdout;
+	for (const label of [">What Failed<", ">Why<", ">What to Do<"]) assert.ok(html.includes(label), `the page carries ${label}`);
+	assert.ok(html.includes(">Invented step<"), "the step is on the page");
+	assert.ok(html.includes(">an invented reason<"), "and the reason");
+	assert.ok(html.includes(">Run an invented command, then try again.<"), "and the fix");
+	assert.ok(html.includes("an invented log line"), "and the log beneath them");
+	assert.ok(
+		html.indexOf("What Failed") < html.indexOf(">Why<") && html.indexOf(">Why<") < html.indexOf("What to Do"),
+		"in that order",
+	);
+	assert.ok(html.endsWith("</html>\n"));
+});
+
+test("a failure page without a step or a fix renders as it did before them", () => {
+	const result = renderFailure();
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(result.stdout, readFileSync(goldenPath(FAILURE.golden, "html"), "utf8"));
+	for (const label of ["What Failed", "What to Do"]) assert.ok(!result.stdout.includes(label), `no ${label}`);
 });
 
 test("an unknown format fails loudly", () => {

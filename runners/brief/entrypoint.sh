@@ -56,7 +56,7 @@
 #   DRY_RUN                   1 renders the email, skips the send, and never writes; the local loop
 #   SKIP_PULLS                1 reuses the JSON already in $WORK instead of pulling again
 #   VAULT_ACCESS_TOKEN        optional; a local container run's write back credential for the rotated Strava token, minted on the host by bin/runner/run-local, since the image has no gcloud and no metadata server
-# fail_reason, result, status and ATTACHMENT cross into the scaffold in
+# fail_reason, fail_step, fail_fix, result, status and ATTACHMENT cross into the scaffold in
 # lib/runner.sh (its EXIT trap and runner_render read them), which static
 # analysis cannot see across files.
 # shellcheck disable=SC2034,SC2154
@@ -176,12 +176,14 @@ eudy_pull() {
     rm -rf "$EUDY"
     if ! timeout 2m git clone --quiet --depth 1 "$EUDY_REPO" "$EUDY" 2>"$WORK/git-stderr.txt"; then
         fail_reason="Eudaimonia clone failed: $(head -c 300 "$WORK/git-stderr.txt")"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     # The block doc is the only thing the retro grades against; without it the
     # mail would still render, graded against nothing, so fail closed here.
     if [[ ! -f "$EUDY/$BLOCK_DOC" ]]; then
         fail_reason="Eudaimonia clone is missing $BLOCK_DOC"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     echo "eudy: $(git -C "$EUDY" log -1 --format='%h %s' | cut -c1-80)"
@@ -200,11 +202,13 @@ homebase_pull() {
         # Only a clone this script made, under its own work directory, is
         # ever removed. Anything else at the path was put there by someone.
         fail_reason="$HOMEBASE exists but has no $HOMEBASE_RULES; refusing to clone over it"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     [[ "$HOMEBASE" == "$WORK/homebase" ]] && rm -rf "$HOMEBASE"
     if ! GIT_SSH_COMMAND="" timeout 2m git clone --quiet --depth 1 "$HOMEBASE_REPO" "$HOMEBASE" 2>"$WORK/homebase-stderr.txt"; then
         fail_reason="homebase clone failed: $(head -c 300 "$WORK/homebase-stderr.txt")"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     if [[ ! -f "$HOMEBASE/$HOMEBASE_RULES" ]]; then
@@ -215,16 +219,30 @@ homebase_pull() {
 }
 
 # ---------- Strava ----------
+# The refresh's form body goes to curl on stdin, built by jq from the
+# environment, so the client secret and the refresh token are never on a
+# command line, where anyone who can list processes could read them. A failure
+# carries Strava's own named fields (its message, and which field it faults)
+# and nothing else of the body, as the Google refresh does.
 strava_pull() {
-    local resp
-    resp="$(curl -sS --max-time 30 -X POST https://www.strava.com/api/v3/oauth/token \
-        -d client_id="$STRAVA_CLIENT_ID" -d client_secret="$STRAVA_CLIENT_SECRET" \
-        -d grant_type=refresh_token -d refresh_token="$STRAVA_REFRESH_TOKEN")"
+    local resp why
+    resp="$(STRAVA_CLIENT_ID="$STRAVA_CLIENT_ID" STRAVA_CLIENT_SECRET="$STRAVA_CLIENT_SECRET" STRAVA_REFRESH_TOKEN="$STRAVA_REFRESH_TOKEN" \
+        jq -nj '@uri "client_id=\($ENV.STRAVA_CLIENT_ID)&client_secret=\($ENV.STRAVA_CLIENT_SECRET)&grant_type=refresh_token&refresh_token=\($ENV.STRAVA_REFRESH_TOKEN)"' \
+        | curl -sS --max-time 30 -X POST https://www.strava.com/api/v3/oauth/token --data-binary @- 2>"$WORK/strava-stderr.txt")"
     local access new_refresh
-    access="$(jq -r '.access_token // empty' <<<"$resp")"
-    new_refresh="$(jq -r '.refresh_token // empty' <<<"$resp")"
+    access="$(jq -r '.access_token // empty' <<<"$resp" 2>/dev/null)"
+    new_refresh="$(jq -r '.refresh_token // empty' <<<"$resp" 2>/dev/null)"
     if [[ -z "$access" ]]; then
-        fail_reason="Strava token refresh failed: $(jq -c 'del(.access_token, .refresh_token)' <<<"$resp" 2>/dev/null | head -c 300)"
+        why="$(jq -r 'if type == "object" and (.message | type) == "string" then ([.message] + [(.errors // [])[] | "\(.resource // "?") \(.field // "?") \(.code // "?")"] | join("; ") | gsub("[\\r\\n]"; " ") | .[0:200]) else empty end' <<<"$resp" 2>/dev/null)"
+        [[ -n "$why" || -z "$resp" ]] || why="an answer without a message field ($(printf '%s' "$resp" | wc -c | tr -d ' ') bytes, not quoted)"
+        [[ -n "$why" ]] || why="$(tail -n 1 "$WORK/strava-stderr.txt" 2>/dev/null | head -c 300)"
+        fail_reason="Strava token refresh failed: ${why:-no answer and no error from curl}"
+        fail_step="Strava token refresh"
+        # Only a refresh token Strava faults is mended by a new one.
+        fail_fix=""
+        if grep -qiE 'refresh_?token' <<<"$why"; then
+            fail_fix="Authorize the Strava app again, then add the refresh token it returns as a new version of the vault secret this job maps it from."
+        fi
         return 1
     fi
     if [[ -n "$new_refresh" && "$new_refresh" != "$STRAVA_REFRESH_TOKEN" ]]; then
@@ -273,12 +291,16 @@ vault_write_back() {
         fi
         return 1
     fi
-    local payload
-    payload="$(jq -n --arg d "$(printf '%s' "$1" | base64 | tr -d '\n')" '{payload: {data: $d}}')"
-    local code
-    code="$(curl -sS --max-time 30 -o /dev/null -w '%{http_code}' \
+    # Neither the rotated refresh token nor the bearer is on curl's command
+    # line: the payload is a file only this user can read, and the header
+    # comes in as a config on stdin.
+    local payload code
+    payload="$(mktemp)"; chmod 600 "$payload"
+    jq -n --arg d "$(printf '%s' "$1" | base64 | tr -d '\n')" '{payload: {data: $d}}' > "$payload"
+    code="$(printf 'header = "Authorization: Bearer %s"\n' "$sa_token" | curl -sS --max-time 30 -o /dev/null -w '%{http_code}' \
         -X POST "https://secretmanager.googleapis.com/v1/$STRAVA_SECRET_RESOURCE:addVersion" \
-        -H "Authorization: Bearer $sa_token" -H "Content-Type: application/json" -d "$payload")"
+        -K - -H "Content-Type: application/json" --data-binary "@$payload")"
+    rm -f "$payload"
     [[ "$code" =~ ^2 ]] && { echo "strava: rotated refresh token written back to the vault"; return 0; }
     echo "strava: vault write back returned HTTP $code"
     return 1
@@ -291,6 +313,7 @@ ATELIC_TOKEN=""
 google_tokens() {
     if [[ -z "$GWS_OAUTH_TOKEN_PERSONAL_JSON" ]]; then
         fail_reason="no GWS_OAUTH_TOKEN_PERSONAL_JSON (or GWS_OAUTH_TOKEN_JSON) in the environment"
+        fail_step="Google token refresh"; fail_fix=""
         return 1
     fi
     google_token_into PERSONAL_TOKEN "$GWS_OAUTH_TOKEN_PERSONAL_JSON" || { fail_reason="personal token: $fail_reason"; return 1; }
@@ -298,7 +321,7 @@ google_tokens() {
         google_token_into ATELIC_TOKEN "$GWS_OAUTH_TOKEN_ATELIC_JSON" || {
             echo "atelic Google token: could not be refreshed ($fail_reason); the Atelic inbox is not read this run"
             pull_note inbox-atelic failed "the Atelic mailbox was not read; its token could not be refreshed: $fail_reason"
-            fail_reason=""
+            fail_reason=""; fail_step=""; fail_fix=""
         }
     else
         pull_note inbox-atelic failed "the Atelic mailbox was not read; no GWS_OAUTH_TOKEN_ATELIC_JSON in the environment"
@@ -493,7 +516,7 @@ if [[ "$SKIP_PULLS" == "1" ]]; then
             pull_note calendar failed "$fail_reason"
             pull_note inbox failed "$fail_reason"
             echo "calendar, inbox: not read, $fail_reason"
-            fail_reason=""
+            fail_reason=""; fail_step=""; fail_fix=""
         fi
         ynab_pull
         linear_pull
@@ -575,7 +598,7 @@ if [[ "$BRIEF_WRITE" == "1" && "$DRY_RUN" != "1" && "$SKIP_PULLS" != "1" ]]; the
     # the pulls and the model call together can outrun, so they are minted
     # again here; a failure costs the inbox moves, never the mail.
     TOKENS_FOR_APPLY=1
-    google_tokens || { echo "apply: $fail_reason; the inbox moves stay proposed"; TOKEN_FAILURE="$fail_reason"; fail_reason=""; PERSONAL_TOKEN=""; ATELIC_TOKEN=""; TOKENS_FOR_APPLY=0; }
+    google_tokens || { echo "apply: $fail_reason; the inbox moves stay proposed"; TOKEN_FAILURE="$fail_reason"; fail_reason=""; fail_step=""; fail_fix=""; PERSONAL_TOKEN=""; ATELIC_TOKEN=""; TOKENS_FOR_APPLY=0; }
     # High or medium with a rule cited, or it is not applied: the rule is
     # what the band rests on, and a row without one goes to dropped below.
     jq '[.money.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "")) | {budget, id, category, rename: (.rename // "")}]' "$DRAFT_JSON" > "$WORK/apply-ynab.json"

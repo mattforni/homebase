@@ -94,3 +94,23 @@ export function renderRaw(runner, format, input, bundle = runner) {
 export function render(runner, format, fixture, bundle = runner) {
 	return renderRaw(runner, format, readFileSync(fixturePath(fixture), "utf8"), bundle);
 }
+
+/*
+ * The failure page as a run mails it, through a runner's bundle, with an
+ * invented reason and log. The plain call is frozen as a golden: it is the
+ * page from before the step and the fix existed, and it has to stay that
+ * page for every caller that names neither.
+ */
+export const FAILURE = {
+	runner: "brief",
+	golden: "failure",
+	args: ["--title", "Brief", "--eyebrow", "Brief · 2026-W38", "--reason", "an invented reason"],
+	log: "an invented log line\nand another one\n",
+};
+
+export function renderFailure(extra = []) {
+	return spawnSync(process.execPath, [bundlePath(FAILURE.runner), "failure", "html", ...FAILURE.args, ...extra], {
+		input: FAILURE.log,
+		encoding: "utf8",
+	});
+}
