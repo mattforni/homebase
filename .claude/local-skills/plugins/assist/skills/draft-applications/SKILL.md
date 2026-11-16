@@ -50,7 +50,7 @@ In order: LinkedIn (company plus engineering leadership titles), the posting its
 
 ## Follow Up Email
 
-Policy (set 2026-07-29): follow up on every application where a real hiring manager is identifiable; skip when the only option is a generic inbox. Verify the person on LinkedIn before any send (current at the company, owns the team); only the email address may be guessed (firstname@, then firstname.lastname@; stop after a second bounce). One ask, the role. **No fractional pitch while the unemployment claim is active**; that framing belongs to Atelic cold outreach, not W2 follow ups. Send only after the application is in. No automatic bump follow ups for now.
+Policy (set 2026-07-29): follow up on every application where a real hiring manager is identifiable; skip when the only option is a generic inbox. Verify the person on LinkedIn before any send (current at the company, owns the team); only the email address may be guessed (firstname@, then firstname.lastname@; stop after a second bounce). One ask, the role. **No fractional pitch in a W2 follow up**; that framing belongs to Atelic cold outreach, not W2 follow ups. Send only after the application is in. No automatic bump follow ups for now.
 
 The note's shape (proven on the EnergyHub send, 2026-07-29; Forni called it fantastic), 110 to 120 words, four short paragraphs:
 
@@ -61,7 +61,7 @@ The note's shape (proven on the EnergyHub send, 2026-07-29; Forni called it fant
 
 Title Case subject (just the role and company, e.g. "Software Architect at EnergyHub"). The note ends on the close: no "Cheers and chat soon!" and no name (set 2026-10-19, for every job search note).
 
-**One warm touch a week** (a reconnect, a referral ask, or a recruiter check in) is a standing supporting activity: the pass drafts it and, once it has happened, logs it with `pinole work activities log --on <date> --kind networking --employer "<Company or person>" --channel "<Email, LinkedIn, or Phone>" --notes "<what was asked>"`, never as an application. The channel is what the weekly claim reports as the contact method, so it is never left off.
+**One warm touch a week** (a reconnect, a referral ask, or a recruiter check in) is a standing supporting activity: the pass drafts it and, once it has happened, logs it with `pinole work activities log --on <date> --kind networking --employer "<Company or person>" --channel "<Email, LinkedIn, or Phone>" --notes "<what was asked>"`, never as an application. The channel is always recorded.
 
 ## Guardrails
 
