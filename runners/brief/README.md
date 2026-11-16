@@ -44,7 +44,7 @@ bin/runner/fire brief                      # run production now
 
 ## What the Model Reads
 
-The rules are never copied into the image. A run clones Eudaimonia (the block doc, `schedule.md`, the Linear and calendar tool docs), homebase (the assist plugin's learned rules, payee map, email rules, label map, and the planning skill's learned rules; public, so no key) and the Atelic repo (`Tools/ynab.md`, `Tools/Google/gmail-labels.md`, the funnel rules), and the prompt names each file by path. A rule changed in any of the three is live on the next run and promotes nothing here.
+The rules are never copied into the image. A run clones Eudaimonia (`schedule.md`, the Linear and calendar tool docs), homebase (the assist plugin's learned rules, payee map, email rules, label map, and the planning skill's learned rules; public, so no key) and the Atelic repo (`Tools/ynab.md`, `Tools/Google/gmail-labels.md`, the funnel rules), and the prompt names each file by path. A rule changed in any of the three is live on the next run and promotes nothing here.
 
 ## Pulls That Fail
 

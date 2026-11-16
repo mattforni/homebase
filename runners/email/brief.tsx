@@ -62,7 +62,7 @@ import type { Page, RenderContext } from "./types";
  * restates the numbers under it, no date range, no Atelic outreach.
  *
  * The sessions and the day strip are built from strava.json here, never from
- * the model, so the only numbers the model supplies are the graded coverage
+ * the model, so the only numbers the model supplies are the coverage
  * counts. The spend tables, the completed tasks, the apply record and the
  * pull ledger are the entrypoint's, merged in after the model runs.
  */
@@ -236,14 +236,18 @@ function modalityLabel(value: unknown): string {
 		.join(" ");
 }
 
-/** The model's coverage, with its note; a PT row from an older draft or a slip is left out. */
+/**
+ * The model's coverage, with its note; a PT row from an older draft or a slip is left out.
+ * Every row is a bare count (Forni, W47): the training block closed and nothing
+ * is graded, so a target an older draft still carries is dropped here.
+ */
 function movementTargets(draft: BriefDraft): Target[] {
 	return alt(draft.coverage, [])
 		.filter((row) => !/^(physical therapy|pt)\b/i.test(jqToString(alt(row.modality, "")).trim()))
 		.map((row) => ({
 			label: modalityLabel(row.modality),
 			logged: num(row.logged),
-			target: num(row.target),
+			target: null,
 			note: jqToString(alt(row.note, "")),
 		}));
 }
