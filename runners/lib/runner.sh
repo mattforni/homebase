@@ -477,7 +477,13 @@ google_token_into() {
         fail_reason="$(grep -a '^Google token refresh failed' "$__err" | tail -n 1 | head -c 400)"
         [[ -n "$fail_reason" ]] || fail_reason="Google token refresh failed with no reason given"
         fail_step="Google token refresh"
-        fail_fix="Export this profile's Google token again, then add it as a new version of the vault secret this job maps it from."
+        # A new export mends only a grant Google refused. A timeout, a name
+        # that did not resolve, or a 5xx is not the token's fault, and telling
+        # the reader to renew it would send them to fix what is not broken.
+        fail_fix=""
+        if grep -qE 'invalid_grant|invalid_client|unauthorized_client' <<<"$fail_reason"; then
+            fail_fix="Export this profile's Google token again, then add it as a new version of the vault secret this job maps it from."
+        fi
         __token=""
     fi
     rm -f "$__err"
@@ -697,6 +703,11 @@ runner_claude() {
     local stderr_file="$WORK/claude-stderr.txt" attempt=1 transient
     local attempt_timeout="${ATTEMPT_TIMEOUT:-45m}" max_attempts="${MAX_ATTEMPTS:-2}" backoff="${RETRY_BACKOFF_SECONDS:-15}"
     local transient_re='socket connection was closed|API Error|overloaded|Connection error|terminated'
+    # An answer that exits zero and reports an error names its status, so only
+    # the ones waiting can mend are tried again: a rate limit, a 5xx, or a
+    # lost connection. A 400 is the same answer on a second full run.
+    local transient_answer_re='overloaded|API Error: (429|5[0-9][0-9])|socket connection was closed|Connection error'
+    local re
     while :; do
         echo "=== $(date -Iseconds) claude attempt $attempt/$max_attempts (timeout $attempt_timeout) ==="
         result="$(timeout "$attempt_timeout" claude -p "$prompt" "$@" --output-format json 2>"$stderr_file")"
@@ -711,7 +722,7 @@ runner_claude() {
             echo "attempt $attempt timed out after $attempt_timeout"
         elif runner_claude_refused; then
             echo "attempt $attempt was refused its credential (exit $rc); not retried"
-        elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$transient_re"; then
+        elif re="$transient_re"; [[ $rc -ne 0 ]] || re="$transient_answer_re"; { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$re"; then
             transient=true
             echo "attempt $attempt hit a transient API error (exit $rc)"
         fi
@@ -745,9 +756,16 @@ runner_probe_write() {
     out="$(timeout 3m claude -p "Write the single word ok to the file $marker using the Write tool, then reply with the word done. Do nothing else." \
         --model haiku --output-format json "$@" 2>"$WORK/probe-stderr.txt")"
     if [[ ! -s "$marker" ]]; then
-        # A revoked credential fails here first; judge it as the real call is.
+        # A revoked credential fails here first, and is judged as the real
+        # call is. Anything else is the case the probe exists for: the model
+        # answered and could not write, which is the allowlist or the agent's
+        # tools, never the credential.
         result="$out"; cp "$WORK/probe-stderr.txt" "$WORK/claude-stderr.txt" 2>/dev/null
-        runner_claude_failed
+        if runner_claude_refused; then
+            runner_claude_failed
+        else
+            fail_step="Agent write probe"; fail_fix=""
+        fi
         fail_reason="the write probe failed: the agent could not write $marker (denials: $(jq -r '.permission_denials // [] | map(.tool_name) | unique | join(", ")' <<<"$out" 2>/dev/null); $(head -c 200 "$WORK/probe-stderr.txt"))"
         return 1
     fi

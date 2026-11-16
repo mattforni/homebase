@@ -73,6 +73,7 @@ case "${CLAUDE_MODE:-ok}" in
     revoked)    printf '{"subtype":"success","is_error":true,"api_error_status":401,"result":"Failed to authenticate: OAuth token revoked. Please log in again."}'; exit 1 ;;
     overloaded) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}'; exit 1 ;;
     overloaded0) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}' ;;
+    bad0)       printf '{"subtype":"success","is_error":true,"api_error_status":400,"result":"API Error: 400 invalid request"}' ;;
     revoked0)   printf '{"subtype":"success","is_error":true,"api_error_status":401,"result":"Failed to authenticate: OAuth token revoked. Please log in again."}' ;;
 esac
 EOF
@@ -224,6 +225,31 @@ runner_probe_write >/dev/null 2>&1; got=$?
 check "a probe refused its credential fails" test "$got" -ne 0
 check "and names the model call as its step" test "$fail_step" = "Claude model call"
 case "$fail_fix" in *"claude setup-token"*) ok "and says what to do" ;; *) bad "and says what to do (got: $fail_fix)" ;; esac
+unset CLAUDE_MODE
+
+# The model answers and writes nothing: the probe's own case, not a credential.
+export CLAUDE_MODE=ok
+fail_reason=""; fail_step=""; fail_fix=""
+runner_probe_write >/dev/null 2>&1; got=$?
+check "a probe that answered and wrote nothing fails" test "$got" -ne 0
+check "and names the probe, not the model call" test "$fail_step" = "Agent write probe" -a -z "$fail_fix"
+unset CLAUDE_MODE
+
+echo "what the fix is said for"
+
+export CURL_MODE=down; fail_reason=""; fail_step=""; fail_fix="stale"
+google_token_into TOKEN "$JSON"
+check "a refresh that could not connect names its step and offers no fix" test "$fail_step" = "Google token refresh" -a -z "$fail_fix"
+export CURL_MODE=html; fail_fix="stale"
+google_token_into TOKEN "$JSON"
+check "a refresh answered with a page offers no fix" test -z "$fail_fix"
+export CURL_MODE=revoked; fail_fix=""
+google_token_into TOKEN "$JSON"
+case "$fail_fix" in *"Export this profile"*) ok "a refused grant says to export the token again" ;; *) bad "a refused grant says to export the token again (got: $fail_fix)" ;; esac
+
+export CLAUDE_MODE=bad0; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
+runner_claude "a prompt" >/dev/null; got=$?
+check "an exit zero answer with a 400 fails and is tried once" test "$got" -ne 0 -a "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
 unset CLAUDE_MODE
 
 echo
