@@ -293,7 +293,7 @@ google_tokens() {
         fail_reason="no GWS_OAUTH_TOKEN_PERSONAL_JSON (or GWS_OAUTH_TOKEN_JSON) in the environment"
         return 1
     fi
-    google_token_into PERSONAL_TOKEN "$GWS_OAUTH_TOKEN_PERSONAL_JSON" || { return 1; }
+    google_token_into PERSONAL_TOKEN "$GWS_OAUTH_TOKEN_PERSONAL_JSON" || { fail_reason="personal token: $fail_reason"; return 1; }
     if [[ -n "${GWS_OAUTH_TOKEN_ATELIC_JSON:-}" ]]; then
         google_token_into ATELIC_TOKEN "$GWS_OAUTH_TOKEN_ATELIC_JSON" || {
             echo "atelic Google token: could not be refreshed ($fail_reason); the Atelic inbox is not read this run"

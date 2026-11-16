@@ -750,7 +750,9 @@ runner_check_result() {
     denials="$(jq -r '.permission_denials // [] | .[] | "\(.tool_name // "?"): \(.tool_input // .reason // "?" | tostring | gsub("\n"; " ") | .[0:200])"' <<<"$result")"
     [[ -z "$denials" ]] || echo "claude: $(wc -l <<<"$denials" | tr -d ' ') permission denials:"$'\n'"$(sed 's/^/  denied /' <<<"$denials")"
     if ! jq -e '.subtype == "success" and .is_error == false' <<<"$result" >/dev/null; then
-        fail_reason="claude did not complete: $(jq -r '.subtype // "unknown"' <<<"$result")"
+        local why
+        why="$(jq -r '[(.subtype // "unknown"), (if .api_error_status then "status \(.api_error_status)" else empty end), (.result // empty | tostring | gsub("\n"; " ") | .[0:200])] | join(", ")' <<<"$result" 2>/dev/null)"
+        fail_reason="claude did not complete: $why"
         return 1
     fi
     local usage
