@@ -125,7 +125,8 @@ export CURL_MODE=ok
 google_token_into TOKEN "$JSON"
 if grep -qE 'SECRETINVENTED|REFRESHINVENTED|id\.invented' "$CURL_ARGS"; then bad "no credential is in curl's arguments (got: $(tr '\n' ' ' < "$CURL_ARGS"))"; else ok "no credential is in curl's arguments"; fi
 check "the body goes to curl on stdin" grep -qFx -- "--data-binary" "$CURL_ARGS"
-check "the body is the four form fields, each encoded" test "$(cat "$CURL_STDIN")" = "client_id=id.invented&client_secret=SECRETINVENTED&refresh_token=1%2F%2FREFRESHINVENTED&grant_type=refresh_token"
+printf '%s' "client_id=id.invented&client_secret=SECRETINVENTED&refresh_token=1%2F%2FREFRESHINVENTED&grant_type=refresh_token" > "$SCRATCH/expected-body"
+check "the body is the four form fields, each encoded, byte for byte with no trailing newline" cmp -s "$SCRATCH/expected-body" "$CURL_STDIN"
 check "and the token still comes back" test "$TOKEN" = "ya29.MINTEDINVENTED"
 
 echo "runner_claude"

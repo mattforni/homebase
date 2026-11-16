@@ -438,7 +438,7 @@ runner_finish() {
 google_access_token() {
     local resp access curl_err why
     curl_err="$(mktemp)"
-    resp="$(jq -r '@uri "client_id=\(.client_id)&client_secret=\(.client_secret)&refresh_token=\(.refresh_token)&grant_type=refresh_token"' <<<"$1" 2>/dev/null \
+    resp="$(jq -j '@uri "client_id=\(.client_id)&client_secret=\(.client_secret)&refresh_token=\(.refresh_token)&grant_type=refresh_token"' <<<"$1" 2>/dev/null \
         | curl -sS --max-time 30 -X POST https://oauth2.googleapis.com/token --data-binary @- 2>"$curl_err")"
     access="$(jq -r '.access_token // empty' <<<"$resp" 2>/dev/null)"
     if [[ -z "$access" ]]; then
