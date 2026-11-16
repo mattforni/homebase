@@ -11,7 +11,7 @@
     "test": "node --test tst/render.test.mjs"
   },
   "dependencies": {
-    "@atelic-action/ui": "0.7.2",
+    "@atelic-action/ui": "4.1.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

@@ -12,11 +12,23 @@
 # A fake curl and a fake claude on PATH answer the way Google and claude -p
 # do. Nothing leaves the machine and every token here is invented.
 #
+# A run that knows what failed and what to do says so too, in fail_step and
+# fail_fix, and the failure page puts them above the reason. And the refresh
+# never puts a credential on curl's command line, where anyone who can list
+# processes could read it.
+#
 # Checks: a minted token reaches the named variable; a refused refresh puts
 # Google's answer in fail_reason in the calling shell and on stderr, and never
-# a credential; a curl that cannot connect reports curl's own words; a bare
-# $(google_access_token) still prints the token; a refused Claude token is
-# tried once and named in fail_reason; an overloaded answer is still retried.
+# a credential; a refused refresh sets fail_step and fail_fix, which survive a
+# caller that prefixes fail_reason; a curl that cannot connect reports curl's
+# own words; a bare $(google_access_token) still prints the token; curl gets
+# the client secret and the refresh token on stdin and never in its
+# arguments; a refused Claude token is tried once, named in fail_reason, and
+# given a step and a fix; an overloaded answer is still retried, with a step
+# and no fix; an answer that exits zero but says is_error is retried when it
+# is transient and tried once when it is a refused credential; and the
+# failure page is handed the step and the fix, by the renderer and by the
+# bare <pre> it falls back to.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -39,8 +51,12 @@ JSON='{"client_id":"id.invented","client_secret":"SECRETINVENTED","refresh_token
 
 # The fake curl answers from CURL_MODE; the fake claude from CLAUDE_MODE, and
 # counts its calls.
+# The fake curl also keeps its arguments and its stdin apart, one file each,
+# so a test can say where a credential travelled.
 cat > "$BIN/curl" <<'EOF'
 #!/usr/bin/env bash
+printf '%s\n' "$@" > "$CURL_ARGS"
+cat > "$CURL_STDIN"
 case "${CURL_MODE:-ok}" in
     ok)      printf '{"access_token":"ya29.MINTEDINVENTED","expires_in":3599}' ;;
     revoked) printf '{"error":"invalid_grant","error_description":"Token has been expired or revoked."}' ;;
@@ -56,10 +72,13 @@ case "${CLAUDE_MODE:-ok}" in
     ok)         printf '{"subtype":"success","is_error":false,"result":"done"}' ;;
     revoked)    printf '{"subtype":"success","is_error":true,"api_error_status":401,"result":"Failed to authenticate: OAuth token revoked. Please log in again."}'; exit 1 ;;
     overloaded) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}'; exit 1 ;;
+    overloaded0) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}' ;;
+    revoked0)   printf '{"subtype":"success","is_error":true,"api_error_status":401,"result":"Failed to authenticate: OAuth token revoked. Please log in again."}' ;;
 esac
 EOF
 chmod +x "$BIN/curl" "$BIN/claude"
 export PATH="$BIN:$PATH" CLAUDE_CALLS="$SCRATCH/claude-calls" RETRY_BACKOFF_SECONDS=0
+export CURL_ARGS="$SCRATCH/curl-args" CURL_STDIN="$SCRATCH/curl-stdin"
 
 echo "google_access_token"
 
@@ -73,8 +92,14 @@ export CURL_MODE=revoked
 fail_reason=""; TOKEN="stale"
 google_token_into TOKEN "$JSON"; got=$?
 check "a refused refresh returns non zero and empties the variable" test "$got" -ne 0 -a -z "$TOKEN"
+check "a refused refresh names its step" test "${fail_step:-}" = "Google token refresh"
+case "${fail_fix:-}" in *"token again"*"new version of the vault secret"*) ok "a refused refresh says what to do" ;; *) bad "a refused refresh says what to do (got: ${fail_fix:-})" ;; esac
 case "$fail_reason" in *invalid_grant*"expired or revoked"*) ok "Google's answer reaches fail_reason in the calling shell" ;; *) bad "Google's answer reaches fail_reason in the calling shell (got: $fail_reason)" ;; esac
 case "$fail_reason" in *SECRETINVENTED*|*REFRESHINVENTED*) bad "no credential is in the reason" ;; *) ok "no credential is in the reason" ;; esac
+fail_reason=""; fail_step=""; fail_fix=""
+google_token_into TOKEN "$JSON" || fail_reason="personal token: $fail_reason"
+check "a caller that prefixes the reason keeps the step and the fix" test "$fail_step" = "Google token refresh" -a -n "$fail_fix"
+case "$fail_reason" in "personal token: Google token refresh failed: invalid_grant"*) ok "and the prefixed reason" ;; *) bad "and the prefixed reason (got: $fail_reason)" ;; esac
 err="$(google_access_token "$JSON" 2>&1 >/dev/null)"
 case "$err" in *invalid_grant*) ok "the reason is on stderr for a caller that reads it there" ;; *) bad "the reason is on stderr for a caller that reads it there (got: $err)" ;; esac
 
@@ -93,22 +118,104 @@ fail_reason=""
 google_token_into TOKEN "$JSON"
 case "$fail_reason" in *PAGEINVENTED*) bad "a body that is not JSON is named, never quoted" ;; *"not quoted"*) ok "a body that is not JSON is named, never quoted" ;; *) bad "a body that is not JSON is named, never quoted (got: $fail_reason)" ;; esac
 
+echo "the refresh's credentials"
+
+export CURL_MODE=ok
+: > "$CURL_ARGS"; : > "$CURL_STDIN"
+google_token_into TOKEN "$JSON"
+if grep -qE 'SECRETINVENTED|REFRESHINVENTED|id\.invented' "$CURL_ARGS"; then bad "no credential is in curl's arguments (got: $(tr '\n' ' ' < "$CURL_ARGS"))"; else ok "no credential is in curl's arguments"; fi
+check "the body goes to curl on stdin" grep -qFx -- "--data-binary" "$CURL_ARGS"
+check "the body is the four form fields, each encoded" test "$(cat "$CURL_STDIN")" = "client_id=id.invented&client_secret=SECRETINVENTED&refresh_token=1%2F%2FREFRESHINVENTED&grant_type=refresh_token"
+check "and the token still comes back" test "$TOKEN" = "ya29.MINTEDINVENTED"
+
 echo "runner_claude"
 
-export CLAUDE_MODE=revoked; : > "$CLAUDE_CALLS"; fail_reason=""
+CLAUDE_FIX_RE="claude setup-token.*new version of the vault secret this job maps its Claude token from"
+
+export CLAUDE_MODE=revoked; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
 runner_claude "a prompt" >/dev/null; got=$?
 check "a refused Claude token fails the call" test "$got" -ne 0
 check "a refused Claude token is tried once" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
 case "$fail_reason" in *"OAuth token revoked"*"status 401"*) ok "the refusal is named in fail_reason" ;; *) bad "the refusal is named in fail_reason (got: $fail_reason)" ;; esac
+check "a refused Claude token names its step" test "$fail_step" = "Claude model call"
+check "a refused Claude token says what to do" grep -qE "$CLAUDE_FIX_RE" <<<"$fail_fix"
 
-export CLAUDE_MODE=overloaded; : > "$CLAUDE_CALLS"; fail_reason=""
+export CLAUDE_MODE=overloaded; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
 runner_claude "a prompt" >/dev/null
 check "an overloaded answer is still tried twice" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 2
 case "$fail_reason" in *"529 overloaded"*) ok "the overloaded answer is named in fail_reason" ;; *) bad "the overloaded answer is named in fail_reason (got: $fail_reason)" ;; esac
+check "an overloaded answer names its step and no fix" test "$fail_step" = "Claude model call" -a -z "$fail_fix"
 
-export CLAUDE_MODE=ok; : > "$CLAUDE_CALLS"; fail_reason=""
+export CLAUDE_MODE=overloaded0; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
 runner_claude "a prompt" >/dev/null; got=$?
-check "a clean call still completes" test "$got" -eq 0 -a -z "$fail_reason"
+check "an overloaded answer that exits zero fails the call" test "$got" -ne 0
+check "an overloaded answer that exits zero is tried twice" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 2
+case "$fail_reason" in *"did not complete"*"529 overloaded"*) ok "and runner_check_result reports it" ;; *) bad "and runner_check_result reports it (got: $fail_reason)" ;; esac
+check "and names its step" test "$fail_step" = "Claude model call" -a -z "$fail_fix"
+
+export CLAUDE_MODE=revoked0; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
+runner_claude "a prompt" >/dev/null; got=$?
+check "a refused credential that exits zero fails the call" test "$got" -ne 0
+check "a refused credential that exits zero is tried once" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
+case "$fail_reason" in *"OAuth token revoked"*) ok "and the refusal is named in fail_reason" ;; *) bad "and the refusal is named in fail_reason (got: $fail_reason)" ;; esac
+check "and says what to do" grep -qE "$CLAUDE_FIX_RE" <<<"$fail_fix"
+
+export CLAUDE_MODE=ok; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail_fix=""
+runner_claude "a prompt" >/dev/null; got=$?
+check "a clean call still completes" test "$got" -eq 0 -a -z "$fail_reason" -a -z "$fail_step" -a -z "$fail_fix"
+check "a clean call is tried once" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
+
+echo "runner_failure_html"
+
+# A fake node stands in for the renderer, keeping its arguments one to a line,
+# or failing when NODE_MODE says so, which is when the bare <pre> is mailed.
+NODEBIN="$SCRATCH/nodebin"; mkdir -p "$NODEBIN"
+cat > "$NODEBIN/node" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$NODE_ARGS"
+cat > /dev/null
+[[ "${NODE_MODE:-ok}" == ok ]] || exit 1
+printf '<html>the page</html>'
+EOF
+chmod +x "$NODEBIN/node"
+LIB_DIR="$SCRATCH/lib"; mkdir -p "$LIB_DIR"; : > "$LIB_DIR/render.cjs"
+LOG="$SCRATCH/run.log"; printf 'an invented log line\n' > "$LOG"
+# Read by the sourced scaffold, which static analysis cannot follow.
+# shellcheck disable=SC2034
+RUNNER_NAME=invented RUNNER_TITLE=Invented WEEK=2026-W05
+export NODE_ARGS="$SCRATCH/node-args"
+# The value after a flag in the fake node's arguments, or nothing.
+arg_after() { grep -A1 -Fx -- "$1" "$NODE_ARGS" | sed -n 2p; }
+
+# A refused Claude token, end to end: the call sets the facts and the page is
+# handed them.
+export CLAUDE_MODE=revoked; fail_reason=""; fail_step=""; fail_fix=""
+runner_claude "a prompt" >/dev/null
+page="$(PATH="$NODEBIN:$PATH" runner_failure_html)"
+check "the renderer's page is mailed" test "$page" = "<html>the page</html>"
+check "the page is handed the step" test "$(arg_after --step)" = "Claude model call"
+check "the page is handed the fix" test "$(arg_after --fix)" = "$fail_fix"
+case "$(arg_after --reason)" in *"OAuth token revoked"*) ok "and the reason" ;; *) bad "and the reason (got: $(arg_after --reason))" ;; esac
+
+# A refused Google refresh, the same way.
+export CURL_MODE=revoked; fail_reason=""; fail_step=""; fail_fix=""
+google_token_into TOKEN "$JSON"
+PATH="$NODEBIN:$PATH" runner_failure_html >/dev/null
+check "a refused refresh hands the page its step" test "$(arg_after --step)" = "Google token refresh"
+check "and its fix" test "$(arg_after --fix)" = "$fail_fix"
+
+fail_reason="an invented reason"; fail_step=""; fail_fix=""
+PATH="$NODEBIN:$PATH" runner_failure_html >/dev/null
+if grep -qFx -e --step -e --fix "$NODE_ARGS"; then bad "with neither set, neither flag is passed"; else ok "with neither set, neither flag is passed"; fi
+
+export NODE_MODE=fail
+fail_reason="an invented reason"; fail_step="Invented step"; fail_fix="Run an invented command & try again."
+page="$(PATH="$NODEBIN:$PATH" runner_failure_html)"
+case "$page" in "<pre>What Failed: Invented step"$'\n'"Why: an invented reason"$'\n'"What to Do: Run an invented command &amp; try again."$'\n\n'"an invented log line</pre>") ok "the bare <pre> carries the step, the reason and the fix" ;; *) bad "the bare <pre> carries the step, the reason and the fix (got: $page)" ;; esac
+fail_step=""; fail_fix=""
+page="$(PATH="$NODEBIN:$PATH" runner_failure_html)"
+check "with neither set, the bare <pre> is the reason and the log as before" test "$page" = "<pre>an invented reason"$'\n\n'"an invented log line</pre>"
+unset NODE_MODE
 
 echo
 echo "$pass passed, $fail failed"

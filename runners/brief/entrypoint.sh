@@ -56,7 +56,7 @@
 #   DRY_RUN                   1 renders the email, skips the send, and never writes; the local loop
 #   SKIP_PULLS                1 reuses the JSON already in $WORK instead of pulling again
 #   VAULT_ACCESS_TOKEN        optional; a local container run's write back credential for the rotated Strava token, minted on the host by bin/runner/run-local, since the image has no gcloud and no metadata server
-# fail_reason, result, status and ATTACHMENT cross into the scaffold in
+# fail_reason, fail_step, fail_fix, result, status and ATTACHMENT cross into the scaffold in
 # lib/runner.sh (its EXIT trap and runner_render read them), which static
 # analysis cannot see across files.
 # shellcheck disable=SC2034,SC2154
@@ -298,7 +298,7 @@ google_tokens() {
         google_token_into ATELIC_TOKEN "$GWS_OAUTH_TOKEN_ATELIC_JSON" || {
             echo "atelic Google token: could not be refreshed ($fail_reason); the Atelic inbox is not read this run"
             pull_note inbox-atelic failed "the Atelic mailbox was not read; its token could not be refreshed: $fail_reason"
-            fail_reason=""
+            fail_reason=""; fail_step=""; fail_fix=""
         }
     else
         pull_note inbox-atelic failed "the Atelic mailbox was not read; no GWS_OAUTH_TOKEN_ATELIC_JSON in the environment"
@@ -493,7 +493,7 @@ if [[ "$SKIP_PULLS" == "1" ]]; then
             pull_note calendar failed "$fail_reason"
             pull_note inbox failed "$fail_reason"
             echo "calendar, inbox: not read, $fail_reason"
-            fail_reason=""
+            fail_reason=""; fail_step=""; fail_fix=""
         fi
         ynab_pull
         linear_pull
@@ -575,7 +575,7 @@ if [[ "$BRIEF_WRITE" == "1" && "$DRY_RUN" != "1" && "$SKIP_PULLS" != "1" ]]; the
     # the pulls and the model call together can outrun, so they are minted
     # again here; a failure costs the inbox moves, never the mail.
     TOKENS_FOR_APPLY=1
-    google_tokens || { echo "apply: $fail_reason; the inbox moves stay proposed"; TOKEN_FAILURE="$fail_reason"; fail_reason=""; PERSONAL_TOKEN=""; ATELIC_TOKEN=""; TOKENS_FOR_APPLY=0; }
+    google_tokens || { echo "apply: $fail_reason; the inbox moves stay proposed"; TOKEN_FAILURE="$fail_reason"; fail_reason=""; fail_step=""; fail_fix=""; PERSONAL_TOKEN=""; ATELIC_TOKEN=""; TOKENS_FOR_APPLY=0; }
     # High or medium with a rule cited, or it is not applied: the rule is
     # what the band rests on, and a row without one goes to dropped below.
     jq '[.money.rows[] | select(((.band // "" | ascii_downcase) == "high" or (.band // "" | ascii_downcase) == "medium") and ((.rule // "") != "")) | {budget, id, category, rename: (.rename // "")}]' "$DRAFT_JSON" > "$WORK/apply-ynab.json"

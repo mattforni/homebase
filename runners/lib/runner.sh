@@ -272,6 +272,14 @@ meta_line() {
 #   LIB_DIR                     the shared library (render.cjs, text.mjs),
 #                               wherever it was found
 #   status fail_reason result rc
+#   fail_step fail_fix          empty; what failed, as a short label, and what
+#                               to do about it, set beside fail_reason where
+#                               the cause is known. The failure page shows
+#                               them as What Failed and What to Do around the
+#                               reason. Whoever sets fail_step sets fail_fix
+#                               too (empty when there is nothing to say), and
+#                               a caller that swallows a failure and clears
+#                               fail_reason clears both of them with it.
 # and traps runner_finish on EXIT.
 runner_init() {
     RUNNER_NAME="$1"
@@ -326,6 +334,8 @@ runner_init() {
 
     status="failure"
     fail_reason=""
+    fail_step=""
+    fail_fix=""
     result=""
     rc=0
     trap runner_finish EXIT
@@ -336,23 +346,33 @@ runner_init() {
     echo "=== $(date -Iseconds) $RUNNER_NAME start: $WEEK ($MONDAY to $SUNDAY) ==="
 }
 
-# The failure email, in the same design as the page: the reason on top, the
-# log's tail beneath, rendered by the same bundle with the tail on stdin.
-# Falls back to a bare <pre> if the renderer itself is what broke, which is
-# the last thing standing between a broken renderer and no mail at all. The
-# page is built whole before anything is printed, so a render that dies
-# halfway cannot leave half a document above the <pre>. The renderer's own
-# stderr is left alone: it lands in the log, which is the only place left to
-# say why the failure page itself could not be drawn.
+# The failure email, in the same design as the page: what failed, why, and
+# what to do on top, the log's tail beneath, rendered by the same bundle with
+# the tail on stdin. The step and the fix ride only when they are set, and
+# with neither the page is the reason and the log as it always was. Falls
+# back to a bare <pre> if the renderer itself is what broke, which is the
+# last thing standing between a broken renderer and no mail at all, and the
+# <pre> carries the same facts. The page is built whole before anything is
+# printed, so a render that dies halfway cannot leave half a document above
+# the <pre>. The renderer's own stderr is left alone: it lands in the log,
+# which is the only place left to say why the failure page itself could not
+# be drawn.
 runner_failure_html() {
-    local bundle page
-    if bundle="$(runner_renderer_bundle)" && page="$(tail -n 40 "$LOG" | node "$bundle" failure html \
-        --title "$RUNNER_TITLE" --eyebrow "$RUNNER_TITLE · $WEEK" \
-        --reason "${fail_reason:-unknown failure}")" && [[ -n "$page" ]]; then
+    local bundle page facts reason="${fail_reason:-unknown failure}"
+    local args=(--title "$RUNNER_TITLE" --eyebrow "$RUNNER_TITLE · $WEEK" --reason "$reason")
+    [[ -n "${fail_step:-}" ]] && args+=(--step "$fail_step")
+    [[ -n "${fail_fix:-}" ]] && args+=(--fix "$fail_fix")
+    if bundle="$(runner_renderer_bundle)" && page="$(tail -n 40 "$LOG" | node "$bundle" failure html "${args[@]}")" \
+        && [[ -n "$page" ]]; then
         printf '%s\n' "$page"
         return 0
     fi
-    printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "${fail_reason:-unknown failure}" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
+    facts="$reason"
+    if [[ -n "${fail_step:-}" || -n "${fail_fix:-}" ]]; then
+        local nl=$'\n'
+        facts="${fail_step:+What Failed: $fail_step$nl}Why: $reason${fail_fix:+${nl}What to Do: $fail_fix}"
+    fi
+    printf '<pre>%s\n\n%s</pre>' "$(printf '%s' "$facts" | html_escape)" "$(tail -n 40 "$LOG" | html_escape)"
 }
 
 # The EXIT trap. Mails the rendered page (with ATTACHMENT beside it when the
@@ -410,14 +430,16 @@ runner_finish() {
 # said when nothing answered. A caller that takes the token through $(...)
 # never sees fail_reason, since a command substitution is its own shell, which
 # is why google_token_into below is the way to call this.
+#
+# The form body goes to curl on stdin, never as arguments: an argument is
+# readable by anyone who can list processes, and the body carries the client
+# secret and the refresh token. jq builds it, encoding each value as a form
+# field, and nothing that holds a credential is ever on a command line.
 google_access_token() {
     local resp access curl_err why
     curl_err="$(mktemp)"
-    resp="$(curl -sS --max-time 30 -X POST https://oauth2.googleapis.com/token \
-        -d client_id="$(jq -r .client_id <<<"$1" 2>/dev/null)" \
-        -d client_secret="$(jq -r .client_secret <<<"$1" 2>/dev/null)" \
-        -d refresh_token="$(jq -r .refresh_token <<<"$1" 2>/dev/null)" \
-        -d grant_type=refresh_token 2>"$curl_err")"
+    resp="$(jq -r '@uri "client_id=\(.client_id)&client_secret=\(.client_secret)&refresh_token=\(.refresh_token)&grant_type=refresh_token"' <<<"$1" 2>/dev/null \
+        | curl -sS --max-time 30 -X POST https://oauth2.googleapis.com/token --data-binary @- 2>"$curl_err")"
     access="$(jq -r '.access_token // empty' <<<"$resp" 2>/dev/null)"
     if [[ -z "$access" ]]; then
         # Google's two named fields when it answered with them ({"error":
@@ -440,8 +462,11 @@ google_access_token() {
 # Usage: google_token_into <variable> <authorized_user json>
 # google_access_token with its reason kept: the token lands in the named
 # variable and, on failure, fail_reason is set in the calling shell, where a
-# bare $(google_access_token ...) would have lost it. The variable is emptied
-# on failure. Returns what google_access_token returned.
+# bare $(google_access_token ...) would have lost it. On failure fail_step and
+# fail_fix are set beside it, the fix in words that hold for any profile,
+# since this function never learns which one the JSON belongs to; a caller
+# that knows says so by prefixing fail_reason. The variable is emptied on
+# failure. Returns what google_access_token returned.
 google_token_into() {
     local __err __token __rc
     __err="$(mktemp)"
@@ -451,6 +476,8 @@ google_token_into() {
         # Only the reason line: xtrace or stray stderr must never be mailed.
         fail_reason="$(grep -a '^Google token refresh failed' "$__err" | tail -n 1 | head -c 400)"
         [[ -n "$fail_reason" ]] || fail_reason="Google token refresh failed with no reason given"
+        fail_step="Google token refresh"
+        fail_fix="Export this profile's Google token again, then add it as a new version of the vault secret this job maps it from."
         __token=""
     fi
     rm -f "$__err"
@@ -498,6 +525,7 @@ runner_checkout() {
     fi
     if [[ -e "$path" ]]; then
         fail_reason="$path exists but has no $marker; refusing to clone over it"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     require "$keyvar" || return 1
@@ -507,10 +535,12 @@ runner_checkout() {
     if ! GIT_SSH_COMMAND="ssh -i $keyfile -o IdentitiesOnly=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o StrictHostKeyChecking=yes" \
         timeout 2m git clone --quiet --depth 1 "$repo" "$path" 2>"$WORK/git-stderr.txt"; then
         fail_reason="clone of $repo failed: $(head -c 300 "$WORK/git-stderr.txt")"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     if [[ ! -f "$path/$marker" ]]; then
         fail_reason="the clone of $repo is missing $marker"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     echo "repo: $repo at $(git -C "$path" log -1 --format='%h %s' | cut -c1-80)"
@@ -637,35 +667,49 @@ runner_each_line() {
         | xargs -0 -n 1 -P "$parallel" bash -c '(( $# )) || exit 0; '"$fn"' "$1"' _
 }
 
+# A refused Claude credential, as `claude -p` words it in its JSON or on
+# stderr. It is the same answer however often it is asked, and its text
+# ("API Error: 401 ...") would otherwise read as transient.
+RUNNER_CLAUDE_AUTH_RE='"api_error_status": *40[13]|OAuth token (revoked|has expired)|Failed to authenticate|authentication_error|Invalid API key'
+
+# Usage: runner_claude_refused
+# True when the answer in result, or what claude said on stderr, is a refused
+# credential.
+runner_claude_refused() {
+    { printf '%s' "${result:-}"; cat "$WORK/claude-stderr.txt" 2>/dev/null; } | grep -qiE "$RUNNER_CLAUDE_AUTH_RE"
+}
+
 # Usage: runner_claude <prompt> [claude -p arguments...]
 # One headless call with the retry the long sessions need: `claude -p` can die
 # mid stream and exit non zero, and a timeout or a transient API error is
 # worth one more attempt, while anything else is a real failure reported as
-# one rather than a second agent run burned on it. The result and its exit
-# status are saved on every attempt, successes and failures alike, so a replay
-# can put the very same JSON back through the reporting path. Sets result and
-# rc; sets fail_reason and returns non zero when the call did not complete.
-# ATTEMPT_TIMEOUT, MAX_ATTEMPTS and RETRY_BACKOFF_SECONDS come from the
-# environment when a runner needs other values.
+# one rather than a second agent run burned on it. An answer that exits zero
+# but says "is_error": true (an overloaded API can answer that way) is an
+# attempt that failed, judged by the same rules: a transient error is tried
+# again and a refused credential is not. The result and its exit status are
+# saved on every attempt, successes and failures alike, so a replay can put
+# the very same JSON back through the reporting path. Sets result and rc;
+# sets fail_reason, fail_step and fail_fix and returns non zero when the call
+# did not complete. ATTEMPT_TIMEOUT, MAX_ATTEMPTS and RETRY_BACKOFF_SECONDS
+# come from the environment when a runner needs other values.
 runner_claude() {
     local prompt="$1"; shift
     local stderr_file="$WORK/claude-stderr.txt" attempt=1 transient
     local attempt_timeout="${ATTEMPT_TIMEOUT:-45m}" max_attempts="${MAX_ATTEMPTS:-2}" backoff="${RETRY_BACKOFF_SECONDS:-15}"
     local transient_re='socket connection was closed|API Error|overloaded|Connection error|terminated'
-    # A refused credential is the same answer however often it is asked, and
-    # its text ("API Error: 401 ...") would otherwise read as transient.
-    local auth_re='"api_error_status": *40[13]|OAuth token (revoked|has expired)|Failed to authenticate|authentication_error|Invalid API key'
     while :; do
         echo "=== $(date -Iseconds) claude attempt $attempt/$max_attempts (timeout $attempt_timeout) ==="
         result="$(timeout "$attempt_timeout" claude -p "$prompt" "$@" --output-format json 2>"$stderr_file")"
         rc=$?
-        [[ $rc -eq 0 ]] && break
+        if [[ $rc -eq 0 ]] && ! jq -e 'type == "object" and .is_error == true' <<<"$result" >/dev/null 2>&1; then
+            break
+        fi
 
         transient=false
         if [[ $rc -eq 124 ]]; then
             transient=true
             echo "attempt $attempt timed out after $attempt_timeout"
-        elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$auth_re"; then
+        elif runner_claude_refused; then
             echo "attempt $attempt was refused its credential (exit $rc); not retried"
         elif { printf '%s' "$result"; cat "$stderr_file" 2>/dev/null; } | grep -qiE "$transient_re"; then
             transient=true
@@ -726,10 +770,23 @@ runner_replay() {
     runner_check_result
 }
 
+# Usage: runner_claude_failed
+# fail_step and fail_fix for a model call that did not complete: the step is
+# always the call, and the fix is said only for a refused credential, the one
+# cause whose remedy is known and the same every time.
+runner_claude_failed() {
+    fail_step="Claude model call"
+    fail_fix=""
+    if runner_claude_refused; then
+        fail_fix="Run claude setup-token, then add the token it prints as a new version of the vault secret this job maps its Claude token from."
+    fi
+}
+
 # The three things a result has to be before it is trusted: exit zero, JSON,
 # and a completed turn. Exit zero alone is not enough: `claude -p` answers an
 # unknown agent with exit 0 and "Unknown skill" as text. Permission denials are
-# logged here so a failure page's log tail carries them.
+# logged here so a failure page's log tail carries them. Every failure sets
+# fail_step and fail_fix through runner_claude_failed.
 runner_check_result() {
     if [[ $rc -ne 0 ]]; then
         # claude -p reports most failures in its JSON on stdout (a revoked
@@ -738,10 +795,12 @@ runner_check_result() {
         local said
         said="$(jq -r '[(.result // empty | tostring), (if .api_error_status then "status \(.api_error_status)" else empty end)] | join(", ")' <<<"$result" 2>/dev/null | head -c 300)"
         fail_reason="claude exited $rc: ${said:+$said }$(head -c 400 "$WORK/claude-stderr.txt" 2>/dev/null)"
+        runner_claude_failed
         return 1
     fi
     if ! jq -e . <<<"$result" >/dev/null 2>"$WORK/jq-stderr.txt"; then
         fail_reason="the agent returned output that is not JSON: $(head -c 300 <<<"$result")"
+        runner_claude_failed
         return 1
     fi
     local denials
@@ -754,6 +813,7 @@ runner_check_result() {
         local why
         why="$(jq -r '[(.subtype // "unknown"), (if .api_error_status then "status \(.api_error_status)" else empty end), (.result // empty | tostring | gsub("\n"; " ") | .[0:200])] | join(", ")' <<<"$result" 2>/dev/null)"
         fail_reason="claude did not complete: $why"
+        runner_claude_failed
         return 1
     fi
     local usage
@@ -849,6 +909,7 @@ runner_render() {
     meta="$(meta_line "$RESULT_JSON")"
     if ! runner_render_node html "$REPORT_HTML" "$WORK/render-stderr.txt" "$meta"; then
         fail_reason="render failed: $renderer_error"
+        fail_step="Page render"; fail_fix=""
         return 1
     fi
     echo "render: $(wc -c < "$REPORT_HTML" | tr -d ' ') bytes of html"
@@ -863,6 +924,7 @@ runner_render_text() {
     meta="$(meta_line "$RESULT_JSON")"
     if ! runner_render_node text "$REPORT_TEXT" "$WORK/render-text-stderr.txt" "$meta"; then
         fail_reason="plain text render failed: $renderer_error"
+        fail_step="Plain text render"; fail_fix=""
         return 1
     fi
     echo "render: $(wc -c < "$REPORT_TEXT" | tr -d ' ') bytes of text"

@@ -11,7 +11,7 @@
  */
 
 import { writeFileSync } from "node:fs";
-import { CASES, FORMATS, goldenPath, render } from "./fixtures.mjs";
+import { CASES, FAILURE, FORMATS, goldenPath, render, renderFailure } from "./fixtures.mjs";
 
 let failed = false;
 for (const { runner, fixture } of CASES) {
@@ -23,6 +23,17 @@ for (const { runner, fixture } of CASES) {
 			continue;
 		}
 		const path = goldenPath(fixture, format);
+		writeFileSync(path, result.stdout);
+		process.stdout.write(`wrote ${path} (${result.stdout.length} bytes)\n`);
+	}
+}
+{
+	const result = renderFailure();
+	if (result.status !== 0) {
+		process.stderr.write(`failure html: exit ${result.status}\n${result.stderr}`);
+		failed = true;
+	} else {
+		const path = goldenPath(FAILURE.golden, "html");
 		writeFileSync(path, result.stdout);
 		process.stdout.write(`wrote ${path} (${result.stdout.length} bytes)\n`);
 	}

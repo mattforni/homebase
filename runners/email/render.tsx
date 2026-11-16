@@ -14,7 +14,13 @@ import type { Page, RenderContext } from "./types";
  * than a draft:
  *
  *   node render.cjs failure html \
- *       --title Brief --eyebrow "Brief · 2026-W38" --reason "the render failed"
+ *       --title Brief --eyebrow "Brief · 2026-W38" --reason "the render failed" \
+ *       [--step "Page render"] [--fix "what the reader should do about it"]
+ *
+ * --step names what failed and --fix says what to do. With either one the page
+ * lays its facts out as labelled rows (What Failed, Why, What to Do, then the
+ * log); with neither it is the reason and the log, exactly as before they
+ * existed.
  *
  * The page leaves on stdout with exactly one trailing newline, which is what
  * every caller downstream counts on. A bundle answers to its own runner's
@@ -99,7 +105,11 @@ function stdin(what: string): string {
 	}
 }
 
-/* The failure page: the reason it gives and the log's tail beneath it. */
+/*
+ * The failure page: what failed, the reason it gives and what to do, and the
+ * log's tail beneath them. The step and the fix are optional and only passed
+ * on when given, so a caller that names neither gets the page it always got.
+ */
 function failure(args: Arguments): string {
 	const { positional, named } = args;
 	const format = positional[1] ?? "html";
@@ -115,6 +125,8 @@ function failure(args: Arguments): string {
 			eyebrowText: named.eyebrow ?? named.title,
 			reason: named.reason,
 			logTail: stdin("the log's tail"),
+			...(named.step ? { step: named.step } : {}),
+			...(named.fix ? { fix: named.fix } : {}),
 		});
 	} catch (error) {
 		die(`the failure render threw: ${error instanceof Error ? error.message : String(error)}`);
