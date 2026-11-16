@@ -737,7 +737,7 @@ runner_claude() {
 # fails here rather than after drafting a whole week (the first pipeline run
 # in its image, 2026-09-15: the agent's definition listed no Write tool, the
 # allowlist's Write($WORK/*) granted nothing, and the roster check failed
-# after 18 minutes and 11 USD). Sets fail_reason and returns non zero when
+# after 18 minutes and 11 USD). Sets fail_reason, fail_step and fail_fix and returns non zero when
 # the marker does not appear.
 runner_probe_write() {
     local marker="$WORK/.write-probe" out
@@ -745,6 +745,9 @@ runner_probe_write() {
     out="$(timeout 3m claude -p "Write the single word ok to the file $marker using the Write tool, then reply with the word done. Do nothing else." \
         --model haiku --output-format json "$@" 2>"$WORK/probe-stderr.txt")"
     if [[ ! -s "$marker" ]]; then
+        # A revoked credential fails here first; judge it as the real call is.
+        result="$out"; cp "$WORK/probe-stderr.txt" "$WORK/claude-stderr.txt" 2>/dev/null
+        runner_claude_failed
         fail_reason="the write probe failed: the agent could not write $marker (denials: $(jq -r '.permission_denials // [] | map(.tool_name) | unique | join(", ")' <<<"$out" 2>/dev/null); $(head -c 200 "$WORK/probe-stderr.txt"))"
         return 1
     fi

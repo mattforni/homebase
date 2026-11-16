@@ -218,6 +218,14 @@ page="$(PATH="$NODEBIN:$PATH" runner_failure_html)"
 check "with neither set, the bare <pre> is the reason and the log as before" test "$page" = "<pre>an invented reason"$'\n\n'"an invented log line</pre>"
 unset NODE_MODE
 
+export CLAUDE_MODE=revoked
+fail_reason=""; fail_step=""; fail_fix=""
+runner_probe_write >/dev/null 2>&1; got=$?
+check "a probe refused its credential fails" test "$got" -ne 0
+check "and names the model call as its step" test "$fail_step" = "Claude model call"
+case "$fail_fix" in *"claude setup-token"*) ok "and says what to do" ;; *) bad "and says what to do (got: $fail_fix)" ;; esac
+unset CLAUDE_MODE
+
 echo
 echo "$pass passed, $fail failed"
 (( fail == 0 ))
