@@ -176,12 +176,14 @@ eudy_pull() {
     rm -rf "$EUDY"
     if ! timeout 2m git clone --quiet --depth 1 "$EUDY_REPO" "$EUDY" 2>"$WORK/git-stderr.txt"; then
         fail_reason="Eudaimonia clone failed: $(head -c 300 "$WORK/git-stderr.txt")"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     # The block doc is the only thing the retro grades against; without it the
     # mail would still render, graded against nothing, so fail closed here.
     if [[ ! -f "$EUDY/$BLOCK_DOC" ]]; then
         fail_reason="Eudaimonia clone is missing $BLOCK_DOC"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     echo "eudy: $(git -C "$EUDY" log -1 --format='%h %s' | cut -c1-80)"
@@ -200,11 +202,13 @@ homebase_pull() {
         # Only a clone this script made, under its own work directory, is
         # ever removed. Anything else at the path was put there by someone.
         fail_reason="$HOMEBASE exists but has no $HOMEBASE_RULES; refusing to clone over it"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     [[ "$HOMEBASE" == "$WORK/homebase" ]] && rm -rf "$HOMEBASE"
     if ! GIT_SSH_COMMAND="" timeout 2m git clone --quiet --depth 1 "$HOMEBASE_REPO" "$HOMEBASE" 2>"$WORK/homebase-stderr.txt"; then
         fail_reason="homebase clone failed: $(head -c 300 "$WORK/homebase-stderr.txt")"
+        fail_step="Repository checkout"; fail_fix=""
         return 1
     fi
     if [[ ! -f "$HOMEBASE/$HOMEBASE_RULES" ]]; then
@@ -215,16 +219,30 @@ homebase_pull() {
 }
 
 # ---------- Strava ----------
+# The refresh's form body goes to curl on stdin, built by jq from the
+# environment, so the client secret and the refresh token are never on a
+# command line, where anyone who can list processes could read them. A failure
+# carries Strava's own named fields (its message, and which field it faults)
+# and nothing else of the body, as the Google refresh does.
 strava_pull() {
-    local resp
-    resp="$(curl -sS --max-time 30 -X POST https://www.strava.com/api/v3/oauth/token \
-        -d client_id="$STRAVA_CLIENT_ID" -d client_secret="$STRAVA_CLIENT_SECRET" \
-        -d grant_type=refresh_token -d refresh_token="$STRAVA_REFRESH_TOKEN")"
+    local resp why
+    resp="$(STRAVA_CLIENT_ID="$STRAVA_CLIENT_ID" STRAVA_CLIENT_SECRET="$STRAVA_CLIENT_SECRET" STRAVA_REFRESH_TOKEN="$STRAVA_REFRESH_TOKEN" \
+        jq -nj '@uri "client_id=\($ENV.STRAVA_CLIENT_ID)&client_secret=\($ENV.STRAVA_CLIENT_SECRET)&grant_type=refresh_token&refresh_token=\($ENV.STRAVA_REFRESH_TOKEN)"' \
+        | curl -sS --max-time 30 -X POST https://www.strava.com/api/v3/oauth/token --data-binary @- 2>"$WORK/strava-stderr.txt")"
     local access new_refresh
-    access="$(jq -r '.access_token // empty' <<<"$resp")"
-    new_refresh="$(jq -r '.refresh_token // empty' <<<"$resp")"
+    access="$(jq -r '.access_token // empty' <<<"$resp" 2>/dev/null)"
+    new_refresh="$(jq -r '.refresh_token // empty' <<<"$resp" 2>/dev/null)"
     if [[ -z "$access" ]]; then
-        fail_reason="Strava token refresh failed: $(jq -c 'del(.access_token, .refresh_token)' <<<"$resp" 2>/dev/null | head -c 300)"
+        why="$(jq -r 'if type == "object" and (.message | type) == "string" then ([.message] + [(.errors // [])[] | "\(.resource // "?") \(.field // "?") \(.code // "?")"] | join("; ") | gsub("[\\r\\n]"; " ") | .[0:200]) else empty end' <<<"$resp" 2>/dev/null)"
+        [[ -n "$why" || -z "$resp" ]] || why="an answer without a message field ($(printf '%s' "$resp" | wc -c | tr -d ' ') bytes, not quoted)"
+        [[ -n "$why" ]] || why="$(tail -n 1 "$WORK/strava-stderr.txt" 2>/dev/null | head -c 300)"
+        fail_reason="Strava token refresh failed: ${why:-no answer and no error from curl}"
+        fail_step="Strava token refresh"
+        # Only a refresh token Strava faults is mended by a new one.
+        fail_fix=""
+        if grep -qiE 'refresh_?token' <<<"$why"; then
+            fail_fix="Authorize the Strava app again, then add the refresh token it returns as a new version of the vault secret this job maps it from."
+        fi
         return 1
     fi
     if [[ -n "$new_refresh" && "$new_refresh" != "$STRAVA_REFRESH_TOKEN" ]]; then
@@ -291,6 +309,7 @@ ATELIC_TOKEN=""
 google_tokens() {
     if [[ -z "$GWS_OAUTH_TOKEN_PERSONAL_JSON" ]]; then
         fail_reason="no GWS_OAUTH_TOKEN_PERSONAL_JSON (or GWS_OAUTH_TOKEN_JSON) in the environment"
+        fail_step="Google token refresh"; fail_fix=""
         return 1
     fi
     google_token_into PERSONAL_TOKEN "$GWS_OAUTH_TOKEN_PERSONAL_JSON" || { fail_reason="personal token: $fail_reason"; return 1; }

@@ -682,7 +682,15 @@ RUNNER_CLAUDE_AUTH_RE='"api_error_status": *40[13]|OAuth token (revoked|has expi
 # True when the answer in result, or what claude said on stderr, is a refused
 # credential.
 runner_claude_refused() {
-    { printf '%s' "${result:-}"; cat "$WORK/claude-stderr.txt" 2>/dev/null; } | grep -qiE "$RUNNER_CLAUDE_AUTH_RE"
+    local said
+    # The status the answer carries decides it when there is one. The words
+    # are read only from an answer that reports an error, or from one that is
+    # not JSON at all, so an agent that merely writes about a failed login in
+    # a good answer is never taken for a refused credential.
+    jq -e 'type == "object" and (.api_error_status == 401 or .api_error_status == 403)' <<<"${result:-}" >/dev/null 2>&1 && return 0
+    said="$(jq -r 'if type == "object" then (if .is_error == true then (.result // "" | tostring) else "" end) else error("not an object") end' <<<"${result:-}" 2>/dev/null)" \
+        || said="${result:-}"
+    { printf '%s\n' "$said"; cat "$WORK/claude-stderr.txt" 2>/dev/null; } | grep -qiE "$RUNNER_CLAUDE_AUTH_RE"
 }
 
 # Usage: runner_claude <prompt> [claude -p arguments...]

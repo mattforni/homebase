@@ -74,6 +74,7 @@ case "${CLAUDE_MODE:-ok}" in
     overloaded) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}'; exit 1 ;;
     overloaded0) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}' ;;
     bad0)       printf '{"subtype":"success","is_error":true,"api_error_status":400,"result":"API Error: 400 invalid request"}' ;;
+    prose)      printf '{"subtype":"success","is_error":false,"result":"The log shows the job Failed to authenticate last week, an authentication_error."}' ;;
     revoked0)   printf '{"subtype":"success","is_error":true,"api_error_status":401,"result":"Failed to authenticate: OAuth token revoked. Please log in again."}' ;;
 esac
 EOF
@@ -252,6 +253,56 @@ export CLAUDE_MODE=bad0; : > "$CLAUDE_CALLS"; fail_reason=""; fail_step=""; fail
 runner_claude "a prompt" >/dev/null; got=$?
 check "an exit zero answer with a 400 fails and is tried once" test "$got" -ne 0 -a "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
 unset CLAUDE_MODE
+
+# A good answer that only writes about a failed login is not a refused credential.
+export CLAUDE_MODE=prose
+fail_reason=""; fail_step=""; fail_fix=""
+runner_probe_write >/dev/null 2>&1
+check "an answer that only mentions a failed login is not read as refused" test "$fail_step" = "Agent write probe" -a -z "$fail_fix"
+unset CLAUDE_MODE
+
+echo "the Strava refresh (runners/brief/entrypoint.sh)"
+
+# The function alone, lifted from the entrypoint, which cannot be sourced
+# whole without running a brief. The fake curl answers the token call from
+# STRAVA_MODE and the activities call with an empty list.
+# shellcheck disable=SC1090
+source <(sed -n '/^strava_pull() {$/,/^}$/p' "$ROOT/runners/brief/entrypoint.sh")
+cat > "$BIN/curl" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+    *oauth/token*)
+        printf '%s\n' "$*" > "$CURL_ARGS"; cat > "$CURL_STDIN"
+        case "${STRAVA_MODE:-ok}" in
+            ok)      printf '{"access_token":"ACCESSINVENTED","refresh_token":"STRAVAREFRESHINVENTED"}' ;;
+            revoked) printf '{"message":"Bad Request","errors":[{"resource":"RefreshToken","field":"refresh_token","code":"invalid"}],"echoed":"ECHOEDINVENTED"}' ;;
+            down)    echo "curl: (28) Operation timed out" >&2; exit 28 ;;
+        esac ;;
+    *) printf '[]' ;;
+esac
+EOF
+export CURL_ARGS="$SCRATCH/strava-args" CURL_STDIN="$SCRATCH/strava-stdin"
+export STRAVA_CLIENT_ID="12345" STRAVA_CLIENT_SECRET="STRAVASECRETINVENTED" STRAVA_REFRESH_TOKEN="STRAVAREFRESHINVENTED"
+export AFTER_EPOCH=0 BEFORE_EPOCH=1
+vault_write_back() { :; }
+
+export STRAVA_MODE=ok; fail_reason=""; fail_step=""; fail_fix=""
+strava_pull >/dev/null 2>&1; got=$?
+check "a good refresh pulls the activities" test "$got" -eq 0 -a -s "$WORK/strava.json"
+if grep -qE 'STRAVASECRETINVENTED|STRAVAREFRESHINVENTED' "$CURL_ARGS"; then bad "no Strava credential is in curl's arguments"; else ok "no Strava credential is in curl's arguments"; fi
+check "the Strava body goes to curl on stdin, with no trailing newline" test "$(cat "$CURL_STDIN"; printf x)" = "client_id=12345&client_secret=STRAVASECRETINVENTED&grant_type=refresh_token&refresh_token=STRAVAREFRESHINVENTEDx"
+
+export STRAVA_MODE=revoked; fail_reason=""; fail_step=""; fail_fix=""
+strava_pull >/dev/null 2>&1; got=$?
+check "a refused Strava refresh fails and names its step" test "$got" -ne 0 -a "$fail_step" = "Strava token refresh"
+check "its reason is Strava's named fields and nothing else" test "$fail_reason" = "Strava token refresh failed: Bad Request; RefreshToken refresh_token invalid"
+case "$fail_fix" in *"Authorize the Strava app again"*) ok "and it says what to do" ;; *) bad "and it says what to do (got: $fail_fix)" ;; esac
+
+export STRAVA_MODE=down; fail_reason=""; fail_step=""; fail_fix="stale"
+strava_pull >/dev/null 2>&1
+case "$fail_reason" in *"timed out"*) ok "a Strava refresh that timed out reports curl's own words" ;; *) bad "a Strava refresh that timed out reports curl's own words (got: $fail_reason)" ;; esac
+check "and offers no fix" test -z "$fail_fix"
+unset STRAVA_MODE
 
 echo
 echo "$pass passed, $fail failed"
