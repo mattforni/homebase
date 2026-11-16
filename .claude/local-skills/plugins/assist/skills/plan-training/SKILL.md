@@ -129,7 +129,7 @@ Ask how the heel and body felt, in one factual question.
 
 ### Phase 6: Carry Forward
 
-A load check flag or a heel signal tightens the next week's run shape. A session that keeps slipping means its slot needs moving or shrinking. Name what carries into scheduling, then hand it to week mode.
+A load check flag or a heel signal tightens the next week's run shape. Name what carries into scheduling, then hand it to week mode.
 
 ## Key Locations
 

@@ -245,7 +245,7 @@ Google Calendar is still used directly for non task events: meetings, transition
 
 **Recurring catch up/call tasks**: When a recurring task (e.g., "📱 Ryan Bruno", every 2 months) gets slotted:
 
-1. Create a new one off Todoist task with the specific date/time, duration, the `⏰ Scheduled` label, exactly one cognitive load label (🧠 Sharp / ⚖️ Medium / 🍃 Light), and its pillar project
+1. Create a new one off Todoist task with the specific date/time, the `⏰ Scheduled` label, exactly one cognitive load label (🧠 Sharp / ⚖️ Medium / 🍃 Light), and its pillar project; the length goes on through the calendar feed rule in learned-rules.md
 2. Complete the recurring task so the next occurrence auto generates on its cycle
 3. The one off task is the reminder for this week; the recurrence handles the next one
 
