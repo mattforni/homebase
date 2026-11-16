@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Test for the reasons a run reports when a credential fails, in
+# runners/lib/runner.sh. A run that dies on a token mails its reason, and
+# twice the reason was empty:
+#
+#   google_access_token   set fail_reason inside the caller's $(...), which is
+#                         its own shell, so the caller's copy stayed empty
+#   runner_claude         read a refused Claude token ("API Error: 401") as a
+#                         transient error, retried it, and reported only
+#                         stderr, which claude -p leaves empty
+#
+# A fake curl and a fake claude on PATH answer the way Google and claude -p
+# do. Nothing leaves the machine and every token here is invented.
+#
+# Checks: a minted token reaches the named variable; a refused refresh puts
+# Google's answer in fail_reason in the calling shell and on stderr, and never
+# a credential; a curl that cannot connect reports curl's own words; a bare
+# $(google_access_token) still prints the token; a refused Claude token is
+# tried once and named in fail_reason; an overloaded answer is still retried.
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRATCH=$(mktemp -d)
+trap 'rm -rf "$SCRATCH"' EXIT
+
+# shellcheck source=../../runners/lib/runner.sh
+. "$ROOT/runners/lib/runner.sh"
+
+pass=0; fail=0
+ok()   { printf '  \033[0;32mok\033[0m   %s\n' "$1"; pass=$((pass+1)); }
+bad()  { printf '  \033[0;31mFAIL\033[0m %s\n' "$1"; fail=$((fail+1)); }
+check() { local label="$1"; shift; if "$@"; then ok "$label"; else bad "$label"; fi; }
+
+BIN="$SCRATCH/bin"; mkdir -p "$BIN"
+WORK="$SCRATCH/work"; mkdir -p "$WORK"
+# runner_claude saves the result and its exit status where these point.
+export RESULT_JSON="$WORK/result.json" RESULT_RC="$WORK/result.rc"
+JSON='{"client_id":"id.invented","client_secret":"SECRETINVENTED","refresh_token":"1//REFRESHINVENTED","type":"authorized_user"}'
+
+# The fake curl answers from CURL_MODE; the fake claude from CLAUDE_MODE, and
+# counts its calls.
+cat > "$BIN/curl" <<'EOF'
+#!/usr/bin/env bash
+case "${CURL_MODE:-ok}" in
+    ok)      printf '{"access_token":"ya29.MINTEDINVENTED","expires_in":3599}' ;;
+    revoked) printf '{"error":"invalid_grant","error_description":"Token has been expired or revoked."}' ;;
+    down)    echo "curl: (6) Could not resolve host: oauth2.googleapis.com" >&2; exit 6 ;;
+esac
+EOF
+cat > "$BIN/claude" <<'EOF'
+#!/usr/bin/env bash
+echo x >> "$CLAUDE_CALLS"
+case "${CLAUDE_MODE:-ok}" in
+    ok)         printf '{"subtype":"success","is_error":false,"result":"done"}' ;;
+    revoked)    printf '{"subtype":"success","is_error":true,"api_error_status":401,"result":"Failed to authenticate: OAuth token revoked. Please log in again."}'; exit 1 ;;
+    overloaded) printf '{"subtype":"success","is_error":true,"result":"API Error: 529 overloaded"}'; exit 1 ;;
+esac
+EOF
+chmod +x "$BIN/curl" "$BIN/claude"
+export PATH="$BIN:$PATH" CLAUDE_CALLS="$SCRATCH/claude-calls" RETRY_BACKOFF_SECONDS=0
+
+echo "google_access_token"
+
+export CURL_MODE=ok
+fail_reason=""; TOKEN=""
+google_token_into TOKEN "$JSON"; got=$?
+check "a minted token reaches the named variable" test "$got" -eq 0 -a "$TOKEN" = "ya29.MINTEDINVENTED" -a -z "$fail_reason"
+check "a bare substitution still prints the token" test "$(google_access_token "$JSON" 2>/dev/null)" = "ya29.MINTEDINVENTED"
+
+export CURL_MODE=revoked
+fail_reason=""; TOKEN="stale"
+google_token_into TOKEN "$JSON"; got=$?
+check "a refused refresh returns non zero and empties the variable" test "$got" -ne 0 -a -z "$TOKEN"
+case "$fail_reason" in *invalid_grant*"expired or revoked"*) ok "Google's answer reaches fail_reason in the calling shell" ;; *) bad "Google's answer reaches fail_reason in the calling shell (got: $fail_reason)" ;; esac
+case "$fail_reason" in *SECRETINVENTED*|*REFRESHINVENTED*) bad "no credential is in the reason" ;; *) ok "no credential is in the reason" ;; esac
+err="$(google_access_token "$JSON" 2>&1 >/dev/null)"
+case "$err" in *invalid_grant*) ok "the reason is on stderr for a caller that reads it there" ;; *) bad "the reason is on stderr for a caller that reads it there (got: $err)" ;; esac
+
+export CURL_MODE=down
+fail_reason=""
+google_token_into TOKEN "$JSON"
+case "$fail_reason" in *"Could not resolve host"*) ok "a curl that cannot connect reports curl's own words" ;; *) bad "a curl that cannot connect reports curl's own words (got: $fail_reason)" ;; esac
+
+echo "runner_claude"
+
+export CLAUDE_MODE=revoked; : > "$CLAUDE_CALLS"; fail_reason=""
+runner_claude "a prompt" >/dev/null; got=$?
+check "a refused Claude token fails the call" test "$got" -ne 0
+check "a refused Claude token is tried once" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 1
+case "$fail_reason" in *"OAuth token revoked"*"status 401"*) ok "the refusal is named in fail_reason" ;; *) bad "the refusal is named in fail_reason (got: $fail_reason)" ;; esac
+
+export CLAUDE_MODE=overloaded; : > "$CLAUDE_CALLS"; fail_reason=""
+runner_claude "a prompt" >/dev/null
+check "an overloaded answer is still tried twice" test "$(wc -l < "$CLAUDE_CALLS" | tr -d ' ')" -eq 2
+case "$fail_reason" in *"529 overloaded"*) ok "the overloaded answer is named in fail_reason" ;; *) bad "the overloaded answer is named in fail_reason (got: $fail_reason)" ;; esac
+
+export CLAUDE_MODE=ok; : > "$CLAUDE_CALLS"; fail_reason=""
+runner_claude "a prompt" >/dev/null; got=$?
+check "a clean call still completes" test "$got" -eq 0 -a -z "$fail_reason"
+
+echo
+echo "$pass passed, $fail failed"
+(( fail == 0 ))

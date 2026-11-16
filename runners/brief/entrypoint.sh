@@ -289,18 +289,16 @@ vault_write_back() {
 PERSONAL_TOKEN=""
 ATELIC_TOKEN=""
 google_tokens() {
-    # google_access_token sets fail_reason inside the command substitution,
-    # where it cannot reach this shell, so the reason is spelled out here.
     if [[ -z "$GWS_OAUTH_TOKEN_PERSONAL_JSON" ]]; then
         fail_reason="no GWS_OAUTH_TOKEN_PERSONAL_JSON (or GWS_OAUTH_TOKEN_JSON) in the environment"
         return 1
     fi
-    PERSONAL_TOKEN="$(google_access_token "$GWS_OAUTH_TOKEN_PERSONAL_JSON")" || { fail_reason="the personal Google token could not be refreshed; the vaulted authorized_user JSON may be revoked or stale"; return 1; }
+    google_token_into PERSONAL_TOKEN "$GWS_OAUTH_TOKEN_PERSONAL_JSON" || { fail_reason="the personal Google token could not be refreshed: $fail_reason"; return 1; }
     if [[ -n "${GWS_OAUTH_TOKEN_ATELIC_JSON:-}" ]]; then
-        ATELIC_TOKEN="$(google_access_token "$GWS_OAUTH_TOKEN_ATELIC_JSON")" || {
-            echo "atelic Google token: could not be refreshed; the Atelic inbox is not read this run"
-            pull_note inbox-atelic failed "the Atelic mailbox was not read; its token could not be refreshed"
-            ATELIC_TOKEN=""
+        google_token_into ATELIC_TOKEN "$GWS_OAUTH_TOKEN_ATELIC_JSON" || {
+            echo "atelic Google token: could not be refreshed ($fail_reason); the Atelic inbox is not read this run"
+            pull_note inbox-atelic failed "the Atelic mailbox was not read; its token could not be refreshed: $fail_reason"
+            fail_reason=""
         }
     else
         pull_note inbox-atelic failed "the Atelic mailbox was not read; no GWS_OAUTH_TOKEN_ATELIC_JSON in the environment"
