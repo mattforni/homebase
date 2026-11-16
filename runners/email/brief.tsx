@@ -14,11 +14,9 @@ import {
 	RecordStack,
 	type RecordStackItem,
 	Records,
-	Row,
 	recordStackText,
 	rpad,
 	Scoreboard,
-	StatStrip,
 	SubEyebrow,
 	TargetRow,
 	textRead,
@@ -43,18 +41,19 @@ import {
 	weekdayName,
 	weekNumber,
 } from "./jq";
-import { RecordsRow, SpacerRow, StripedTable } from "./local";
+import { HeadEyebrow, Mark, RecordsRow, SpacerRow, StripedTable } from "./local";
 import type { Page, RenderContext } from "./types";
 
 /*
  * The Brief, made brief again (ATE-675, 2026-11-09). Two halves, in reading
  * order. Last Week is summaries: the movement scoreboard with takeout on it,
- * the month so far against the pace with the delta in the table, the tasks
- * completed, then the sessions as a striped data table. This Week is What I
- * Did (a ledger of the calls made, one line per source, with the few rows
- * worth a glance and the rules those calls propose), What I Need From You
- * (the decision rows alone, grouped by source and numbered within the group),
- * and This Run.
+ * the day strip, the month so far against the pace with the delta in the
+ * table, and the tasks completed. This Week is What I Did (a ledger of the
+ * calls made, one line per source with any pull it missed, the few rows worth
+ * a glance, and the budget and email rules those calls propose), and What I
+ * Need From You (the decision rows alone, grouped by source and numbered
+ * within the group). This Run left the mail in W47; what it said that nothing
+ * else did rides under the ledger.
  *
  * The posture is trust but verify: the runner makes the call wherever a plain
  * read exists, the mail counts it, and Forni corrects on Monday. A row waits
@@ -123,18 +122,23 @@ const KINDS: Record<string, string> = {
 };
 
 /**
- * PT is not a lift. It is logged as WeightTraining under the name "2026 PT"
- * or "2026 PT Achilles", so it is matched on the name, never the sport type,
- * and graded against its own target (Forni, W41, when the retro counted a PT
- * session as the week's one lift).
+ * PT is not reported in the brief at all (Forni, W47): no coverage row, no
+ * entry on the day strip, no target. It is still not a lift (W41, when the
+ * retro counted a PT session as the week's one lift), so a PT session is
+ * left out of the week rather than recounted as one. It is logged as
+ * WeightTraining under the name "2026 PT" or "2026 PT Achilles", so it is
+ * matched on the name, never the sport type.
  */
 const PT_NAME = /^(\d{4}\s+)?PT\b(?!\.)/;
 
 /** The sport types a PT session is logged under; a Run named "PT Reyes" stays a run. */
 const PT_SPORTS = new Set(["WeightTraining", "Workout"]);
 
+function isPT(activity: Activity): boolean {
+	return PT_SPORTS.has(alt(activity.sportType, "")) && PT_NAME.test(cleanName(activity).trim());
+}
+
 function kindOf(activity: Activity): string {
-	if (PT_SPORTS.has(alt(activity.sportType, "")) && PT_NAME.test(cleanName(activity).trim())) return "PT";
 	const mapped = KINDS[alt(activity.sportType, "")];
 	return mapped === undefined ? alt(activity.sportType, "Session") : mapped;
 }
@@ -164,7 +168,7 @@ type Session = {
 };
 
 function sessions(draft: BriefDraft): Session[] {
-	const activities = [...alt(draft.strava, [])];
+	const activities = alt(draft.strava, []).filter((activity) => !isPT(activity));
 	activities.sort((a, b) => {
 		const left = alt(a.startDateLocal, "");
 		const right = alt(b.startDateLocal, "");
@@ -232,9 +236,11 @@ function modalityLabel(value: unknown): string {
 		.join(" ");
 }
 
-/** The model's coverage, with its note. */
+/** The model's coverage, with its note; a PT row from an older draft or a slip is left out. */
 function movementTargets(draft: BriefDraft): Target[] {
-	return alt(draft.coverage, []).map((row) => ({
+	return alt(draft.coverage, [])
+		.filter((row) => !/^pt$/i.test(jqToString(alt(row.modality, "")).trim()))
+		.map((row) => ({
 		label: modalityLabel(row.modality),
 		logged: num(row.logged),
 		target: num(row.target),
@@ -438,8 +444,8 @@ function writesOn(draft: BriefDraft): boolean {
 
 /*
  * Which pull feeds which source, matched on the front of the pull's name
- * (ynab covers ynab-personal and ynab-atelic). A pull named nothing here
- * still shows in This Run.
+ * (ynab covers ynab-personal and ynab-atelic). A missed pull named nothing
+ * here is listed under the ledger (strayPulls), so none goes unsaid.
  */
 const SOURCE_PULLS: Record<string, string[]> = {
 	Money: ["ynab", "spend", "planning"],
@@ -476,6 +482,14 @@ function notices(draft: BriefDraft, source: string): string[] {
 	return missedPulls(draft)
 		.filter((pull) => prefixes.some((prefix) => asciiDowncase(str(pull.name)).startsWith(prefix)))
 		.map((pull) => (str(pull.note) === "" ? "Not read this run." : `Not read this run: ${str(pull.note)}`));
+}
+
+/** The missed pulls no source claims, which would otherwise go unsaid. */
+function strayPulls(draft: BriefDraft): Pull[] {
+	const prefixes = Object.values(SOURCE_PULLS).flat();
+	return missedPulls(draft).filter(
+		(pull) => !prefixes.some((prefix) => asciiDowncase(str(pull.name)).startsWith(prefix)),
+	);
 }
 
 /** The dropped writes of one kind, each named by the row it came from when the draft has it. */
@@ -727,10 +741,13 @@ function taskRows(draft: BriefDraft, which: string): TaskRow[] {
 /**
  * A titled block inside a card: a table or a stack, or the plain sentence
  * that stands in when it has nothing. `notes` are short asides that sit
- * under the block, eyebrow first.
+ * under the block, eyebrow first. A part with no title opens on a spacer
+ * instead of an eyebrow, and a `head` part wears the accent on its title,
+ * the orange header the movement table opens on (Forni, W47).
  */
 type Part = {
 	title: string;
+	head?: boolean;
 	html: ReactNode | null;
 	text: string | null;
 	empty: string;
@@ -753,7 +770,13 @@ function partsHTML(parts: Part[]): ReactNode {
 		return (
 			// biome-ignore lint/suspicious/noArrayIndexKey: a part's position is its identity
 			<Fragment key={index}>
-				<SubEyebrow text={part.title} />
+				{part.title === "" ? (
+					<SpacerRow />
+				) : part.head ? (
+					<HeadEyebrow text={part.title} />
+				) : (
+					<SubEyebrow text={part.title} />
+				)}
 				{part.html === null ? (
 					<EmptyRow text={part.empty} />
 				) : (
@@ -777,7 +800,7 @@ function partsHTML(parts: Part[]): ReactNode {
 function partsText(parts: Part[]): string {
 	return parts
 		.map((part) => {
-			let block = `\n${part.title}\n${part.text === null ? wrap(part.empty) : part.text}\n`;
+			let block = `\n${part.title === "" ? "" : `${part.title}\n`}${part.text === null ? wrap(part.empty) : part.text}\n`;
 			for (const note of part.notes ?? []) block += `\n${note.eyebrow}\n${wrap(note.text)}\n`;
 			return block;
 		})
@@ -791,14 +814,15 @@ function partsText(parts: Part[]): string {
  * the pace, and the delta against it, green under and red over (Forni,
  * 2026-11-09). Inflows are a total, never a list; trips are gone; outliers
  * stay as a small table under it when there are any, since they are what
- * keeps the typical line honest. The warning sign rides on the eyebrow when
- * an account is in error, with the warning itself at the bottom.
+ * keeps the typical line honest. The table carries no eyebrow of its own
+ * (Forni, W47: its columns say what it is), and an account in error is the
+ * warning at the bottom.
  */
 function spendParts(draft: BriefDraft): Part[] {
 	const budgets = spendBudgets(draft);
 	const read = budgets.filter((budget) => budget.spend !== null);
 	if (read.length === 0) {
-		return [{ title: "Money", html: null, text: null, empty: "Spend was not read this run." }];
+		return [{ title: "", html: null, text: null, empty: "Spend was not read this run." }];
 	}
 	const notes: Part["notes"] = [];
 	for (const missing of budgets.filter((budget) => budget.spend === null)) {
@@ -814,7 +838,7 @@ function spendParts(draft: BriefDraft): Part[] {
 	});
 	const parts: Part[] = [
 		{
-			title: `Money${errors === "" ? "" : " · ⚠️"}`,
+			title: "",
 			html: (
 				<StripedTable
 					columns={[
@@ -952,7 +976,14 @@ function taskName(row: InboxRow): string {
 
 function ledger(draft: BriefDraft): Ledger[] {
 	const lines: Ledger[] = [];
-	const notice = (source: string) => notices(draft, source)[0];
+	// Every pull a source missed is on its line, since the ledger is now the
+	// only place a missed pull is named (This Run left the mail in W47).
+	const notice = (source: string) => {
+		const all = notices(draft, source);
+		if (all.length <= 1) return all[0];
+		const reasons = all.map((line) => line.replace(/^Not read this run[:.]\s*/, "")).filter((reason) => reason !== "");
+		return reasons.length === 0 ? all[0] : `Not read this run: ${reasons.join("; ")}`;
+	};
 	const money = moneyDone(draft).length;
 	lines.push({ source: "Money", did: notice("Money") ?? `${plural(money, "row", "rows")} categorized` });
 	// Money and email have an apply path, so their lines say what was done;
@@ -1018,7 +1049,7 @@ function emailRules(draft: BriefDraft): RuleRow[] {
 }
 
 /**
- * The money rules as a table Forni reads at a glance: the budget, the payee
+ * The budget rules as a table Forni reads at a glance: the budget, the payee
  * as it will be named from now on, and the category it takes. The descriptor
  * a renamed payee came in under is not worth a column (Forni, 2026-11-09).
  */
@@ -1026,7 +1057,8 @@ function moneyRulesPart(draft: BriefDraft): Part {
 	const rows = moneyRules(draft);
 	const payee = (row: RuleRow) => (str(row.rename) === "" ? str(row.payee) : str(row.rename));
 	return {
-		title: `Money Rules · ${rows.length}`,
+		title: `Budget Rules · ${rows.length}`,
+		head: true,
 		html:
 			rows.length === 0 ? null : (
 				<Records
@@ -1055,6 +1087,11 @@ function check(value: unknown): string {
 	return value === true ? "✓" : "✗";
 }
 
+/** A check cell, the mark drawn green for yes and red for no in the html. */
+function checkCell(value: unknown): { value: string; html: ReactNode } {
+	return { value: check(value), html: <Mark yes={value === true} /> };
+}
+
 /** The email rules as a table of checks: the labels added, the star set, read, archived. */
 function emailRulesPart(draft: BriefDraft): Part {
 	const rows = emailRules(draft);
@@ -1062,6 +1099,7 @@ function emailRulesPart(draft: BriefDraft): Part {
 	const star = (row: RuleRow) => (str(row.star) === "" ? "✗" : str(row.star));
 	return {
 		title: `Email Rules · ${rows.length}`,
+		head: true,
 		html:
 			rows.length === 0 ? null : (
 				<Records
@@ -1077,9 +1115,9 @@ function emailRulesPart(draft: BriefDraft): Part {
 						{ value: str(row.mailbox), muted: true },
 						{ value: str(row.sender) },
 						{ value: labels(row) },
-						{ value: star(row), muted: str(row.star) === "" },
-						{ value: check(row.markRead), muted: row.markRead !== true },
-						{ value: check(row.archive), muted: row.archive !== true },
+						str(row.star) === "" ? checkCell(false) : { value: star(row) },
+						checkCell(row.markRead),
+						checkCell(row.archive),
 					])}
 				/>
 			),
@@ -1095,9 +1133,46 @@ function emailRulesPart(draft: BriefDraft): Part {
 	};
 }
 
-/** The parts under the ledger: the big money rows, anything the apply dropped, and the rules the week proposes. */
+/**
+ * The ledger as the first part of This Week, under the accent header. What
+ * This Run used to hold that is not said elsewhere rides under it as notes:
+ * the model's blind spots, which name a gap in what was read, and any missed
+ * pull no source line claims (Forni, W47, when This Run left the mail).
+ */
+function ledgerPart(draft: BriefDraft): Part {
+	const lines = ledger(draft);
+	const notes: Part["notes"] = [];
+	const blindSpots = str(draft.blindSpots).trim();
+	if (blindSpots !== "") notes.push({ eyebrow: "Blind Spots", text: blindSpots, accented: false });
+	for (const pull of strayPulls(draft)) {
+		notes.push({
+			eyebrow: str(pull.name),
+			text: str(pull.note) === "" ? "Not read this run." : `Not read this run: ${str(pull.note)}`,
+			accented: false,
+		});
+	}
+	return {
+		title: "The Ledger",
+		head: true,
+		html: (
+			<Records
+				columns={[{ label: "Source" }, { label: "Did" }]}
+				rows={lines.map((line) => [{ value: line.source, muted: true }, { value: line.did }])}
+			/>
+		),
+		text: textTable(
+			["Source", "Did"],
+			lines.map((line) => [line.source, line.did]),
+			[],
+		),
+		empty: "",
+		notes,
+	};
+}
+
+/** This Week's parts: the ledger, the big money rows, anything the apply dropped, and the rules the week proposes. */
 function didParts(draft: BriefDraft): Part[] {
-	const parts: Part[] = [];
+	const parts: Part[] = [ledgerPart(draft)];
 	const big = bigRows(draft).map(moneyRecord);
 	if (big.length > 0) parts.push(stackPart("Big Rows", big, ""));
 	const drops = [...droppedMoney(draft), ...droppedInbox(draft)];
@@ -1145,25 +1220,6 @@ function needs(draft: BriefDraft): Needs[] {
 		}));
 }
 
-/* ---------- this run ---------- */
-
-function runStats(draft: BriefDraft): { label: string; n: string }[] {
-	return [
-		{ label: "Writes", n: writesOn(draft) ? "On" : "Off" },
-		{ label: "YNAB Applied", n: numberString(list(draft.applied?.ynab).length) },
-		{ label: "Mail Applied", n: numberString(list(draft.applied?.gmail).length) },
-		{ label: "Dropped", n: numberString(list(draft.applied?.dropped).length) },
-	];
-}
-
-function missedRecords(draft: BriefDraft): RecordStackItem[] {
-	return missedPulls(draft).map((pull) => ({
-		title: str(pull.name),
-		meta: [],
-		note: str(pull.note) === "" ? undefined : str(pull.note),
-	}));
-}
-
 /* ---------- html ---------- */
 
 export function briefHTML(input: unknown, context: RenderContext): string {
@@ -1172,9 +1228,6 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 	const movement = [...movementTargets(draft), takeoutTarget(draft)];
 	const planning = planningWeek(context);
 	const groups = needs(draft);
-	const lines = ledger(draft);
-	const blindSpots = jqToString(alt(draft.blindSpots, ""));
-	const missed = missedRecords(draft);
 
 	return renderEmail({
 		title: `${planning} Brief`,
@@ -1202,7 +1255,6 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 								))}
 							</Scoreboard>
 							<SpacerRow />
-							<SubEyebrow text="By Day" />
 							<DayStrip days={days(context.monday, week)} last={false} />
 							{notices(draft, "Money").map((note, index) => (
 								// biome-ignore lint/suspicious/noArrayIndexKey: a notice's position is its identity
@@ -1217,13 +1269,6 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 				<Eyebrow text="This Week" />
 				<Card>
 					<ReadBlock text={didLine(draft)} divider={true} />
-					<SubEyebrow text="The Ledger" />
-					<RecordsRow last={false}>
-						<Records
-							columns={[{ label: "Source" }, { label: "Did" }]}
-							rows={lines.map((line) => [{ value: line.source, muted: true }, { value: line.did }])}
-						/>
-					</RecordsRow>
 					{partsHTML(didParts(draft))}
 				</Card>
 
@@ -1240,24 +1285,6 @@ export function briefHTML(input: unknown, context: RenderContext): string {
 								</RecordsRow>
 							</Fragment>
 						))
-					)}
-				</Card>
-
-				<Eyebrow text="This Run" />
-				<Card>
-					<Row last={false}>
-						<StatStrip stats={runStats(draft)} />
-					</Row>
-					{blindSpots === "" ? null : <ReadBlock text={blindSpots} divider={true} />}
-					{missed.length === 0 ? (
-						<EmptyRow text="Every pull was read." />
-					) : (
-						<>
-							<SubEyebrow text={`Not Read · ${missed.length}`} />
-							<RecordsRow last={true}>
-								<RecordStack records={missed} />
-							</RecordsRow>
-						</>
 					)}
 				</Card>
 
@@ -1278,7 +1305,7 @@ export function briefText(input: unknown, context: RenderContext): string {
 	let out = `ATELIC · BRIEF · WEEK ${weekNumber(planning)}\n`;
 	out += textSection(`Last Week · Week ${weekNumber(context.week)}`);
 	out += `Movement\n${movement.map(textTarget).join("\n")}\n`;
-	out += `\nBy Day\n${days(context.monday, week)
+	out += `\n${days(context.monday, week)
 		.map((day) => {
 			const entries = day.entries
 				.map((entry) => `${entry.name}${entry.strong ? " (S)" : ""}`)
@@ -1291,11 +1318,6 @@ export function briefText(input: unknown, context: RenderContext): string {
 	out += `\n${wrap(completedLine(draft))}\n`;
 
 	out += textSection("This Week") + textRead(didLine(draft));
-	out += `\nThe Ledger\n${textTable(
-		["Source", "Did"],
-		ledger(draft).map((line) => [line.source, line.did]),
-		[],
-	)}\n`;
 	out += partsText(didParts(draft));
 
 	out += textSection("What I Need From You");
@@ -1303,15 +1325,6 @@ export function briefText(input: unknown, context: RenderContext): string {
 	if (groups.length === 0) out += `${wrap(needsEmptyLine(draft))}\n`;
 	else for (const group of groups) out += `\n${group.name} · ${group.records.length}\n${recordStackText(group.records)}\n`;
 
-	out += textSection("This Run");
-	out += runStats(draft)
-		.map((stat) => `  ${rpad(stat.label, 16)}${stat.n}`)
-		.join("\n");
-	out += "\n";
-	const blindSpots = jqToString(alt(draft.blindSpots, ""));
-	if (blindSpots !== "") out += `\nBlind Spots\n${wrap(blindSpots)}\n`;
-	const missed = missedRecords(draft);
-	out += missed.length === 0 ? "\n  Every pull was read.\n" : `\nNot Read · ${missed.length}\n${recordStackText(missed)}\n`;
 	out += `\n\n${context.meta}\n`;
 	return out;
 }

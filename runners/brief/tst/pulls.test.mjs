@@ -14,8 +14,76 @@ test("unemployment insurance mail is never archived by the runner", () => {
     assert.equal(NEVER_ARCHIVE.test("Claude <claude@atelic.me> 2026-W43 Recruiter"), true);
     assert.equal(NEVER_ARCHIVE.test("Blue Spruce Maids <info@bluesprucemaids.com> Cleaning"), false);
 });
+
+test("a Drive share notice is never archived by the runner", () => {
+    assert.equal(NEVER_ARCHIVE.test('Pat Example (via Google Drive) <drive-shares-dm-noreply@google.com> Pat Example shared a folder with you'), true);
+    assert.equal(NEVER_ARCHIVE.test("Google Drive <drive-shares-noreply@google.com> Invented Plans"), true);
+    assert.equal(NEVER_ARCHIVE.test('someone@example.com Document shared with you: "Invented Notes"'), true);
+    assert.equal(NEVER_ARCHIVE.test("Google <no-reply@accounts.google.com> Security alert"), false);
+});
 import { shapeIssue } from "../linear.mjs";
-import { filterDate, priorityWord, scheduleFilter, shapeTask } from "../todoist.mjs";
+import { completed, completedRow, filterDate, priorityWord, scheduleFilter, shapeTask } from "../todoist.mjs";
+
+/*
+ * The completed count reads the activity log, because the completed tasks
+ * listing never holds a checked off occurrence of a recurring task (W47:
+ * the listing said 3 for a week the log put at 23). Invented events, in the
+ * log's own snake case shape, newest first.
+ */
+const completion = (id, at, content, recurring) => ({
+    object_type: "item", object_id: id, event_type: "completed", event_date: at, parent_project_id: "p1",
+    extra_data: { content, labels: ["🧠 Sharp"], priority: 4, is_recurring: recurring },
+});
+
+test("a completion event becomes a completed row, and one outside the window does not", () => {
+    const projects = new Map([["p1", "🧘 Contemplation"]]);
+    const since = Date.parse("2026-11-09T00:00:00-07:00");
+    const until = Date.parse("2026-11-16T00:00:00-07:00");
+    const row = completedRow(completion("t1", "2026-11-12T13:39:19.870000Z", "🧘 Invented Practice", true), since, until, projects);
+    assert.deepEqual(row, {
+        id: "t1", content: "🧘 Invented Practice", project: "🧘 Contemplation", labels: ["🧠 Sharp"],
+        priority: "p1", completedAt: "2026-11-12T13:39:19.870000Z", recurring: true,
+    });
+    assert.equal(completedRow(completion("t2", "2026-11-16T07:00:00Z", "the next week", false), since, until, projects), null, "Monday midnight Denver is the next week");
+    assert.equal(completedRow(completion("t3", "2026-11-09T06:59:59Z", "the week before", false), since, until, projects), null, "and Sunday night before it is the last one");
+});
+
+test("the completed walk pages the log back to the window's start and counts every check off", async () => {
+    const pages = [
+        { results: [
+            completion("late", "2026-11-16T15:00:00Z", "after the window", true),
+            completion("r1", "2026-11-15T20:09:38Z", "🧘 Invented Recurring", true),
+            completion("r1", "2026-11-14T05:45:25Z", "🧘 Invented Recurring", true),
+        ], next_cursor: "c2" },
+        { results: [
+            completion("o1", "2026-11-11T15:36:58Z", "🔑 Invented One Off", false),
+            completion("early", "2026-11-08T22:00:00Z", "before the window", false),
+        ], next_cursor: "c3" },
+        { results: [completion("never", "2026-11-01T12:00:00Z", "a page that must not be read", false)], next_cursor: null },
+    ];
+    const asked = [];
+    const realFetch = globalThis.fetch;
+    const realToken = process.env.TODOIST_API_TOKEN;
+    process.env.TODOIST_API_TOKEN = "invented";
+    globalThis.fetch = async (url) => {
+        const u = new URL(url);
+        asked.push(u);
+        const page = pages[asked.length - 1];
+        return { ok: true, json: async () => page };
+    };
+    try {
+        const rows = await completed("2026-11-16", new Map());
+        assert.deepEqual(rows.map((r) => r.id), ["r1", "r1", "o1"], "a recurring task checked off twice is two rows");
+        assert.equal(asked.length, 2, "the walk stops once a page reaches past the window's start");
+        assert.equal(asked[0].pathname, "/api/v1/activities");
+        assert.equal(asked[0].searchParams.get("object_event_types"), '["item:completed"]');
+        assert.equal(asked[0].searchParams.has("date_from"), false, "never a date_from, which the plan's history can refuse");
+        assert.equal(asked[1].searchParams.get("cursor"), "c2");
+    } finally {
+        globalThis.fetch = realFetch;
+        if (realToken === undefined) delete process.env.TODOIST_API_TOKEN; else process.env.TODOIST_API_TOKEN = realToken;
+    }
+});
 
 test("the Schedule filter's relative bound becomes the named Monday", () => {
     assert.match(scheduleFilter("2026-10-26"), /due before: 10\/26\/2026$/);

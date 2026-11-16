@@ -48,6 +48,45 @@ export function SessionsRow({ children }: SessionsRowProps) {
 	);
 }
 
+export type HeadEyebrowProps = { text: string };
+
+/**
+ * A table's title in the accent, the header the movement scoreboard opens on
+ * (its GroupRow), as a card row with SubEyebrow's spacing. The ledger and the
+ * two rules tables wear it (Forni, W47); the columns under it carry the rule.
+ */
+export function HeadEyebrow({ text }: HeadEyebrowProps) {
+	const { palette, fonts } = useEmailTheme();
+	return (
+		<tr>
+			<td
+				style={{
+					padding: "18px 24px 6px",
+					fontFamily: fonts.mono,
+					fontSize: "11px",
+					letterSpacing: "0.12em",
+					textTransform: "uppercase",
+					color: palette.accent,
+				}}
+			>
+				{text}
+			</td>
+		</tr>
+	);
+}
+
+export type MarkProps = { yes: boolean };
+
+/**
+ * A check or a cross in a table of checks: the palette's own green for yes
+ * and red for no, the pair the money table's delta already reads in, so both
+ * hold on the cream (Forni, W47).
+ */
+export function Mark({ yes }: MarkProps) {
+	const { palette } = useEmailTheme();
+	return <span style={{ color: yes ? palette.up : palette.down }}>{yes ? "✓" : "✗"}</span>;
+}
+
 /** The empty row that stands in for the what moved bar, so the card keeps its foot. */
 export function SpacerRow() {
 	return (

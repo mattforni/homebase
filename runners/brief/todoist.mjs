@@ -98,35 +98,67 @@ const denverMidnight = (iso) => {
 };
 
 /**
+ * One completion event from the activity log as a completed row, or null
+ * when it falls outside [since, until). The event's extra data carries the
+ * task as it stood when it was checked off, so a recurring occurrence keeps
+ * its own content, labels and priority, and so does a task deleted since.
+ */
+export function completedRow(event, sinceMs, untilMs, projectNames) {
+    const at = Date.parse(event.event_date || "");
+    if (Number.isNaN(at) || at < sinceMs || at >= untilMs) return null;
+    const extra = event.extra_data || {};
+    return {
+        id: event.object_id || "",
+        content: extra.content || "",
+        project: projectNames.get(event.parent_project_id) || "",
+        labels: extra.labels || [],
+        priority: priorityWord(extra.priority),
+        completedAt: event.event_date,
+        recurring: Boolean(extra.is_recurring),
+    };
+}
+
+/**
  * The tasks completed in the closed week, the seven days before the landing
  * Monday, for the retro's "what I ended up doing" summary (Forni,
- * 2026-11-09). A recurring task completed twice is two rows. The endpoint is
- * the v1 completed by completion date listing; a failure here costs the
- * summary and never the pull.
+ * 2026-11-09). Each check off is a row, so a recurring task completed twice
+ * is two rows.
+ *
+ * The source is the activity log's task completed events, not the completed
+ * tasks listing: checking off an occurrence of a recurring task rolls its due
+ * date forward and leaves the task open, so the listing never holds it, and
+ * a task deleted after it was done drops out of the listing too. For W46 the
+ * listing returned 3 completions where the log held 23 (19 of them
+ * recurring), W47's feedback that the count was far too low.
+ *
+ * The log is read newest first and walked back to the window's start, never
+ * asked for it by date_from: Todoist refuses a date_from past the plan's
+ * activity history with a 403, while paging back from now simply ends where
+ * the history does. The brief fires the night before the week opens, so the
+ * whole closed week is inside that history. A failure here costs the summary
+ * and never the pull.
  */
-async function completed(monday, projectNames) {
-    const since = shiftDays(monday, -7);
+export async function completed(monday, projectNames) {
+    const sinceMs = Date.parse(denverMidnight(shiftDays(monday, -7)));
+    const untilMs = Date.parse(denverMidnight(monday));
     const out = [];
     let cursor = null;
     do {
-        const page = await get("tasks/completed/by_completion_date", {
-            since: denverMidnight(since),
-            until: denverMidnight(monday),
+        const page = await get("activities", {
+            object_event_types: JSON.stringify(["item:completed"]),
             cursor,
-            limit: 200,
+            limit: 100,
         });
-        out.push(...(page.items || page.results || []));
-        cursor = page.next_cursor || null;
+        const events = page.results || [];
+        for (const event of events) {
+            const row = completedRow(event, sinceMs, untilMs, projectNames);
+            if (row) out.push(row);
+        }
+        const oldest = Date.parse(events[events.length - 1]?.event_date || "");
+        cursor = events.length > 0 && !(oldest < sinceMs) ? page.next_cursor || null : null;
+        if (!page.next_cursor && !(oldest < sinceMs)) log("the activity history ends inside the week; the earliest completions may be missing");
     } while (cursor);
-    return out.map((t) => ({
-        id: t.id || t.task_id || "",
-        content: t.content || "",
-        project: projectNames.get(t.project_id) || "",
-        labels: t.labels || [],
-        priority: priorityWord(t.priority),
-        completedAt: t.completed_at || "",
-        recurring: Boolean(t.due?.is_recurring),
-    }));
+    return out;
 }
 
 async function pull(outDir, monday, before) {
