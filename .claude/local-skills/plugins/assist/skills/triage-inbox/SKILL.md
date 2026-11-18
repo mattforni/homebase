@@ -129,7 +129,7 @@ gws gmail +send --to "<unsubscribe-address>" --subject "<decoded-encoded-subject
 
 ### Filters
 
-For a recurring sender worth a filter, propose it during review; on approval, create it and record it under `## Created Filters` in email-rules.md to prevent duplicates. Default action: label, mark read, skip inbox.
+For a recurring sender worth a filter, propose it during review; on approval, check the live list (`GWS_FORCE_PROFILE=<profile> gws gmail users settings filters list --params '{"userId":"me"}'`) for a duplicate, then create it. Gmail is the record; no list is kept here. Default action: label and skip inbox (add `UNREAD` to `removeLabelIds` only when the sender should also be marked read).
 
 ```bash
 gws gmail users settings filters create --params '{"userId":"me"}' --json '{"criteria":{"from":"<sender>"},"action":{"addLabelIds":["<LABEL_ID>"],"removeLabelIds":["INBOX"]}}' 2>&1 | grep -v "^Using"
