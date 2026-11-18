@@ -22,7 +22,7 @@ Read every source below before touching a single message; they override your jud
 
 - **The email rules**: `~/.claude/local-skills/plugins/assist/reference/email-rules.md`.
   Star semantics (who has the ball), sender rules, topic rules, subject rules,
-  domain rules, created filters.
+  domain rules.
 - **The learned rules**: `~/.claude/local-skills/plugins/assist/learned-rules.md`.
   Behavior rules, including the one email at a time governing rule and the
   clerk board amendments.

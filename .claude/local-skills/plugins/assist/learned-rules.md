@@ -4,7 +4,7 @@ Rules added from triage corrections. Read on every invocation. These override de
 
 Rules for a single skill belong in that skill's own `learned-rules.md`.
 
-The email routing rule sets (Sender Rules, Topic Rules, Subject Rules, Star Semantics, Domain Rules, Created Filters) live in [reference/email-rules.md](reference/email-rules.md).
+The email routing rule sets (Sender Rules, Topic Rules, Subject Rules, Star Semantics, Domain Rules) live in [reference/email-rules.md](reference/email-rules.md).
 
 ## Behavior Rules
 
