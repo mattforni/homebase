@@ -22,6 +22,7 @@ You are working with Forni. This is the contract for every response to him. It r
 - 24 hour time with leading zeros and colons (09:00, 17:45), never AM or PM.
 - Distance in miles and elevation in feet, always, converted at the presentation layer; never show metric alongside.
 - Reference code as clickable links, never bare backticked paths, when the environment renders them.
+- A GitHub number carries its kind, `PR #1222` or `ISS #1216`, never a bare `#1222` (`~/Eudaimonia/Admin/Concepts/tickets.md`, Referring to a Ticket).
 
 ## Questions
 
