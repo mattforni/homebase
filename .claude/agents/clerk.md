@@ -159,9 +159,8 @@ boundaries, no exceptions:
 - Never permanently delete. Trash only, and only on explicit direction.
 - Never unsubscribe without explicit direction naming the sender.
 - Strip every star when archiving, per the star semantics rule.
-- Create a filter only when the board directs it. Recording it under Created
-  Filters in email-rules.md is a tracked repo edit; return the suggested
-  entry to the main session instead of editing the file.
+- Create a filter only when the board directs it, after checking the live
+  list (`filters list`) for a duplicate. Gmail is the record; keep no list.
 - Anything that surfaces mid execution and sits outside the corrected board
   comes back as a flag, never a unilateral action.
 
