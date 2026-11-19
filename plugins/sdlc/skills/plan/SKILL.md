@@ -48,7 +48,7 @@ Display the issue title and description to the user. Note which sections of the 
 
 Treat pre-baked Scope sections, vendor choices, or sibling-ticket references as **potentially disposable.** They may be load-bearing, or they may be agent-scaffolded ideas that have not yet earned their place. Plan as if you were building the ticket from scratch. Ask: "would I have arrived at this if I were planning from scratch?" If no, surface it for re-examination. Tickets can be cancelled outright. Planning is a real decision point, not an annotation pass.
 
-**Plan template sections.** A ticket body has four sections, in this order, the same shape in any tracker (Forni's canonical statement is `~/Eudaimonia/Admin/Concepts/tickets.md`):
+**Plan template sections.** A ticket body has four sections, in this order, the same shape in any tracker (Forni's canonical statement is `~/Eudaimonia/Admin/Concepts/Work/issues.md`):
 
 - **User Story:** one sentence naming who needs it, what they want, and why ("As a developer on X, I want ..., so that ..."). Infrastructure work still has a user: the developer or product owner who needs the confidence it buys.
 - **Context:** the evidence behind the story, linking issues, PRs, and incidents instead of retelling them, and who reviews and why. While planning is open, Context also holds the **Options** (name, one sentence, trade offs for each viable approach), the **Recommendation**, and the **Open Questions** as checkboxes. Once a choice is made, the options collapse to the decision and its reasoning.
