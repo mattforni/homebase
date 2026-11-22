@@ -155,7 +155,7 @@ for f in "${staged[@]}"; do
   esac
 done
 
-if [[ ${#callback[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/call-back-test" ]]; then
+if [[ ${#callback[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/call-back-test" ]] && command -v jq &>/dev/null; then
   if ! "$ROOT/bin/lint/call-back-test" >/dev/null; then
     printf "${RED}[x]${NC} call back test failed. Run bin/lint/call-back-test to see which row, or run again with --no-verify.\n" >&2
     status=1
