@@ -158,6 +158,13 @@ jobs:
       - name: Test the worktree gate
         run: ./bin/lint/worktree-gate-test
 
+      # The call back hook rings the user out loud when a session has waited
+      # on a question past the threshold. Both of its failures are silent: a
+      # ring after every plain report, or no ring at all. A table of stops and
+      # prompts against a throwaway home, with no sound, runs here.
+      - name: Test the call back
+        run: ./bin/lint/call-back-test
+
       # The always loaded context files listed in .context-caps each
       # carry a byte cap set at their last reduction. Growth past it fails here
       # and in the pre-commit hook, so a reduction stays reduced.

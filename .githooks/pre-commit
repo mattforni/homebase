@@ -145,6 +145,23 @@ if [[ ${#land[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/runner-reason-test" ]]; then
   fi
 fi
 
+# The call back hook and the script it rings through, only when one of them
+# or the test is staged. Its timers run on a short threshold with no sound,
+# and the run takes about fifteen seconds because a timer has to wake.
+callback=()
+for f in "${staged[@]}"; do
+  case "$f" in
+    .claude/hooks/call-back.sh|bin/call/back|bin/lint/call-back-test) callback+=("$f") ;;
+  esac
+done
+
+if [[ ${#callback[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/call-back-test" ]]; then
+  if ! "$ROOT/bin/lint/call-back-test" >/dev/null; then
+    printf "${RED}[x]${NC} call back test failed. Run bin/lint/call-back-test to see which row, or run again with --no-verify.\n" >&2
+    status=1
+  fi
+fi
+
 # Context size ratchet. The script reads the caps from .context-caps and
 # checks only the staged files that carry one, so every staged path goes in.
 if [[ ${#staged[@]} -gt 0 ]] && [[ -x "$ROOT/bin/lint/context-size" ]]; then
