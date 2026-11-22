@@ -110,6 +110,7 @@ Use these to determine pillar sublabel assignment. Always prefer the most specif
 
 - Job search, recruiting, applications -> `🛠️ Craft/💼 Vocation`
 - Career, networking, mentorship, former employers (Gremlin, Zero Homes) -> `🛠️ Craft/💼 Vocation`; Happy Isles mail -> `🛠️ Craft/💼 Vocation/🏝️ Happy Isles`
+- Account, privacy, and policy notices from AI apps (Gemini Apps updates) -> `🛠️ Tooling` (top level, no Craft sublabel); billing receipts and dev work stay under Development
 - Software, dev tools, GitHub -> `🛠️ Craft/🧑‍💻 Development`
 - Atelic, RYLLC, consulting -> `🛠️ Craft/💼 Vocation/💻 Atelic`; the Pinole app, its hosting, and its users -> `🛠️ Craft/💼 Vocation/💻 Atelic/🌽 Pinole`
 - Travel, trips, flights, hotels -> `🛠️ Craft/🌏 Adventure`
