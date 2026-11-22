@@ -232,6 +232,16 @@
             "command": "$HOME/.claude/hooks/land-via-lander.sh"
           }
         ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -268,6 +278,49 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/memory-strike.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
             "timeout": 10
           }
         ]
