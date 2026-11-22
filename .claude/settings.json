@@ -55,6 +55,7 @@
       "Bash(vercel:*)",
       "Bash(wc:*)",
       "Bash(~/bin/sync-marketplaces)",
+      "Bash(~/bin/call/back:*)",
       "Bash(~/Eudaimonia/Craft/Development/personal/homebase/setup.sh)",
       "Bash(ynab:*)",
       "Read(//$HOME/**)",
