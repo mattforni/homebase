@@ -2,8 +2,10 @@
 # Table test for the call back: .claude/hooks/call-back.sh arms a detached
 # timer when a session starts waiting on the user, and bin/call/back rings.
 # Each row drives the hook with canned stdin against its own throwaway $HOME,
-# with a one second threshold and CALL_BACK_DRY_RUN=1, so nothing makes a
-# sound; a ring is a line in that home's rings.log. Run by CI and by hand.
+# with a three second threshold (room for a row of three hook runs to land
+# before its timer wakes on a slow runner) and CALL_BACK_DRY_RUN=1, so nothing
+# makes a sound; a ring is a line in that home's rings.log. Run by CI and by
+# hand.
 set -uo pipefail
 
 REPO=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null) \
@@ -27,7 +29,7 @@ hook() {
   mkdir -p "$home"
   # shellcheck disable=SC2086
   jq -cn "$@" | env -u CLAUDE_PROJECT_DIR -u CLAUDE_CODE_REMOTE \
-    HOME="$home" CALL_BACK_AFTER_SECONDS=1 CALL_BACK_DRY_RUN=1 \
+    HOME="$home" CALL_BACK_AFTER_SECONDS=3 CALL_BACK_DRY_RUN=1 \
     CLAUDE_CODE_SESSION_ATTENDED=1 CLAUDE_CODE_ENTRYPOINT=cli \
     ${HOOK_ENV:-} "$HOOK" >/dev/null 2>&1
   local rc=$?
@@ -38,7 +40,15 @@ stop() { # home message [jq filter applied to the input]
   local extra="${3:-.}"
   hook "$1" --arg m "$2" "{hook_event_name:\"Stop\",session_id:\"s1\",cwd:\"/work/homebase\",stop_hook_active:false,last_assistant_message:\$m} | $extra"
 }
-prompt() { hook "$1" '{hook_event_name:"UserPromptSubmit",session_id:"s1",cwd:"/work/homebase",prompt:"yes"}'; }
+prompt() { # home [prompt text, typed "yes" by default]
+  hook "$1" --arg p "${2-yes}" '{hook_event_name:"UserPromptSubmit",session_id:"s1",cwd:"/work/homebase",prompt:$p}'
+}
+# What the harness submits for a background report, as a headless run's
+# UserPromptSubmit hook received it (agent) and as a background task's
+# completion arrives (task).
+AGENT=$'<agent-message from="a7980f58ab89a6b33">\n[Subagent hand-back] The text below is the final report.\n  done\n</agent-message>'
+TASK=$'<task-notification>\n<task-id>b0ck3fz12</task-id>\n<status>completed</status>\n</task-notification>'
+CRONS='. + {session_crons:[{id:"c1",schedule:"*/5 * * * *",recurring:true,prompt:"check the build"},{id:"c2",schedule:"0 9 * * *",recurring:false,prompt:"aaaa… [+5 chars]"}]}'
 ask() { hook "$1" '{hook_event_name:"PreToolUse",session_id:"s1",cwd:"/work/homebase",tool_name:"AskUserQuestion",tool_input:{questions:[]}}'; }
 answered() { hook "$1" '{hook_event_name:"PostToolUse",session_id:"s1",cwd:"/work/homebase",tool_name:"AskUserQuestion",tool_input:{questions:[]}}'; }
 
@@ -61,13 +71,28 @@ ask dialog
 ask dialogdone; answered dialogdone
 stop ended "Ready?"; hook ended '{hook_event_name:"SessionEnd",session_id:"s1",cwd:"/work/homebase",reason:"other"}'
 stop reported "Ready?"; stop reported "Done, nothing more."
+stop agentreport "Want me to land it?"; prompt agentreport "$AGENT"; stop agentreport "The agent finished; its findings are above."
+stop taskreport "Want me to land it?"; prompt taskreport "$TASK"; stop taskreport "The build finished."
+stop stmttyped "Want me to land it?"; stop stmttyped "One more note."; prompt stmttyped "not yet"
+stop crossmsg "Ready?"; prompt crossmsg $'<cross-session-message from="api-worker">\nSchema migration finished\n</cross-session-message>'
+stop teammate "Ready?"; prompt teammate $'<teammate-message teammate_id="t1">\nDone\n</teammate-message>'
+stop channel "Ready?"; prompt channel $'<channel source="ci">\nBuild green\n</channel>'
+stop dynloop "Ready?"; prompt dynloop '<<autonomous-loop-dynamic>>'
+stop sysnote "Ready?"; prompt sysnote '[SYSTEM NOTIFICATION - NOT USER INPUT] task done'
+stop blankfirst "Ready?"; prompt blankfirst $'\n\n  '"$TASK"
+stop emptyprompt "Ready?"; prompt emptyprompt ""
+stop cron "Ready?" "$CRONS"; prompt cron "check the build"
+stop cutcron "Ready?" "$CRONS"; prompt cutcron "aaaabbbbb"
+stop notcron "Ready?" "$CRONS"; prompt notcron "check the build again"
+stop pasted "Ready?"; prompt pasted $'<pasted_content id="1">\nlog lines\n</pasted_content id="1">\nthis is the error'
+stop croncleared "Ready?" "$CRONS"; stop croncleared "Ready?"; prompt croncleared "check the build"
 stop nomessage "" 'del(.last_assistant_message)'
 stop badsid "Ready?" '.session_id = "../../escape"'
 for junk in "" "not json" '{"hook_event_name":"Stop"}'; do
   if printf '%s' "$junk" | HOME="$TMP/junk" "$HOOK" >/dev/null 2>&1; then ok; else bad "junk input made the hook fail: $junk"; fi
 done
 
-sleep 2.5
+sleep 4.5
 
 # grep -c prints 0 and exits 1 on no match, so its status is ignored.
 count() { local f="$TMP/$1/.claude/call-back/rings.log"; if [[ -f "$f" ]]; then grep -cF -- "$2" "$f"; else echo 0; fi; return 0; }
@@ -98,7 +123,22 @@ expect_rings midway 0 "a question above a closing statement does not ring"
 expect_rings dialog 1 "an open AskUserQuestion dialog rings"
 expect_rings dialogdone 0 "an answered dialog does not ring"
 expect_rings ended 0 "a session that ended does not ring"
-expect_rings reported 0 "a later plain report disarms"
+expect_rings reported 1 "a later plain report leaves the question armed"
+expect_rings agentreport 1 "question, agent report, statement still rings once"
+expect_rings taskreport 1 "question, task notification, statement still rings once"
+expect_rings stmttyped 0 "question, statement, typed prompt never rings"
+expect_rings crossmsg 1 "a message from another session does not cancel"
+expect_rings teammate 1 "a teammate message does not cancel"
+expect_rings channel 1 "a channel message does not cancel"
+expect_rings dynloop 1 "a dynamic loop wakeup does not cancel"
+expect_rings sysnote 1 "a system notification line does not cancel"
+expect_rings blankfirst 1 "an envelope after blank lines does not cancel"
+expect_rings emptyprompt 1 "an empty prompt does not cancel"
+expect_rings cron 1 "a scheduled task firing does not cancel"
+expect_rings cutcron 1 "a firing of a cut cron prompt does not cancel"
+expect_rings notcron 0 "a typed prompt that only resembles a cron cancels"
+expect_rings pasted 0 "a typed prompt with pasted content cancels"
+expect_rings croncleared 0 "a cron the last stop no longer lists cancels"
 expect_rings nomessage 0 "no last message, no ring"
 [[ -f "$TMP/badsid/.claude/call-back/escape.stamp" || $(rings badsid) == 1 ]] && ok \
   || bad "badsid: the session id is sanitised into the stamp directory"
@@ -116,6 +156,18 @@ sleep 2.3
 expect_rings twice 0 "the first timer finds its stamp replaced"
 sleep 2
 expect_rings twice 1 "the second stamp rings once"
+
+# A question, an agent report, then a new question: the report leaves the
+# first stamp alone, the new question replaces it, and only the second rings,
+# on its own clock. Same timing as the row above.
+HOOK_ENV="CALL_BACK_AFTER_SECONDS=3" stop newq "First question?"
+prompt newq "$AGENT"
+sleep 1
+HOOK_ENV="CALL_BACK_AFTER_SECONDS=3" stop newq "Second question?"
+sleep 2.3
+expect_rings newq 0 "the first question's timer finds its stamp replaced"
+sleep 2
+expect_rings newq 1 "the second question rings once"
 
 # A ring removes its stamp, so nothing is left to ring again.
 [[ ! -e "$TMP/q/.claude/call-back/s1.stamp" ]] && ok || bad "q: the stamp outlived its ring"

@@ -147,7 +147,7 @@ fi
 
 # The call back hook and the script it rings through, only when one of them
 # or the test is staged. Its timers run on a short threshold with no sound,
-# and the run takes about fifteen seconds because a timer has to wake.
+# and the run takes about twenty five seconds because the timers have to wake.
 callback=()
 for f in "${staged[@]}"; do
   case "$f" in

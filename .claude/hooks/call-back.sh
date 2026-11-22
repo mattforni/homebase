@@ -12,14 +12,26 @@
 # session id, and a detached timer that wakes after CALL_BACK_AFTER_SECONDS
 # (default 300). If the stamp is still the one it was started for, the timer
 # runs bin/call/back "<project> is waiting on you." and removes the stamp, so
-# one stamp rings at most once. A turn that ends in a plain report never arms:
-# the user runs several sessions at once, and a chime after every finished
-# answer would be noise.
+# one stamp rings at most once. A turn that ends in a plain report never arms,
+# since the user runs several sessions at once and a chime after every
+# finished answer would be noise, and it leaves an armed stamp alone: a
+# question is still open after a background agent reports and Claude answers
+# the report. A new question replaces the stamp, which restarts the clock and
+# leaves the first timer nothing to ring for.
 #
-# Disarming is removing the stamp: the user typing (UserPromptSubmit), the
-# dialog being answered (PostToolUse on AskUserQuestion), or the session
-# ending (SessionEnd). A second arm replaces the stamp, which leaves the
-# first timer nothing to ring for.
+# Disarming is removing the stamp, and only the user can do it: a prompt they
+# typed (UserPromptSubmit), the dialog answered (PostToolUse on
+# AskUserQuestion), or the session ending (SessionEnd). UserPromptSubmit also
+# fires for prompts nobody typed, and those leave the stamp alone:
+#   - harness envelopes, told apart by the first non blank line of the
+#     prompt: a background task or agent report (<task-notification>,
+#     <agent-message>), a message from another session
+#     (<cross-session-message>), a teammate, a channel, a coordinator relay,
+#     a dynamic /loop wakeup (<<autonomous-loop), or a line carrying
+#     [SYSTEM NOTIFICATION - NOT USER INPUT];
+#   - a scheduled task or /loop iteration, whose prompt is plain text: told
+#     apart by matching it against the session_crons the last Stop listed,
+#     which this hook keeps beside the stamp.
 #
 # Never armed:
 #   - inside a subagent or teammate: the hook input carries agent_id there;
@@ -60,6 +72,7 @@ back_cmd() {
 }
 
 stamp_path() { printf '%s/%s.stamp\n' "$DIR" "$1"; }
+crons_path() { printf '%s/%s.crons\n' "$DIR" "$1"; }
 
 # The timer, run detached by arm(): --timer <session> <token> <seconds>.
 if [[ "${1:-}" == "--timer" ]]; then
@@ -97,6 +110,50 @@ mkdir -p "$DIR" 2>/dev/null || exit 0
 find "$DIR" -type f -mmin +1440 -delete 2>/dev/null
 
 disarm() { rm -f "$(stamp_path "$sid")" 2>/dev/null; }
+
+# The prompts of the session's scheduled tasks, as the last Stop listed them,
+# so a firing can be told from typing. Rewritten on every main Stop.
+remember_crons() {
+  local f prompts
+  f=$(crons_path "$sid")
+  prompts=$(jq -c '[.session_crons[]?.prompt | strings]' <<<"$input" 2>/dev/null) || prompts='[]'
+  if [[ "$prompts" == '[]' || -z "$prompts" ]]; then
+    rm -f "$f" 2>/dev/null
+  else
+    printf '%s\n' "$prompts" > "$f" 2>/dev/null
+  fi
+  return 0
+}
+
+# Did the user type this prompt? Anything the harness wrapped or scheduled
+# says no, and so does a prompt that cannot be read, so a doubt never
+# cancels a ring.
+typed() {
+  local prompt first crons
+  prompt=$(jq -r '.prompt // empty' <<<"$input" 2>/dev/null) || return 1
+  [[ -n "$prompt" ]] || return 1
+  first=$(printf '%s\n' "$prompt" | awk 'NF { print; exit }')
+  first=${first#"${first%%[![:space:]]*}"}
+  case "$first" in
+    '<task-notification'* | '<agent-message'* | '<cross-session-message'* | \
+    '<teammate-message'* | '<coordinator-relay'* | '<channel'* | \
+    '<slack-ping'* | '<slack-tag-message'* | '<<autonomous-loop'* | \
+    *'[SYSTEM NOTIFICATION - NOT USER INPUT]'*)
+      return 1 ;;
+  esac
+  crons=$(crons_path "$sid")
+  if [[ -r "$crons" ]]; then
+    # A listed prompt longer than 1000 characters is cut and marked
+    # "… [+N chars]", so a cut one matches on the part before the mark.
+    # Trailing whitespace is ignored on both sides.
+    jq -e --arg p "$prompt" 'def norm: sub("\\s+$"; "");
+      ($p | norm) as $p | any(.[]; norm as $c
+      | ($c | sub("… \\[\\+[0-9]+ chars\\]$"; "")) as $base
+      | $p == $c or ($base != $c and ($p | startswith($base))))' "$crons" >/dev/null 2>&1 \
+      && return 1
+  fi
+  return 0
+}
 
 attended() {
   [[ "${CLAUDE_CODE_REMOTE:-}" == true ]] && return 1
@@ -153,7 +210,8 @@ case "$event" in
   Stop)
     [[ -z "$agent" && "$continuing" == false ]] || exit 0
     attended || exit 0
-    if ends_in_question; then arm; else disarm; fi
+    remember_crons
+    if ends_in_question; then arm; fi
     ;;
   PreToolUse)
     [[ "$tool" == AskUserQuestion && -z "$agent" ]] || exit 0
@@ -164,8 +222,12 @@ case "$event" in
     [[ "$tool" == AskUserQuestion ]] || exit 0
     disarm
     ;;
-  UserPromptSubmit|SessionEnd)
+  UserPromptSubmit)
+    typed && disarm
+    ;;
+  SessionEnd)
     disarm
+    rm -f "$(crons_path "$sid")" 2>/dev/null
     ;;
 esac
 exit 0
