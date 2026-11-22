@@ -64,3 +64,7 @@ Always route to the most specific sublabel. Never label with just a parent pilla
 - `🛠️ Craft/🎨 Leisure` -- leisure, hobbies, art, gaming
 - `🛠️ Craft/🏡 Home Improvement` -- home projects, contractors, repairs
 - `🛠️ Craft/🌲 Outdoorsman` -- outdoor gear, REI, backcountry
+
+### Tooling (🛠️)
+
+- `🛠️ Tooling` -- account, privacy, and policy notices from the AI apps and tools in the stack (Gemini Apps updates); top level, no sublabels. Added 2026-11-21.
