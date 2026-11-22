@@ -21,7 +21,8 @@
 #
 # Disarming is removing the stamp, and only the user can do it: a prompt they
 # typed (UserPromptSubmit), the dialog answered (PostToolUse on
-# AskUserQuestion), or the session ending (SessionEnd). UserPromptSubmit also
+# AskUserQuestion, or PostToolUseFailure when the dialog errors), or the
+# session ending (SessionEnd). UserPromptSubmit also
 # fires for prompts nobody typed, and those leave the stamp alone:
 #   - harness envelopes, told apart by the first non blank line of the
 #     prompt: a background task or agent report (<task-notification>,
@@ -83,7 +84,18 @@ if [[ "${1:-}" == "--timer" ]]; then
   [[ -r "$stamp" ]] || exit 0
   read -r have _ project < "$stamp" || exit 0
   [[ "$have" == "$token" ]] || exit 0
-  rm -f "$stamp"
+  # Claim the stamp by renaming it first, so a newer arm that replaces it
+  # between the check and the removal is never deleted by this timer.
+  claim="$stamp.claim.$$"
+  mv "$stamp" "$claim" 2>/dev/null || exit 0
+  read -r have _ < "$claim" 2>/dev/null
+  if [[ "$have" != "$token" ]]; then
+    # Caught a newer stamp: put it back unless an even newer one landed.
+    mv -n "$claim" "$stamp" 2>/dev/null
+    rm -f "$claim"
+    exit 0
+  fi
+  rm -f "$claim"
   cmd=$(back_cmd) || exit 0
   {
     printf '%s ring %s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S')" "$sid" "$project"
@@ -218,7 +230,7 @@ case "$event" in
     attended || exit 0
     arm
     ;;
-  PostToolUse)
+  PostToolUse | PostToolUseFailure)
     [[ "$tool" == AskUserQuestion ]] || exit 0
     disarm
     ;;
