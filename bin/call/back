@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Call the user back out loud: two system chimes, then a spoken line.
+#
+#   back [--quiet-chime] [--dry-run] <message...>
+#
+# Claude runs it when it is blocked on a decision that is the user's, or when
+# something broke that should not wait, and the user is away from the screen.
+# The call back hook (.claude/hooks/call-back.sh) runs it too, when a session
+# has waited on the user past the threshold.
+#
+# --quiet-chime plays the two chimes at a quarter volume; the line is spoken
+# as usual. --dry-run, or CALL_BACK_DRY_RUN=1 in the environment, prints what
+# it would do and makes no sound, which is how the table test runs it.
+#
+# The kill switch is a file: while $HOME/.claude/call-back.off exists it does
+# nothing (touch it before a meeting, rm it after).
+#
+# macOS only. Without afplay it skips the chimes, without say it skips the
+# line, and on a machine with neither it exits 0 in silence. It never fails
+# a caller: every exit is 0 except a call with no message, which is 2.
+set -uo pipefail
+
+CHIME=/System/Library/Sounds/Glass.aiff
+OFF="$HOME/.claude/call-back.off"
+
+usage() {
+  echo "usage: back [--quiet-chime] [--dry-run] <message...>" >&2
+  exit 2
+}
+
+volume=1
+dry=false
+[[ "${CALL_BACK_DRY_RUN:-}" == 1 ]] && dry=true
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --quiet-chime) volume=0.25; shift ;;
+    --dry-run) dry=true; shift ;;
+    --) shift; break ;;
+    -*) usage ;;
+    *) break ;;
+  esac
+done
+[[ $# -gt 0 ]] || usage
+
+# One line, and short enough that speaking it takes a few seconds at most.
+message=$(printf '%s ' "$@" | tr -s '[:space:]' ' ')
+message=${message% }
+message=${message:0:200}
+[[ -n "$message" ]] || usage
+
+if [[ -e "$OFF" ]]; then
+  [[ "$dry" == true ]] && echo "call-back: off ($OFF)"
+  exit 0
+fi
+
+if [[ "$dry" == true ]]; then
+  echo "call-back: chime $CHIME (volume $volume)"
+  echo "call-back: chime $CHIME (volume $volume)"
+  echo "call-back: say $message"
+  exit 0
+fi
+
+if command -v afplay &>/dev/null && [[ -r "$CHIME" ]]; then
+  afplay -v "$volume" "$CHIME" &>/dev/null
+  afplay -v "$volume" "$CHIME" &>/dev/null
+fi
+if command -v say &>/dev/null; then
+  say -- "$message" &>/dev/null
+fi
+exit 0

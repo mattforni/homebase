@@ -55,6 +55,7 @@
       "Bash(vercel:*)",
       "Bash(wc:*)",
       "Bash(~/bin/sync-marketplaces)",
+      "Bash(~/bin/call/back:*)",
       "Bash(~/Eudaimonia/Craft/Development/personal/homebase/setup.sh)",
       "Bash(ynab:*)",
       "Read(//$HOME/**)",
@@ -232,6 +233,16 @@
             "command": "$HOME/.claude/hooks/land-via-lander.sh"
           }
         ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -268,6 +279,61 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/memory-strike.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/call-back.sh",
             "timeout": 10
           }
         ]

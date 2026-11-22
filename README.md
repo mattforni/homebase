@@ -38,3 +38,13 @@ Personal productivity skills. Lives under [.claude/local-skills](.claude/local-s
 | Plugin | Description |
 |--------|-------------|
 | [assist](.claude/local-skills/plugins/assist/) | Emails, schedule, codify, sharpen, BD, job apply, meals. |
+
+## Call Back
+
+A Claude Code session can call the user back out loud: two Glass chimes, then a spoken line. macOS only; elsewhere it does nothing.
+
+- **By hand.** `~/bin/call/back [--quiet-chime] <message>` rings once. Claude runs it when it is blocked on a decision that is the user's, or something broke that should not wait, and the user is away. `--dry-run` prints what it would do and makes no sound.
+- **On a timer.** `.claude/hooks/call-back.sh` arms when a turn ends with a question (the final non empty line of Claude's last message ends in `?`) or Claude opens an `AskUserQuestion` dialog. If the user has not typed or answered five minutes later, it says "`<project>` is waiting on you." once per question. A turn that ends in a plain report never arms, and leaves an open question armed, so a background agent reporting in the meantime does not cancel it; a new question restarts the five minutes. Only the user disarms it: a prompt they typed, an answered dialog, or the session ending. Prompts nobody typed (background task and agent reports, messages from other sessions, teammates, channels, `/loop` and scheduled task firings) leave it armed. Subagents, `claude -p` runs, SDK hosts, cloud sessions, and stop hook continuations never arm. `CALL_BACK_AFTER_SECONDS` changes the five minutes.
+- **Silencing it.** `touch ~/.claude/call-back.off` silences both until the file is removed, timers already running included. Stamps and `rings.log` (one line per ring) live in `~/.claude/call-back/` and are pruned after a day.
+
+The hooks take effect once `.claude/settings.json` reaches `~/.claude/settings.json`, which the session start reconcile does on the first session after the change lands on `main`; `~/bin` and `~/.claude/hooks` are links, so the scripts are live as soon as `main` carries them.
