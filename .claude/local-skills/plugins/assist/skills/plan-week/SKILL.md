@@ -128,7 +128,7 @@ The look forward, the mirror of Review Week. Holding the retro's carry forward a
 - A **block to confirm or create** on the calendar
 - A **measure to watch** through the week
 
-**Name the week's theme, and write it onto the calendar.** Set Intention produces a short theme for the week, a word or a brief phrase (for example "Presence", or "Point the Energy at the Forge"). The theme is the compass, not a task. Confirm the theme with Forni, then **create the week banner**: an all day event spanning Monday through Sunday, transparency `"free"`, carrying the 🧭 Theme label.
+**Name the week's theme, and write it onto the calendar.** Set Intention produces a short theme for the week, a word or two, three at most (for example "Presence", or "Hold Space"). The theme is the compass, not a task. Confirm the theme with Forni, then **create the week banner**: an all day event spanning Monday through Sunday, transparency `"free"`, carrying the 🧭 Theme label.
 
 - **Title** is the theme, led by an emoji chosen to match it (for example `🪷 Presence`). The theme owns the title; nothing else sits there.
 - **Body** is a one sentence theme framing and nothing else. The training block used to be appended here by `assist:plan-training`; retired 2026-09-07 (Forni: "I don't look in the banner for the training block"). Training lives on the calendar as its events.
