@@ -209,12 +209,14 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/worktree-gate.sh",
-            "timeout": 10
+            "timeout": 10,
+            "onFailure": "block"
           },
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/secrets-gate.sh",
-            "timeout": 10
+            "timeout": 10,
+            "onFailure": "block"
           },
           {
             "type": "command",

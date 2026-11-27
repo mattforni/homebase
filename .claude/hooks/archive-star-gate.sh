@@ -38,7 +38,7 @@ grep -qE '^([[:space:]]*[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]*ARCHIV
 # Only gws Gmail label writes are in scope.
 grep -qE '(^|[^[:alnum:]_-])gws([[:space:]]|$)' <<<"$cmd" || exit 0
 grep -qE 'gmail' <<<"$cmd" || exit 0
-grep -qE '(modify|batchModify)([[:space:]]|$)' <<<"$cmd" || exit 0
+grep -qE '(modify|batchModify)([^[:alnum:]]|$)' <<<"$cmd" || exit 0
 
 # Shell escaping of the JSON (\"addLabelIds\") is noise for this check.
 flat=$(tr -d '\\\n' <<<"$cmd")
@@ -79,5 +79,5 @@ fi
 # One check per gws invocation, so a second modify in the same call is not skipped.
 while IFS= read -r seg; do
   [[ -n "$seg" ]] && check "$seg"
-done < <(sed -E 's/(^|[^[:alnum:]_-])gws([[:space:]])/\n\2/g' <<<"$flat")
+done < <(awk '{ gsub(/(^|[^[:alnum:]_-])gws[[:space:]]/, "\n"); print }' <<<"$flat")
 exit 0
