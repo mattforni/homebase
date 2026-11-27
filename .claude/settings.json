@@ -284,6 +284,16 @@
         ]
       },
       {
+        "matcher": "Artifact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/artifact-cleanup.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "AskUserQuestion",
         "hooks": [
           {
