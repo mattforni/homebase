@@ -15,7 +15,8 @@
 //   node inbox.mjs apply <out-dir> <rows.json>
 //       rows.json is an array of {mailbox, id, labels: [names], archive: bool}.
 //       Adds each named label (resolved through the pulled label list, never
-//       created), and on archive removes INBOX and UNREAD. Prints
+//       created), and on archive removes INBOX, UNREAD, and every star,
+//       since nothing in the archive carries one. Prints
 //       {gmail: [applied rows], dropped: [{kind, id, reason}]} as JSON. A row
 //       naming a label the mailbox does not have is dropped whole, never
 //       partly applied.
@@ -36,6 +37,9 @@ import { pathToFileURL } from "node:url";
 const API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const log = (s) => process.stderr.write(`inbox: ${s}\n`);
 const MAX_MESSAGES = Number(process.env.INBOX_MAX_MESSAGES || 200);
+// An archive takes the mail out of the inbox, marks it read, and strips every
+// star (the assist plugin's star semantics: nothing in the archive is starred).
+export const ARCHIVE_REMOVES = ["INBOX", "UNREAD", "STARRED", "YELLOW_STAR", "GREEN_STAR", "RED_STAR", "BLUE_STAR"];
 const POOL = 6;
 
 export const addressesFromEnv = (raw = process.env.MAILBOX_ADDRESSES || "personal=mattforni@gmail.com,atelic=matt@atelic.me") => {
@@ -217,7 +221,7 @@ async function apply(outDir, rowsPath) {
             dropped.push({ kind: "gmail", id: r.id, reason: "CDLE, MyUI+, Drive shares and the runner's own reports are never archived by the runner" });
             continue;
         }
-        const remove = r.archive ? ["INBOX", "UNREAD"] : [];
+        const remove = r.archive ? ARCHIVE_REMOVES : [];
         if (add.length === 0 && remove.length === 0) { dropped.push({ kind: "gmail", id: r.id, reason: "nothing to change" }); continue; }
         try {
             // The thread, not the message: Gmail keeps a thread in the inbox
