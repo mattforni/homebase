@@ -19,7 +19,13 @@
 #
 # The label lists are read from the command text, so a list held in a shell
 # variable ($S) cannot be checked and is refused; spell the ids out.
-# Prefix with ARCHIVE_STAR_GATE_BYPASS=1 to override on purpose.
+# Prefix with ARCHIVE_STAR_GATE_BYPASS=1 (after any other VAR=value prefixes
+# is fine) to override on purpose.
+#
+# Known limit: this reads the Bash command text only. A modify written inside a
+# script file that is then run, a body read from a file or built by jq, and
+# `sh -c` strings are not seen. Closing those means enforcing in the bin/gws
+# shim, which sees the real argv; that is a separate change.
 # Fails OPEN: any parse error exits 0, never worse than an ungated command.
 set -uo pipefail
 
@@ -27,7 +33,7 @@ input=$(cat)
 cmd=$(jq -r '.tool_input.command // empty' <<<"$input" 2>/dev/null)
 [[ -z "$cmd" ]] && exit 0
 
-grep -qE '^[[:space:]]*ARCHIVE_STAR_GATE_BYPASS=1([[:space:]]|$)' <<<"$cmd" && exit 0
+grep -qE '^([[:space:]]*[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)*[[:space:]]*ARCHIVE_STAR_GATE_BYPASS=1([[:space:]]|$)' <<<"$cmd" && exit 0
 
 # Only gws Gmail label writes are in scope.
 grep -qE '(^|[^[:alnum:]_-])gws([[:space:]]|$)' <<<"$cmd" || exit 0
@@ -46,8 +52,10 @@ deny() {
   exit 0
 }
 
-add=$(array addLabelIds)
-remove=$(array removeLabelIds)
+check() {
+  local flat="$1" add remove
+  add=$(array addLabelIds)
+  remove=$(array removeLabelIds)
 
 if grep -qF '$' <<<"$add$remove"; then
   deny "Archive star gate: a label list held in a shell variable cannot be checked for stars. Spell the label ids out in addLabelIds and removeLabelIds; an archive removes \"INBOX\",\"STARRED\",\"YELLOW_STAR\",\"GREEN_STAR\",\"RED_STAR\",\"BLUE_STAR\". Prefix with ARCHIVE_STAR_GATE_BYPASS=1 only when that is genuinely the intent."
@@ -66,4 +74,10 @@ if [[ -n "$remove" ]] && has "$remove" INBOX; then
     deny "Archive star gate: nothing in the archive carries a star. This archive (removeLabelIds has INBOX) leaves ${missing[*]} in place. Pass the full star set, spelled out rather than in a shell variable: \"removeLabelIds\":[\"INBOX\",\"STARRED\",\"YELLOW_STAR\",\"GREEN_STAR\",\"RED_STAR\",\"BLUE_STAR\"] (plus UNREAD when marking read). Prefix with ARCHIVE_STAR_GATE_BYPASS=1 only when keeping the star is genuinely the intent."
   fi
 fi
+}
+
+# One check per gws invocation, so a second modify in the same call is not skipped.
+while IFS= read -r seg; do
+  [[ -n "$seg" ]] && check "$seg"
+done < <(sed -E 's/(^|[^[:alnum:]_-])gws([[:space:]])/\n\2/g' <<<"$flat")
 exit 0

@@ -36,6 +36,7 @@ expect deny "gws gmail users threads modify --params '{\"userId\":\"me\",\"id\":
 expect deny "gws gmail users messages batchModify --params '{\"userId\":\"me\"}' --json '{\"ids\":[\"a\",\"b\"],\"removeLabelIds\":[\"INBOX\"]}'"
 expect deny "for id in a b; do $M --json \"{\\\"removeLabelIds\\\":[\\\"INBOX\\\"]}\"; done"
 expect deny "S='\"INBOX\",\"STARRED\"'; $M --json \"{\\\"removeLabelIds\\\":[\$S]}\""
+expect deny "$M --json '{\"removeLabelIds\":[\"UNREAD\"]}' && $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
 # Must deny: a blue star, directly or through a bare STARRED.
 expect deny "$M --json '{\"addLabelIds\":[\"BLUE_STAR\"]}'"
 expect deny "$M --json '{\"addLabelIds\":[\"STARRED\"]}'"
@@ -49,6 +50,7 @@ expect allow "$M --json '{\"addLabelIds\":[\"GREEN_STAR\"],\"removeLabelIds\":[\
 expect allow "$M --json '{\"removeLabelIds\":[\"UNREAD\"]}'"
 expect allow "$M --json '{\"removeLabelIds\":[\"BLUE_STAR\"]}'"
 expect allow "ARCHIVE_STAR_GATE_BYPASS=1 $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect allow "GWS_FORCE_PROFILE=atelic ARCHIVE_STAR_GATE_BYPASS=1 $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
 expect allow "gws gmail users messages list --params '{\"userId\":\"me\",\"q\":\"in:inbox\"}'"
 expect allow "gws gmail +read --id abc --headers"
 expect allow "grep -n removeLabelIds INBOX notes.md"
