@@ -1,7 +1,7 @@
 // The shaping behind the inbox, Linear and Todoist pulls, on invented records.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NEVER_ARCHIVE, addressOf, addressesFromEnv, shapeMessage } from "../inbox.mjs";
+import { ARCHIVE_REMOVES, NEVER_ARCHIVE, addressOf, addressesFromEnv, shapeMessage } from "../inbox.mjs";
 
 test("the address inside a From header comes out bare and lowercased", () => {
     assert.equal(addressOf("Blue Spruce Maids <Info@BlueSpruceMaids.com>"), "info@bluesprucemaids.com");
@@ -163,4 +163,10 @@ test("a task carries its project and section names and its due date", () => {
     assert.equal(task.due, "2026-10-20");
     assert.equal(task.duration, "30 minute");
     assert.equal(task.url, "https://app.todoist.com/app/task/t1");
+});
+
+test("an archive strips every star, so nothing in the archive is starred", () => {
+    for (const label of ["INBOX", "UNREAD", "STARRED", "YELLOW_STAR", "GREEN_STAR", "RED_STAR", "BLUE_STAR"]) {
+        assert.equal(ARCHIVE_REMOVES.includes(label), true, label);
+    }
 });

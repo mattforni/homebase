@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Table test for .claude/hooks/archive-star-gate.sh: every gws Gmail label
+# change that would leave a star on archived mail, or add a blue star, is
+# denied, and every other command is allowed. Run by CI and by hand; add a row
+# for each new way a star slipped into the archive.
+set -uo pipefail
+
+REPO=$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel 2>/dev/null) \
+  || { echo "not in a git repo"; exit 1; }
+HOOK="$REPO/.claude/hooks/archive-star-gate.sh"
+[[ -x "$HOOK" ]] || { echo "hook missing or not executable: $HOOK"; exit 1; }
+
+pass=0; fail=0
+expect() {
+  local want="$1" cmd="$2" out decision
+  out=$(jq -cn --arg c "$cmd" '{tool_name:"Bash",tool_input:{command:$c},cwd:"/tmp"}' | "$HOOK" 2>/dev/null)
+  decision=$(jq -r '.hookSpecificOutput.permissionDecision // "allow"' <<<"${out:-{\}}" 2>/dev/null)
+  if [[ "$decision" == "$want" ]]; then
+    pass=$((pass + 1))
+  else
+    fail=$((fail + 1))
+    printf '  FAIL want %-5s got %-5s  %s\n' "$want" "$decision" "$cmd"
+  fi
+}
+
+M="gws gmail users messages modify --params '{\"userId\":\"me\",\"id\":\"abc\"}'"
+NL=$'\n'
+FULL='"INBOX","STARRED","YELLOW_STAR","GREEN_STAR","RED_STAR","BLUE_STAR"'
+
+# Must deny: an archive that leaves any star.
+expect deny "$M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect deny "$M --json '{\"addLabelIds\":[\"Label_12\"],\"removeLabelIds\":[\"INBOX\",\"UNREAD\"]}'"
+expect deny "$M --json '{\"removeLabelIds\":[\"INBOX\",\"STARRED\"]}'"
+expect deny "$M --json '{\"removeLabelIds\":[\"INBOX\",\"STARRED\",\"YELLOW_STAR\",\"GREEN_STAR\",\"RED_STAR\"]}'"
+expect deny "GWS_FORCE_PROFILE=atelic $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect deny "gws gmail users threads modify --params '{\"userId\":\"me\",\"id\":\"t\"}' --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect deny "gws gmail users messages batchModify --params '{\"userId\":\"me\"}' --json '{\"ids\":[\"a\",\"b\"],\"removeLabelIds\":[\"INBOX\"]}'"
+expect deny "for id in a b; do $M --json \"{\\\"removeLabelIds\\\":[\\\"INBOX\\\"]}\"; done"
+expect deny "S='\"INBOX\",\"STARRED\"'; $M --json \"{\\\"removeLabelIds\\\":[\$S]}\""
+expect deny "$M --json '{\"removeLabelIds\":[\"UNREAD\"]}' && $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect deny "$M --json '{\"removeLabelIds\":[\"UNREAD\"]}' | head -1${NL}$M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+# Must deny: a blue star, directly or through a bare STARRED.
+expect deny "$M --json '{\"addLabelIds\":[\"BLUE_STAR\"]}'"
+expect deny "$M --json '{\"addLabelIds\":[\"STARRED\"]}'"
+expect deny "$M --json '{\"addLabelIds\":[\"STARRED\",\"YELLOW_STAR\"]}'"
+
+# Must allow: a full strip, coloured stars, non archive changes, and anything else.
+expect allow "$M --json '{\"addLabelIds\":[\"Label_12\"],\"removeLabelIds\":[$FULL,\"UNREAD\"]}'"
+expect allow "$M --json \"{\\\"removeLabelIds\\\":[\\\"INBOX\\\",\\\"STARRED\\\",\\\"YELLOW_STAR\\\",\\\"GREEN_STAR\\\",\\\"RED_STAR\\\",\\\"BLUE_STAR\\\"]}\""
+expect allow "$M --json '{\"addLabelIds\":[\"YELLOW_STAR\"]}'"
+expect allow "$M --json '{\"addLabelIds\":[\"GREEN_STAR\"],\"removeLabelIds\":[\"YELLOW_STAR\"]}'"
+expect allow "$M --json '{\"removeLabelIds\":[\"UNREAD\"]}'"
+expect allow "$M --json '{\"removeLabelIds\":[\"BLUE_STAR\"]}'"
+expect allow "ARCHIVE_STAR_GATE_BYPASS=1 $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect allow "GWS_FORCE_PROFILE=atelic ARCHIVE_STAR_GATE_BYPASS=1 $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect allow "gws gmail users messages list --params '{\"userId\":\"me\",\"q\":\"in:inbox\"}'"
+expect allow "gws gmail +read --id abc --headers"
+expect allow "grep -n removeLabelIds INBOX notes.md"
+expect allow "linear issue update ATE-1 --team ATE --label modify"
+
+echo "archive-star-gate: $pass passed, $fail failed"
+[[ $fail -eq 0 ]]

@@ -121,6 +121,9 @@ proposal rather than silently routing across.
    (cite the rule in three words), **?** when it is your judgment and deserves
    Forni's eye before executing.
 6. Walk green stars explicitly; they are classified, never auto skipped.
+7. Search `is:starred -in:inbox` in each mailbox; archived mail never carries a
+   star, so every hit is a row proposing the strip (or a return to the inbox,
+   when the star still says the ball is live).
 
 ## Output
 
@@ -158,7 +161,9 @@ boundaries, no exceptions:
   when the corrected board calls for one.
 - Never permanently delete. Trash only, and only on explicit direction.
 - Never unsubscribe without explicit direction naming the sender.
-- Strip every star when archiving, per the star semantics rule.
+- Strip every star when archiving (`STARRED`, `YELLOW_STAR`, `GREEN_STAR`,
+  `RED_STAR`, `BLUE_STAR`), per the star semantics rule, and never add
+  `STARRED` or `BLUE_STAR`.
 - Create a filter only when the board directs it, after checking the live
   list (`filters list`) for a duplicate. Gmail is the record; keep no list.
 - Anything that surfaces mid execution and sits outside the corrected board

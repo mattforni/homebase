@@ -100,7 +100,7 @@ Execute label/star/archive changes with `modify` (pass the full star set in `rem
 
 ```bash
 # Archiving strips the full star set (STARRED plus the colored-star system labels), per the governing star rule.
-gws gmail users messages modify --params '{"userId":"me","id":"<ID>"}' --json '{"addLabelIds":["<LABEL_ID>"],"removeLabelIds":["INBOX","UNREAD","STARRED","YELLOW_STAR","GREEN_STAR","RED_STAR"]}' 2>&1 | grep -v "^Using"
+gws gmail users messages modify --params '{"userId":"me","id":"<ID>"}' --json '{"addLabelIds":["<LABEL_ID>"],"removeLabelIds":["INBOX","UNREAD","STARRED","YELLOW_STAR","GREEN_STAR","RED_STAR","BLUE_STAR"]}' 2>&1 | grep -v "^Using"
 ```
 
 `modify` and `batchModify` return an empty body, so a `grep`/parse pipeline exits non-zero even on success. Do not read that as failure; confirm with a follow-up `messages get` (`format=minimal`).

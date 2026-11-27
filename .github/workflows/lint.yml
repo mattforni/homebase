@@ -152,6 +152,12 @@ jobs:
       - name: Test the voice gate
         run: ./bin/lint/voice-gate-test
 
+      # The archive star gate hook denies a gws Gmail archive that leaves a
+      # star, and any add of a blue or bare star. It fails open, so its table
+      # runs here.
+      - name: Test the archive star gate
+        run: ./bin/lint/archive-star-gate-test
+
       # The worktree gate hook denies mutating git on a primary checkout,
       # typed or wrapped in a shell script the command runs. Its parsing is all
       # regex and it fails open, so a table over throwaway repos runs here.
