@@ -41,7 +41,7 @@ grep -qE 'gmail' <<<"$cmd" || exit 0
 grep -qE '(modify|batchModify)([^[:alnum:]]|$)' <<<"$cmd" || exit 0
 
 # Shell escaping of the JSON (\"addLabelIds\") is noise for this check.
-flat=$(tr -d '\\\n' <<<"$cmd")
+flat=$(tr '\n' ' ' <<<"$cmd" | tr -d '\\')
 
 # The text of one label array, or empty when the key is absent.
 array() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\\[[^]]*\\]" <<<"$flat" | head -1; }

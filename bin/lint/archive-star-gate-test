@@ -24,6 +24,7 @@ expect() {
 }
 
 M="gws gmail users messages modify --params '{\"userId\":\"me\",\"id\":\"abc\"}'"
+NL=$'\n'
 FULL='"INBOX","STARRED","YELLOW_STAR","GREEN_STAR","RED_STAR","BLUE_STAR"'
 
 # Must deny: an archive that leaves any star.
@@ -37,6 +38,7 @@ expect deny "gws gmail users messages batchModify --params '{\"userId\":\"me\"}'
 expect deny "for id in a b; do $M --json \"{\\\"removeLabelIds\\\":[\\\"INBOX\\\"]}\"; done"
 expect deny "S='\"INBOX\",\"STARRED\"'; $M --json \"{\\\"removeLabelIds\\\":[\$S]}\""
 expect deny "$M --json '{\"removeLabelIds\":[\"UNREAD\"]}' && $M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
+expect deny "$M --json '{\"removeLabelIds\":[\"UNREAD\"]}' | head -1${NL}$M --json '{\"removeLabelIds\":[\"INBOX\"]}'"
 # Must deny: a blue star, directly or through a bare STARRED.
 expect deny "$M --json '{\"addLabelIds\":[\"BLUE_STAR\"]}'"
 expect deny "$M --json '{\"addLabelIds\":[\"STARRED\"]}'"
