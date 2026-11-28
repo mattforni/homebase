@@ -26,6 +26,8 @@ Seeded from two runs: **2026 Summer Camp** (Buena Vista lodge, headcount 15) and
 
 - **Every board names the engines it searched; skipping a provider is a stated choice, never a silence.** *Why: on 2026-11-27 two Krabi boards went out from Booking.com alone, and Forni had to ask whether Airbnb was searched at all.*
 
+- **Booking.com never goes to a headless fleet agent; Google Hotels with dates set is the cross check, and its "Stay total" is genuinely all in.** Booking.com runs headed on the personal identity only (`Admin/Tools/Travel/booking-com.md`); headless it strips dates and serves empty pages. *Why: on the Aspen run one fleet agent burned 20 minutes against Booking's walls and returned nothing, while the Google Hotels agent came back with checkout grade totals for three towns.*
+
 - **Cast one town wider than asked.** Search a couple of candidate areas, not just the obvious one. *Why: the acclimation trip's value pick and its altitude fallback both sat outside the named town.*
 
 - **On a holiday weekend, search for first come pools, not open sites.** By the day before, every reservable site within two hours is gone; the decision is made by counting `Not Reservable` sites per campground in the recreation.gov data and picking the largest cluster with a fallback chain a few minutes apart. *Why: the 2026-09-05 Labor Day search found zero reservable sites across 30 campgrounds, and Olive Ridge plus Meeker Park Overflow, 57 first come sites five minutes apart, beat every drive up option.*
