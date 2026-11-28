@@ -20,13 +20,13 @@ Seeded from two runs: **2026 Summer Camp** (Buena Vista lodge, headcount 15) and
 
 ## Searching
 
-- **Confirm dated availability before presenting anything.** A listings page is not availability. Use the VRBO dated search and the Guesty calendar API and Airbnb dated search from `Adventure/CLAUDE.md`. *Why: presenting a place that is booked for the dates wastes everyone's time and erodes trust in the option set.*
+- **Confirm dated availability before presenting anything.** A listings page is not availability. Use the providers in the Which Provider table of Eudy's `Admin/Tools/README.md` and the Guesty calendar from `Adventure/CLAUDE.md`. *Why: presenting a place that is booked for the dates wastes everyone's time and erodes trust in the option set.*
 
-- **Airbnb card prices are pre fee; VRBO totals are usually all in.** When comparing across the two, say so, or the comparison is dishonest. Airbnb adds cleaning and service (figure another 12 to 18%) and the lodging tax at the final screen. *Why: an Airbnb card and a VRBO card showing the "same" price are not the same price.*
+- **Say when one engine's prices are before fees and another's are all in.** The figures per provider are in each tool doc. *Why: an Airbnb card and a VRBO card showing the "same" price are not the same price.*
+
+- **Every board names the engines it searched; skipping a provider is a stated choice, never a silence.** *Why: on 2026-11-27 two Krabi boards went out from Booking.com alone, and Forni had to ask whether Airbnb was searched at all.*
 
 - **Cast one town wider than asked.** Search a couple of candidate areas, not just the obvious one. *Why: the acclimation trip's value pick and its altitude fallback both sat outside the named town.*
-
-- **Booking.com is closed to headless browsers; do not spend a fleet agent on it.** It detects automation, strips dated search params, and serves empty landing pages. Google Hotels with dates set is the workable OTA comparison, and its "Stay total" display is genuinely all in. *Why: on the Aspen run one fleet agent burned 20 minutes against Booking's walls and returned nothing, while the Google Hotels agent came back with checkout grade totals for three towns.*
 
 - **On a holiday weekend, search for first come pools, not open sites.** By the day before, every reservable site within two hours is gone; the decision is made by counting `Not Reservable` sites per campground in the recreation.gov data and picking the largest cluster with a fallback chain a few minutes apart. *Why: the 2026-09-05 Labor Day search found zero reservable sites across 30 campgrounds, and Olive Ridge plus Meeker Park Overflow, 57 first come sites five minutes apart, beat every drive up option.*
 

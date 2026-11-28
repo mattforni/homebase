@@ -21,7 +21,7 @@ The whole point is to be a real planning partner, not a search box. The lodging 
 ## Before Every Invocation
 
 1. Read [learned-rules.md](learned-rules.md) in this directory. It holds the calibrated gotchas from real trips, and it is the part most likely to save a misstep.
-2. Read `~/Eudaimonia/Craft/Adventure/CLAUDE.md`, especially the **Checking real availability for specific dates** section. The live availability mechanics (VRBO dated search, the Guesty calendar API, Airbnb dated search via agent-browser) live there. This skill references them rather than restating them, so the two stay in sync.
+2. Read the **Which Provider** table in `~/Eudaimonia/Admin/Tools/README.md` (Travel section), then the tool doc for each provider it names, under `~/Eudaimonia/Admin/Tools/Travel/` and `airbnb.md`. Read `~/Eudaimonia/Craft/Adventure/CLAUDE.md` for the methods with no tool of their own (the Guesty calendar, campgrounds). This skill references them rather than restating them, so the two stay in sync.
 3. Skim the existing trip docs under `~/Eudaimonia/Craft/Adventure/` for the house style. `2026 Four Pass Loop/README.md` and `2026 Summer Camp/README.md` are the two worked examples this skill is built from.
 
 ## Source of Truth
@@ -43,10 +43,10 @@ The four that matter:
 
 ### Phase 2: Search
 
-Pull **live, dated availability** for the exact window using the methods in `Adventure/CLAUDE.md`. Do not present a property until you have confirmed it is actually open for those nights; a generic listings page is not availability.
+Pull **live, dated availability** for the exact window from the providers the Which Provider table names for the kind of stay and the place, using each one's tool doc. Do not present a property until you have confirmed it is actually open for those nights; a generic listings page is not availability.
 
 - Search across a few candidate areas when the constraint allows it, not just the obvious town. The acclimation trip's best value sat in Snowmass, not Aspen, and a higher altitude fallback (Leadville) existed an hour away. Casting one town wider than expected is usually worth it.
-- Scour both VRBO and Airbnb when Forni asks to "see options". They surface different inventory. Note that Airbnb card prices are the nightly sum **before** cleaning and service fees, while VRBO totals are usually all in. Flag the mismatch so the comparison is honest.
+- Every lodging board covers at least one hotel engine and one home rental engine for the place, since they surface different inventory, and says which it searched. Airbnb card prices are **before** cleaning, service, and tax while VRBO and Booking.com checkout totals are all in; flag the mismatch so the comparison is honest.
 - Filter to genuine bedroom count. Search filters lie; read each card.
 
 ### Phase 3: Present
